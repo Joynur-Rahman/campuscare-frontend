@@ -1,0 +1,707 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  background: #f1f5f9;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+[data-theme="dark"] { color-scheme: dark; }
+
+/* ===== Ported component styles (from the original CampusCare style.css) ===== */
+/* ============================================
+   CampusCare — IIIT Guwahati
+   Enhanced Custom Styles v2.0
+   ============================================ */
+
+/* ---------- Critical Performance ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Hero Background ---------- */
+.campus-hero-bg {
+  background-image:
+    linear-gradient(100deg, rgba(8, 23, 44, 0.82) 0%, rgba(10, 29, 54, 0.55) 38%, rgba(8, 23, 44, 0.22) 68%, rgba(8, 23, 44, 0.12) 100%),
+    url('/assets/img/iiitg_campus.jpg');
+  background-size: cover;
+  background-position: left center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* ---------- Glassmorphism Login Card ---------- */
+.glass-login-card {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+/* ---------- Fade-in on Load ---------- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+  70%  { box-shadow: 0 0 0 8px rgba(212, 175, 55, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+
+/* ---------- Animation Utility Classes ---------- */
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out both;
+}
+.animate-delay-200 { animation-delay: 0.2s; }
+
+/* ---------- Button Interactions ---------- */
+.btn-press {
+  transition: all 0.2s ease;
+}
+
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-shine:hover::after {
+  left: 100%;
+}
+
+/* ---------- Input Focus Effects ---------- */
+.input-enhanced {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.input-enhanced:focus {
+  border-color: #143865;
+  box-shadow: 0 0 0 3px rgba(20, 56, 101, 0.1);
+  background-color: #fefefe;
+}
+
+/* ---------- Status Badge Glow ---------- */
+.status-in-progress {
+  animation: pulse-ring 2s infinite;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ---------- Modal Overlay ---------- */
+.modal-overlay {
+  transition: opacity 0.25s ease;
+}
+
+.modal-content {
+  animation: scaleIn 0.25s ease-out both;
+}
+
+/* ---------- Tab Indicator ---------- */
+.tab-active {
+  position: relative;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: #d4af37;
+  border-radius: 2px;
+}
+
+/* ---------- Focus Visible ---------- */
+:focus-visible {
+  outline: 2px solid #d4af37;
+  outline-offset: 2px;
+}
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Mobile Optimizations ---------- */
+@media (max-width: 640px) {
+  .campus-hero-bg {
+    background-attachment: scroll; /* iOS performance fix */
+  }
+
+  .glass-login-card {
+    border-radius: 1rem;
+  }
+}
+
+/* ---------- Print Styles ---------- */
+@media print {
+  .campus-hero-bg {
+    background: #08172c !important;
+    color: #000 !important;
+  }
+
+  header, footer, button, .modal-overlay {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   v3 Redesign — navigation, layout primitives, responsiveness
+   ============================================ */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Top nav */
+.nav-icon-btn {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16);
+  transition: background-color .2s, color .2s, transform .15s, border-color .2s;
+}
+.nav-icon-btn:hover { background: rgba(255,255,255,0.24); border-color: rgba(255,255,255,0.3); color: #fff; transform: translateY(-1px); }
+.nav-icon-btn:focus-visible, .nav-link:focus-visible, .bottom-tab:focus-visible { outline: 2px solid #d4af37; outline-offset: 2px; }
+
+.nav-link {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 8px 14px; border-radius: 12px; font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,0.7); transition: background-color .2s, color .2s;
+}
+.nav-link:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.nav-link.active { color: #08172c; background: #fff; }
+.nav-link .nav-count {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 10px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); color: #fff;
+}
+.nav-link.active .nav-count { background: #08172c; color: #fff; }
+
+/* Mobile bottom tabs */
+.bottom-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-size: 10.5px; font-weight: 700; color: #64748b; position: relative; transition: color .2s;
+}
+.bottom-tab svg { width: 22px; height: 22px; }
+.bottom-tab.active { color: #08172c; }
+.bottom-tab.active::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 32px; height: 3px; border-radius: 0 0 4px 4px; background: #d4af37;
+}
+.bottom-tab .tab-badge {
+  position: absolute; top: 6px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: #f43f5e; color: #fff; font-size: 9px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Account menu */
+.menu-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-weight: 500; transition: background-color .15s; }
+.menu-item:hover { background: #f8fafc; }
+
+/* Page primitives */
+.page-title { font-size: 1.375rem; line-height: 1.2; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+.page-sub { font-size: .8125rem; color: #64748b; margin-top: 4px; }
+@media (min-width: 640px) { .page-title { font-size: 1.625rem; } .page-sub { font-size: .875rem; } }
+
+.panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+
+.stat-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 2px; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+  transition: transform .2s, box-shadow .2s;
+}
+.stat-card:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(15,23,42,.07); }
+.stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.stat-value { font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+@media (min-width: 640px) { .stat-card { padding: 18px 20px; } .stat-value { font-size: 1.875rem; } .stat-label { font-size: 11px; } }
+
+.form-label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #334155; margin-bottom: 6px; }
+
+/* Messages drawer */
+@keyframes drawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+#messagesDrawer:not(.hidden) .drawer-panel { animation: drawerIn .28s cubic-bezier(.2,.8,.2,1) both; }
+
+/* Ticket-detail collapsible details on phones */
+.detail-panel > summary { list-style: none; }
+.detail-panel > summary::-webkit-details-marker { display: none; }
+@media (min-width: 768px) { .detail-panel > summary { display: none; } }
+
+/* Modals: never taller than the screen; bottom-sheet feel on phones */
+.fixed.inset-0 > .modal-content,
+.fixed.inset-0 > .relative.bg-white,
+.fixed.inset-0 > form.relative.bg-white { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+@media (max-width: 639px) {
+  .fixed.inset-0.flex.items-center:not(#ticketDetailModal) { align-items: flex-end; padding: 0 !important; }
+  .fixed.inset-0.flex.items-center:not(#ticketDetailModal) > .modal-content,
+  .fixed.inset-0.flex.items-center:not(#ticketDetailModal) > .relative.bg-white,
+  .fixed.inset-0.flex.items-center:not(#ticketDetailModal) > form.relative.bg-white {
+    width: 100%; max-width: 100%; border-radius: 1.25rem 1.25rem 0 0; max-height: 92dvh;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  /* Toasts sit above the bottom tab bar */
+  .toast-notification { top: auto !important; bottom: 84px; left: 12px; right: 12px !important; }
+}
+/* 16px inputs on phones stop iOS from zooming in */
+@media (max-width: 639px) { input, select, textarea { font-size: 16px !important; } }
+.nav-count.hidden, .tab-badge.hidden { display: none !important; }
+.period-btn { padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 700; color: #475569; transition: all .15s; }
+.period-btn.active { background: #fff; color: #08172c; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.chip { padding: 7px 13px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; border: 1px solid #e2e8f0; background: #fff; color: #475569; display: inline-flex; align-items: center; gap: 6px; }
+.chip.active { background: #08172c; border-color: #08172c; color: #fff; }
+.chip .chip-n { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #f1f5f9; color: #334155; }
+.chip.active .chip-n { background: rgba(255,255,255,.18); color: #fff; }
+
+/* IIITG-branded top bar: institute indigo over the campus photo, gold underline */
+.iiitg-navbar {
+  background:
+    linear-gradient(100deg, rgba(38,34,98,.97) 0%, rgba(32,29,90,.94) 50%, rgba(38,34,98,.88) 100%),
+    url('/assets/img/campus_bg2.webp') center 45% / cover no-repeat;
+  border-bottom: 2px solid #d4af37;
+  box-shadow: 0 6px 20px -8px rgba(38,34,98,.55);
+}
+.iiitg-logo-white { filter: brightness(0) invert(1); opacity: .95; }
+.iiitg-navbar .nav-link.active { color: #262262; }
+.iiitg-navbar .nav-link.active .nav-count { background: #262262; }
+.bottom-tab.active { color: #262262; }
+/* Report form: category tiles */
+.cat-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 4px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #475569; font-size: 10.5px; font-weight: 700; line-height: 1.15; text-align: center; transition: all .15s; min-height: 64px; }
+.cat-tile:hover { border-color: #93b6d6; background: #f8fafc; }
+.cat-tile.active { border-color: #262262; background: #262262; color: #fff; box-shadow: 0 4px 12px rgba(38,34,98,.25); }
+.cat-tile.active svg { color: #d4af37; }
+/* Map pins */
+.cc-pin div { width: 28px; height: 28px; border-radius: 50% 50% 50% 0; background: var(--c); transform: rotate(-45deg); border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; }
+.cc-pin span { transform: rotate(45deg); color: #fff; font: 800 10px sans-serif; }
+.leaflet-container { font-family: inherit; }
+.tickets-view-btn.active, .period-btn.active { background: #fff; color: #262262; }
+/* Report tables */
+.report-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; font-weight: 800; padding: 8px 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.report-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+/* Print / Save as PDF: only the report */
+@media print {
+  body.printing-report * { visibility: hidden !important; }
+  body.printing-report #reportPrintArea, body.printing-report #reportPrintArea * { visibility: visible !important; }
+  body.printing-report #reportPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+  body.printing-report .print-only { display: flex !important; }
+  body.printing-report .panel { box-shadow: none; break-inside: avoid; }
+  body.printing-report #bottomNav, body.printing-report header { display: none !important; }
+  @page { margin: 12mm; }
+}
+.bottom-tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 0 2px; }
+.ptype-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border: 1.5px solid #e2e8f0; border-radius: 14px; cursor: pointer; font-size: 11.5px; font-weight: 700; color: #475569; text-align: center; transition: all .15s; }
+.ptype-card:hover { border-color: #93b6d6; }
+.ptype-card.active { border-color: #262262; background: #262262; color: #fff; }
+.ptype-card.active svg { color: #d4af37; }
+/* Report wizard */
+.wiz-bar { height: 22px; border-radius: 8px; background: rgba(255,255,255,.12); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: rgba(255,255,255,.6); letter-spacing: .03em; }
+.wiz-bar.done, .wiz-bar.active { background: #d4af37; color: #262262; }
+.wiz-bar.active { box-shadow: 0 0 0 2px rgba(255,255,255,.7) inset; }
+.issue-card { text-align: left; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; font-size: 12.5px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; transition: all .15s; }
+.issue-card:hover { border-color: #262262; background: #f8fafc; }
+.issue-card.active { border-color: #262262; background: #262262; color: #fff; }
+.issue-tag { margin-left: auto; font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; white-space: nowrap; }
+.place-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 4px; min-height: 66px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #475569; font-size: 10.5px; font-weight: 700; text-align: center; line-height: 1.15; transition: all .15s; }
+.place-tile:hover { border-color: #93b6d6; }
+.place-tile.active { border-color: #262262; background: #262262; color: #fff; }
+.place-tile.active svg { color: #d4af37; }
+.recent-choice { min-height: 44px; max-width: 100%; padding: 8px 11px; border: 1px solid #dbe3ee; border-radius: 12px; background: #fff; color: #1e293b; font-size: 11px; font-weight: 750; line-height: 1.35; transition: border-color .15s, background-color .15s, transform .15s; }
+.recent-choice:hover { border-color: #7c93b7; background: #f8fafc; }
+.recent-choice:active { transform: scale(.98); }
+.ticket-progress-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ticket-progress-step { min-width: 0; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; color: #64748b; }
+.ticket-progress-step:not(:last-child)::after { content: ''; position: absolute; height: 2px; left: 22px; right: -4px; top: 10px; background: #e2e8f0; }
+.ticket-progress-step.complete:not(:last-child)::after { background: #10b981; }
+.ticket-progress-dot { position: relative; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border: 2px solid #cbd5e1; border-radius: 50%; background: #fff; color: #64748b; font-size: 9px; font-weight: 850; }
+.ticket-progress-step.complete .ticket-progress-dot { border-color: #059669; background: #059669; color: #fff; }
+.ticket-progress-step.current .ticket-progress-dot { border-color: #262262; box-shadow: 0 0 0 3px rgba(38,34,98,.12); color: #262262; }
+.ticket-progress-copy { display: flex; flex-direction: column; gap: 2px; padding-right: 4px; font-size: 9px; line-height: 1.25; }
+.ticket-progress-copy strong { font-weight: 800; }
+.ticket-progress-copy time { color: #64748b; font-size: 9px; font-weight: 550; }
+.ticket-progress-step.current .ticket-progress-copy strong { color: #262262; }
+.ticket-progress-action { min-height: 40px; padding: 8px 11px; border-radius: 10px; font-size: 11px; font-weight: 800; }
+.ticket-progress-action.rate { background: #fef3c7; color: #78350f; }
+.ticket-progress-action.rate:hover { background: #fde68a; }
+.ticket-progress-action.reopen { border: 1px solid #fecdd3; background: #fff1f2; color: #9f1239; }
+.ticket-progress-action.reopen:hover { background: #ffe4e6; }
+.appointment-button { min-height: 40px; padding: 8px 11px; border-radius: 10px; font-size: 10px; font-weight: 850; transition: background-color .15s, border-color .15s; }
+.appointment-button.confirm { background: #059669; color: #fff; }
+.appointment-button.confirm:hover { background: #047857; }
+.appointment-button.decline { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
+.appointment-button.decline:hover { background: #f1f5f9; }
+.appointment-button.propose { width: 100%; background: #262262; color: #fff; }
+.appointment-button.propose:hover { background: #19164d; }
+@media (max-width: 390px) {
+  .ticket-progress-copy { font-size: 8px; }
+  .ticket-progress-copy time { font-size: 8px; }
+}
+
+/* Account-type toggle in Register Staff */
+.staff-kind-btn { background: #f8fafc; color: #475569; transition: all .15s; }
+.staff-kind-btn:hover { background: #f1f5f9; }
+.staff-kind-btn.active { background: #0d2544; color: #fff; border-color: #0d2544; }
+.staff-kind-btn.active span { opacity: .85; }
+
+/* Assign-technician dropdown (Triage) + staff-view switch (Manage) */
+.assign-select, .staff-view-select {
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #1e293b;
+  font-weight: 700;
+  padding: 8px 32px 8px 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+  text-overflow: ellipsis;
+}
+.assign-select { font-size: 12px; }
+.assign-select:hover, .staff-view-select:hover { border-color: #94a3b8; background-color: #f8fafc; }
+.assign-select:focus, .staff-view-select:focus { outline: none; border-color: #0d2544; box-shadow: 0 0 0 3px rgba(13,37,68,.12); }
+/* When a technician is already assigned, tint the switcher so it reads as an action */
+.assign-select.is-assigned { border-color: #c7d2fe; background-color: #eef2ff; color: #3730a3; }
+.assign-select.is-assigned:hover { background-color: #e0e7ff; }
+.staff-view-select { font-size: 13px; padding: 9px 36px 9px 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+
+/* Clean custom chevron for the login "I am a" select (keeps its Tailwind border) */
+.login-select {
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 42px;
+}
+[data-theme="dark"] .login-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   DARK THEME
+   Applied when <html data-theme="dark">. Overrides the common Tailwind
+   neutral utilities + the custom classes above. Accent colours (emerald,
+   blue, rose, amber, indigo) are kept but softened for dark surfaces.
+   ════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] { color-scheme: dark; }
+[data-theme="dark"] body,
+[data-theme="dark"] #authenticatedView { background: #0b1220 !important; color: #e2e8f2; }
+
+/* Surfaces */
+[data-theme="dark"] .bg-white { background-color: #141f33 !important; }
+[data-theme="dark"] .bg-slate-50 { background-color: #0f1829 !important; }
+[data-theme="dark"] .bg-slate-50\/50 { background-color: #0e1726 !important; }
+[data-theme="dark"] .bg-slate-50\/60 { background-color: #0e1726 !important; }
+[data-theme="dark"] .bg-slate-100 { background-color: #1b2740 !important; }
+[data-theme="dark"] .bg-slate-100\/60 { background-color: #141f33 !important; }
+[data-theme="dark"] .bg-slate-200 { background-color: #263350 !important; }
+[data-theme="dark"] .bg-slate-200\/70 { background-color: #1b2740 !important; }
+[data-theme="dark"] .bg-slate-300 { background-color: #334155 !important; }
+[data-theme="dark"] .panel { background: #141f33; border-color: #273349; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+[data-theme="dark"] .stat-card { background: #141f33; border-color: #273349; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+
+/* Text */
+[data-theme="dark"] .text-slate-900 { color: #eef2f8 !important; }
+[data-theme="dark"] .text-slate-800 { color: #e2e8f2 !important; }
+[data-theme="dark"] .text-slate-700 { color: #cdd7e5 !important; }
+[data-theme="dark"] .text-slate-600 { color: #b2bed0 !important; }
+[data-theme="dark"] .text-slate-500 { color: #96a3b8 !important; }
+[data-theme="dark"] .text-slate-400 { color: #7a8599 !important; }
+[data-theme="dark"] .text-slate-300 { color: #64718a !important; }
+[data-theme="dark"] .page-title { color: #eef2f8; }
+[data-theme="dark"] .page-sub { color: #96a3b8; }
+
+/* Borders */
+[data-theme="dark"] .border-slate-100 { border-color: #1f2a40 !important; }
+[data-theme="dark"] .border-slate-200 { border-color: #273349 !important; }
+[data-theme="dark"] .border-slate-300 { border-color: #3a475f !important; }
+[data-theme="dark"] .divide-slate-100 > * + * { border-color: #1f2a40 !important; }
+[data-theme="dark"] .divide-slate-200 > * + * { border-color: #273349 !important; }
+
+/* Form controls */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #0f1829; color: #e2e8f2; border-color: #3a475f;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #6b7890; }
+[data-theme="dark"] .input-enhanced:focus { background-color: #121d30; border-color: #6366f1; }
+[data-theme="dark"] .assign-select, [data-theme="dark"] .staff-view-select { background-color: #0f1829; color: #e2e8f2; border-color: #3a475f; }
+[data-theme="dark"] .assign-select.is-assigned { background-color: rgba(99,102,241,.16); border-color: #4f46e5; color: #c7d2fe; }
+
+/* Menus, chips, tiles */
+[data-theme="dark"] #clerkMenuDropdown { background: #141f33; border-color: #273349; color: #cdd7e5; }
+[data-theme="dark"] .menu-item:hover { background: #1b2740; }
+[data-theme="dark"] .chip { background: #141f33; border-color: #273349; color: #b2bed0; }
+[data-theme="dark"] .chip .chip-n { background: #1b2740; color: #cdd7e5; }
+[data-theme="dark"] .period-btn { color: #96a3b8; }
+[data-theme="dark"] .period-btn.active { background: #243350; color: #fff; }
+[data-theme="dark"] .tickets-view-btn.active, [data-theme="dark"] .period-btn.active { background: #243350; color: #fff; }
+
+/* Soft accent badge backgrounds (the -50 utilities) */
+[data-theme="dark"] .bg-blue-50 { background-color: rgba(59,130,246,.16) !important; }
+[data-theme="dark"] .bg-emerald-50 { background-color: rgba(16,185,129,.15) !important; }
+[data-theme="dark"] .bg-rose-50 { background-color: rgba(244,63,94,.15) !important; }
+[data-theme="dark"] .bg-amber-50 { background-color: rgba(245,158,11,.16) !important; }
+[data-theme="dark"] .bg-violet-50 { background-color: rgba(139,92,246,.16) !important; }
+[data-theme="dark"] .bg-orange-50 { background-color: rgba(249,115,22,.16) !important; }
+[data-theme="dark"] .bg-indigo-50 { background-color: rgba(99,102,241,.16) !important; }
+[data-theme="dark"] .bg-iiitg-50 { background-color: rgba(99,102,241,.16) !important; }
+
+/* Lift the dark accent text so it reads on dark badges */
+[data-theme="dark"] .text-blue-700, [data-theme="dark"] .text-blue-600 { color: #93c5fd !important; }
+[data-theme="dark"] .text-emerald-700, [data-theme="dark"] .text-emerald-600 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-rose-700, [data-theme="dark"] .text-rose-600 { color: #fda4af !important; }
+[data-theme="dark"] .text-amber-800, [data-theme="dark"] .text-amber-700 { color: #fcd34d !important; }
+[data-theme="dark"] .text-violet-700 { color: #c4b5fd !important; }
+[data-theme="dark"] .text-orange-700 { color: #fdba74 !important; }
+[data-theme="dark"] .text-iiitg-700, [data-theme="dark"] .text-iiitg-800 { color: #a5b4fc !important; }
+
+/* Hover states that would otherwise flash a light background */
+[data-theme="dark"] .hover\:bg-slate-50:hover { background-color: #1b2740 !important; }
+[data-theme="dark"] .hover\:bg-slate-100:hover { background-color: #22304a !important; }
+[data-theme="dark"] .hover\:bg-slate-200:hover { background-color: #2b3a57 !important; }
+
+/* iiitg-50 "soft" buttons often pair a light bg with dark iiitg text */
+[data-theme="dark"] .hover\:bg-iiitg-100:hover { background-color: rgba(99,102,241,.24) !important; }
+[data-theme="dark"] .hover\:bg-blue-100:hover { background-color: rgba(59,130,246,.24) !important; }
+[data-theme="dark"] .hover\:bg-emerald-100:hover { background-color: rgba(16,185,129,.24) !important; }
+[data-theme="dark"] .hover\:bg-rose-100:hover { background-color: rgba(244,63,94,.24) !important; }
+[data-theme="dark"] .hover\:bg-amber-100:hover { background-color: rgba(245,158,11,.24) !important; }
+
+/* Dashed empty-state cards */
+[data-theme="dark"] .border-dashed { border-color: #334155 !important; }
+
+/* Leaflet map controls look better dimmed in dark */
+[data-theme="dark"] .leaflet-tile { filter: brightness(.85) contrast(1.05); }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   LOGIN CARD — dark mode
+   The glass sign-in card was hard-coded white, but dark mode flips its
+   text/inputs/tabs to dark-theme colours — leaving light text on a white
+   card. Make the card itself dark so everything inside reads correctly.
+   ════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .glass-login-card {
+  background: rgba(17, 25, 41, 0.97);
+  border-color: rgba(39, 51, 73, 0.9);
+}
+/* role-tab strip (bg-slate-100/90 has no global dark override) */
+[data-theme="dark"] .glass-login-card .bg-slate-100\/90 { background-color: #0f1829 !important; }
+/* active tab pill: its white bg is already darkened; lighten its iiitg-900 label */
+[data-theme="dark"] .glass-login-card .text-iiitg-900 { color: #c7d2fe !important; }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   MOBILE BOTTOM NAV — dark mode
+   #bottomNav uses bg-white/95 (not caught by the global .bg-white dark
+   override) and .bottom-tab.active is dark navy — so in dark mode it was a
+   white bar with an invisible active label. Darken the bar and lighten tabs.
+   ════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] #bottomNav {
+  background-color: rgba(13, 20, 34, 0.96) !important;
+  border-top-color: #273349 !important;
+}
+[data-theme="dark"] .bottom-tab { color: #94a3b8; }
+[data-theme="dark"] .bottom-tab.active { color: #ffffff; }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   REPORT-A-PROBLEM MODAL — dark mode
+   The wizard body + category/place tiles were hardcoded white. Darken them.
+   ════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .report-panel { background-color: #0f1829 !important; }
+[data-theme="dark"] .cat-tile { background: #141f33; border-color: #273349; color: #cbd5e1; }
+[data-theme="dark"] .cat-tile:hover { background: #1b2740; border-color: #3a475f; }
+[data-theme="dark"] .cat-tile.active { background: #4f46e5; border-color: #6366f1; color: #fff; }
+[data-theme="dark"] .ptype-card { background: #141f33; border-color: #273349; color: #cbd5e1; }
+[data-theme="dark"] .ptype-card:hover { border-color: #3a475f; }
+[data-theme="dark"] .ptype-card.active { background: #4f46e5; border-color: #6366f1; color: #fff; }
+[data-theme="dark"] .form-label { color: #94a3b8; }
+
+
+/* Hover variants with an opacity modifier (e.g. bg-slate-50/60) weren't caught
+   by the plain hover dark overrides — darken them too (admin ticket rows). */
+[data-theme="dark"] .hover\:bg-slate-50\/60:hover { background-color: #1b2740 !important; }
+[data-theme="dark"] .hover\:bg-slate-50\/50:hover { background-color: #1b2740 !important; }
+[data-theme="dark"] .hover\:bg-slate-100\/60:hover { background-color: #22304a !important; }
+[data-theme="dark"] .hover\:bg-white:hover { background-color: #1b2740 !important; }
+
+
+/* Soft badge backgrounds at the -100 shade (e.g. URGENT uses bg-rose-100) had
+   no dark override, so they stayed light. Tint them for dark mode. */
+[data-theme="dark"] .bg-rose-100 { background-color: rgba(244,63,94,.20) !important; }
+[data-theme="dark"] .bg-amber-100 { background-color: rgba(245,158,11,.20) !important; }
+[data-theme="dark"] .bg-blue-100 { background-color: rgba(59,130,246,.20) !important; }
+[data-theme="dark"] .bg-emerald-100 { background-color: rgba(16,185,129,.20) !important; }
+[data-theme="dark"] .bg-iiitg-100 { background-color: rgba(99,102,241,.22) !important; }
+[data-theme="dark"] .bg-violet-100 { background-color: rgba(139,92,246,.20) !important; }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   REPORT WIZARD — issue list (.issue-card) + place tiles (.place-tile)
+   Both were hardcoded white; dark-mode them like the category tiles.
+   ════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .issue-card { background: #141f33; border-color: #273349; color: #e2e8f2; }
+[data-theme="dark"] .issue-card:hover { background: #1b2740; border-color: #4f46e5; }
+[data-theme="dark"] .issue-card.active { background: #4f46e5; border-color: #6366f1; color: #fff; }
+[data-theme="dark"] .place-tile { background: #141f33; border-color: #273349; color: #cbd5e1; }
+[data-theme="dark"] .place-tile:hover { background: #1b2740; border-color: #3a475f; }
+[data-theme="dark"] .place-tile.active { background: #4f46e5; border-color: #6366f1; color: #fff; }
+
+
+/* ─────────── Emergency (SOS) button — prominent red, every page ─────────── */
+.emergency-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 40px; padding: 0 12px; border-radius: 12px;
+  font-size: 12px; font-weight: 800; letter-spacing: .03em;
+  color: #fff; background: #e11d48; border: 1px solid rgba(255,255,255,.28);
+  box-shadow: 0 2px 10px rgba(225,29,72,.45);
+  transition: background-color .2s, transform .15s, box-shadow .2s;
+  animation: sosPulse 2.4s ease-in-out infinite;
+}
+.emergency-btn:hover { background: #be123c; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(225,29,72,.6); }
+.emergency-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.emergency-btn .emergency-btn-label { line-height: 1; }
+@keyframes sosPulse { 0%,100% { box-shadow: 0 2px 10px rgba(225,29,72,.45); } 50% { box-shadow: 0 2px 16px rgba(225,29,72,.8); } }
+@media (max-width: 420px) { .emergency-btn { padding: 0 10px; } .emergency-btn .emergency-btn-label { display: none; } }
+@media (prefers-reduced-motion: reduce) { .emergency-btn { animation: none; } }
+
+/* ─────────── Dark mode: admin report tables stay readable (bug #4/#5) ─────────── */
+[data-theme="dark"] .report-table th { background: #0f1829; color: #b9c4d6; border-bottom-color: #273349; }
+[data-theme="dark"] .report-table td { color: #cdd7e5; border-bottom-color: #1f2a40; }
+[data-theme="dark"] .report-table tbody tr:hover td { background: #121d30; }
+
+/* ─────────── Dark mode: landing page institute header + hero text (bug #1) ─────────── */
+[data-theme="dark"] .campus-hero-bg header .text-iiitg-900,
+[data-theme="dark"] .campus-hero-bg header .text-iiitg-700 { color: #e8ebff !important; }
+[data-theme="dark"] .campus-hero-bg header .text-\[\#b8932a\] { color: #e6c55c !important; }
+[data-theme="dark"] .campus-hero-bg header .text-slate-500 { color: #aab6c9 !important; }
+[data-theme="dark"] .hero-content-left .text-slate-200 { color: #e5ebf2 !important; }
+[data-theme="dark"] .hero-content-left .text-slate-300 { color: #cbd5e1 !important; }
+[data-theme="dark"] .hero-content-left .text-slate-400 { color: #9aa7bc !important; }
+
+/* ─────────── Official institute banner (login landing header) ─────────── */
+.institute-banner {
+  background: linear-gradient(90deg, #1b1a4e 0%, #262262 50%, #1b1a4e 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+[data-theme="dark"] .institute-banner {
+  background: linear-gradient(90deg, #11112e 0%, #1a1850 50%, #11112e 100%);
+}
+
+/* ─────────── Reports: brighter table text + readable range buttons ─────────── */
+[data-theme="dark"] .report-table td { color: #d7e0ee; }
+[data-theme="dark"] .report-table td:first-child { color: #eef2f8; font-weight: 600; }
+.rep-range-btn { color: #475569; font-weight: 700; }
+.rep-range-btn.active { background: #262262; color: #fff; }
+[data-theme="dark"] .rep-range-btn { color: #aab6c9; }
+[data-theme="dark"] .rep-range-btn.active { background: #4f46e5; color: #fff; }
+
+/* Compact "By building / place" list */
+.place-compact { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 320px; overflow-y: auto; }
+.place-compact .place-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 10px; border-radius: 10px; background: #f8fafc; border: 1px solid #eef2f7;
+  font-size: 12px; color: #334155;
+}
+.place-compact .place-row b { color: #0f172a; font-weight: 800; }
+[data-theme="dark"] .place-compact .place-row { background: #0f1829; border-color: #223049; color: #cdd7e5; }
+[data-theme="dark"] .place-compact .place-row b { color: #eef2f8; }
+
+/* ─────────── Lost & Found dedicated form ─────────── */
+.lf-kind-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 10px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff;
+  font-size: 13px; font-weight: 700; color: #475569; transition: all .15s; cursor: pointer;
+}
+.lf-kind-btn svg { width: 16px; height: 16px; }
+.lf-kind-btn.active { border-color: #f59e0b; background: #fffbeb; color: #92400e; box-shadow: 0 0 0 2px rgba(245,158,11,.22); }
+[data-theme="dark"] .lf-modal { background: #141f33; }
+[data-theme="dark"] .lf-modal .bg-amber-50 { background-color: rgba(245,158,11,.12) !important; }
+[data-theme="dark"] .lf-kind-btn { background: #0f1829; border-color: #273349; color: #aab6c9; }
+[data-theme="dark"] .lf-kind-btn.active { background: rgba(245,158,11,.14); border-color: #f59e0b; color: #fcd34d; }
+
+/* ─────────── Logo plate: white background that survives dark mode (navy logos) ─────────── */
+.logo-plate { background: #ffffff !important; }
+
+/* ─── Modal close button: visible in both themes ─── */
+.modal-x { color:#64748b; padding:6px; border-radius:8px; display:inline-flex; transition:background-color .15s,color .15s; }
+.modal-x:hover { color:#e11d48; background:rgba(100,116,139,.12); }
+[data-theme="dark"] .modal-x { color:#c3ccda; }
+[data-theme="dark"] .modal-x:hover { color:#fb7185; background:rgba(255,255,255,.08); }
+[data-theme="dark"] .bg-iiitg-50\/50 { background-color: rgba(99,102,241,.14) !important; }
+
+/* Admin form inputs */
+.in { width:100%; padding:10px 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; color:#0f172a; }
+.in:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+[data-theme="dark"] .in { background:#0f1829; border-color:#3a475f; color:#e2e8f2; }
+[data-theme="dark"] .in::placeholder { color:#6b7890; }
