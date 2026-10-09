@@ -39,20 +39,25 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     { id: 3, title: 'Campus Broadcast', desc: 'Water supply scheduled maintenance in Library Block', time: '3h ago', unread: false, type: 'notice', Icon: AlertCircle, color: 'text-amber-500' },
   ];
 
-  // Role-adaptive messages
+  // Role-adaptive messages with Administrator sender identification
   const defaultMessages = role === 'administrator' ? [
-    { id: 1, sender: 'Warden Office', snippet: 'Urgent: Water pump spare part arrived from Guwahati.', time: '12m ago', unread: true, tag: 'Facilities' },
-    { id: 2, sender: 'Hostel Rep (Block B)', snippet: 'Multiple students reporting 2nd floor Wi-Fi loss.', time: '1h ago', unread: true, tag: 'Network' },
+    { id: 1, sender: 'Chief Admin Officer', snippet: 'Monthly campus infrastructure inspection scheduled for Thursday.', time: '5m ago', unread: true, tag: 'Admin Directive', isAdmin: true },
+    { id: 2, sender: 'Warden Office', snippet: 'Urgent: Water pump spare part arrived from Guwahati.', time: '12m ago', unread: true, tag: 'Facilities', isAdmin: true },
+    { id: 3, sender: 'Hostel Rep (Block B)', snippet: 'Multiple students reporting 2nd floor Wi-Fi loss.', time: '1h ago', unread: false, tag: 'Student Rep', isAdmin: false },
   ] : role === 'staff' ? [
-    { id: 1, sender: 'Ujjwal Prakash (Student)', snippet: 'Facing this Wi-Fi issue since morning. Thanks for checking!', time: '15m ago', unread: true, tag: 'IIITG-8486' },
-    { id: 2, sender: 'Caretaker Estate', snippet: 'Please check terminal 18 in Lab 2 after completing room 214.', time: '45m ago', unread: false, tag: 'Notice' },
+    { id: 1, sender: 'Campus Administrator', snippet: 'Approved store requisition for 5x Anchor regulators and Cat6 cable spools.', time: '10m ago', unread: true, tag: 'Store Clearance', isAdmin: true },
+    { id: 2, sender: 'Ujjwal Prakash (Student)', snippet: 'Facing this Wi-Fi issue since morning. Thanks for checking!', time: '15m ago', unread: true, tag: 'IIITG-8486', isAdmin: false },
+    { id: 3, sender: 'Estate Office (Admin)', snippet: 'All pending water issues in Library Block must be signed off by 6 PM today.', time: '1h ago', unread: false, tag: 'Admin Directive', isAdmin: true },
+    { id: 4, sender: 'Caretaker Estate', snippet: 'Please check terminal 18 in Lab 2 after completing room 214.', time: '3h ago', unread: false, tag: 'Staff Note', isAdmin: false },
   ] : [
-    { id: 1, sender: 'Ujjwal (IT Technician)', snippet: 'I have replaced the router patch cable. Please test your connection now.', time: '10m ago', unread: true, tag: 'Ticket #8486' },
-    { id: 2, sender: 'Care Desk Support', snippet: 'Your study table repair request #9120 has been queued.', time: '2h ago', unread: false, tag: 'Support' },
+    { id: 1, sender: 'Estate Administrator', snippet: 'Planned Wi-Fi access point firmware upgrade tonight from 2 AM to 4 AM.', time: '15m ago', unread: true, tag: 'Official Notice', isAdmin: true },
+    { id: 2, sender: 'Ujjwal (IT Technician)', snippet: 'I have replaced the router patch cable. Please test your connection now.', time: '20m ago', unread: true, tag: 'Ticket #8486', isAdmin: false },
+    { id: 3, sender: 'Care Desk Admin', snippet: 'Your study table repair request #9120 has been verified and assigned to carpentry.', time: '2h ago', unread: false, tag: 'Admin Action', isAdmin: true },
   ];
 
   const [notifs, setNotifs] = useState(defaultNotifs);
   const [messages, setMessages] = useState(defaultMessages);
+  const [msgFilter, setMsgFilter] = useState('all'); // 'all' | 'admin'
 
   // Close popups on click outside
   useEffect(() => {
@@ -67,12 +72,13 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
   const unreadNotifsCount = notifs.filter(n => n.unread).length;
   const unreadMsgsCount = messages.filter(m => m.unread).length;
+  const filteredMessages = msgFilter === 'admin' ? messages.filter(m => m.isAdmin) : messages;
 
   const markAllNotifsRead = () => setNotifs(ns => ns.map(n => ({ ...n, unread: false })));
   const markAllMsgsRead = () => setMessages(ms => ms.map(m => ({ ...m, unread: false })));
 
   return (
-    <header className="sticky top-0 z-40 bg-[#262262] text-white shadow-md">
+    <header id="mainTopNav" className="sticky top-0 z-40 bg-[#262262] text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 relative">
         {/* Brand (Left) */}
         <div className="flex items-center gap-2.5 shrink-0 z-10">
@@ -175,36 +181,92 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                   )}
                 </div>
 
+                {/* ── Filter Buttons: All vs Administrator ── */}
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100/70 dark:bg-slate-800/40 border-b border-slate-200/80 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setMsgFilter('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      msgFilter === 'all'
+                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs border border-slate-200 dark:border-slate-700'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    All ({messages.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMsgFilter('admin')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      msgFilter === 'admin'
+                        ? 'bg-purple-600 text-white shadow-sm ring-1 ring-purple-500/50'
+                        : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100/60 dark:hover:bg-purple-950/40'
+                    }`}
+                    title="Show only messages sent by Administrator"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Administrator</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                      msgFilter === 'admin' ? 'bg-white/25 text-white' : 'bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300'
+                    }`}>
+                      {messages.filter(m => m.isAdmin).length}
+                    </span>
+                  </button>
+                </div>
+
                 <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-80 overflow-y-auto">
-                  {messages.map(m => (
+                  {filteredMessages.map(m => (
                     <div
                       key={m.id}
                       onClick={() => setMessages(ms => ms.map(x => x.id === m.id ? { ...x, unread: false } : x))}
-                      className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${m.unread ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}
+                      className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${
+                        m.unread
+                          ? m.isAdmin ? 'bg-purple-50/50 dark:bg-purple-950/20' : 'bg-indigo-50/40 dark:bg-indigo-950/20'
+                          : ''
+                      }`}
                     >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 mt-0.5 shadow-sm text-white ${
+                        m.isAdmin
+                          ? 'bg-gradient-to-tr from-purple-600 to-indigo-600'
+                          : 'bg-gradient-to-tr from-indigo-500 to-blue-600'
+                      }`}>
                         {m.sender[0]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{m.sender}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{m.sender}</span>
+                            {m.isAdmin && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 px-1.5 py-0.2 rounded shrink-0">
+                                <ShieldCheck className="w-2.5 h-2.5" /> Admin
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-slate-400 shrink-0 font-medium">{m.time}</span>
                         </div>
                         <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{m.snippet}</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded">
+                        <span className={`inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          m.isAdmin
+                            ? 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/80 border border-purple-200/50 dark:border-purple-800/50'
+                            : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80'
+                        }`}>
                           {m.tag}
                         </span>
                       </div>
-                      {m.unread && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5" />}
+                      {m.unread && <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${m.isAdmin ? 'bg-purple-600' : 'bg-indigo-600'}`} />}
                     </div>
                   ))}
-                  {messages.length === 0 && (
-                    <div className="py-8 text-center text-xs text-slate-400">No messages yet.</div>
+                  {filteredMessages.length === 0 && (
+                    <div className="py-8 text-center text-xs text-slate-400">
+                      {msgFilter === 'admin' ? 'No messages from Administrator yet.' : 'No messages yet.'}
+                    </div>
                   )}
                 </div>
 
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 text-center">
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">All ticket conversation updates are live</span>
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {msgFilter === 'admin' ? 'Showing official Administrator directives & notices' : 'All ticket conversation updates are live'}
+                  </span>
                 </div>
               </div>
             )}

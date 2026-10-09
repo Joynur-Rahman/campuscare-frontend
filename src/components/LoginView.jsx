@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { SignIn } from '@clerk/react';
 import {
   GraduationCap, Wrench, Lock, Eye, EyeOff, ArrowRight, Loader2,
-  Shield, HeartPulse, ShieldCheck,
+  Shield, HeartPulse, ShieldCheck, Sun, Moon, Laptop,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { IS_MOCK } from '../api';
@@ -14,7 +14,7 @@ const TABS = [
 ];
 
 export default function LoginView() {
-  const { login, showToast, api } = useApp();
+  const { login, showToast, api, mockLogin, theme, setTheme } = useApp();
   const [role, setRole] = useState('student');
   const [campusType, setCampusType] = useState('student'); // student | faculty | nonteaching
   const [identifier, setIdentifier] = useState('');
@@ -67,7 +67,7 @@ export default function LoginView() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between campus-hero-bg">
-      <div className="h-1.5 w-full bg-gradient-to-r from-iiitg-900 via-iiitg-gold to-iiitg-900" />
+      
 
       {/* Institute banner */}
       <header className="institute-banner shadow-md">
@@ -82,13 +82,13 @@ export default function LoginView() {
             </div>
           </a>
           <div className="flex items-center gap-2.5 shrink-0 pl-3 border-l border-white/20">
-            <img src="/assets/img/campuscare-mark.svg" alt="" className="w-9 h-9 sm:w-10 sm:h-10" />
-            <div className="text-right hidden sm:block">
-              <span className="block text-sm sm:text-base font-extrabold text-white tracking-tight leading-none">Campus<span className="text-iiitg-gold">Care</span></span>
-              <span className="block text-[9px] sm:text-[10px] font-bold text-amber-300 uppercase tracking-wider mt-0.5">Grievance &amp; Service Portal</span>
+              <img src="/assets/img/campuscare-mark.svg" alt="" className="w-9 h-9 sm:w-10 sm:h-10" />
+              <div className="text-right hidden sm:block">
+                <span className="block text-sm sm:text-base font-extrabold text-white tracking-tight leading-none">Campus<span className="text-iiitg-gold">Care</span></span>
+                <span className="block text-[9px] sm:text-[10px] font-bold text-amber-300 uppercase tracking-wider mt-0.5">Grievance &amp; Service Portal</span>
+              </div>
             </div>
           </div>
-        </div>
       </header>
 
       {/* Hero + login */}
@@ -114,10 +114,59 @@ export default function LoginView() {
           </div>
 
           {/* Login card */}
-          <div className="lg:col-span-6 max-w-md mx-auto w-full">
-            <div className="glass-login-card rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
-              <div className="p-6 sm:p-7 flex justify-center items-center min-h-[400px]">
-                <SignIn routing="hash" />
+          <div className="lg:col-span-6 max-w-md mx-auto w-full flex flex-col items-center">
+            <div className="w-full flex justify-center clerk-signin-container">
+              <SignIn
+                routing="hash"
+                appearance={{
+                  elements: {
+                    rootBox: "w-full flex justify-center",
+                    cardBox: "w-full shadow-2xl rounded-2xl overflow-hidden",
+                    card: "w-full rounded-none border-none shadow-none bg-transparent",
+                    main: "w-full rounded-none border-none shadow-none bg-transparent",
+                    footer: "w-full rounded-none border-none shadow-none",
+                    footerAction: "bg-transparent border-none shadow-none",
+                  }
+                }}
+              />
+            </div>
+
+            {/* Quick Frontend Mock Login */}
+            <div className="w-full mt-4 p-4 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-white/20 text-white shadow-2xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                  ⚡ 1-Click Frontend Login
+                </span>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full">Mock Mode</span>
+              </div>
+              <p className="text-xs text-slate-300 mb-3">
+                Click any role to enter and test directly on the UI:
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => mockLogin('student')}
+                  className="px-3 py-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition active:scale-95 text-center flex flex-col items-center gap-1 border border-indigo-400/40 cursor-pointer"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Student</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mockLogin('staff')}
+                  className="px-3 py-2.5 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-500 text-white shadow-md transition active:scale-95 text-center flex flex-col items-center gap-1 border border-amber-400/40 cursor-pointer"
+                >
+                  <Wrench className="w-4 h-4" />
+                  <span>Staff / Tech</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mockLogin('administrator')}
+                  className="px-3 py-2.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition active:scale-95 text-center flex flex-col items-center gap-1 border border-emerald-400/40 cursor-pointer"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Admin</span>
+                </button>
               </div>
             </div>
           </div>
@@ -127,6 +176,49 @@ export default function LoginView() {
       <footer className="bg-iiitg-900 text-slate-300 text-xs py-3 px-4 text-center">
         <strong className="text-white">Indian Institute of Information Technology Guwahati</strong> · Bongora, Assam - 781015
       </footer>
+      {/* Floating Theme Mode Switcher (Icon-only, no writing) */}
+      <div className="fixed bottom-5 left-5 z-50 flex items-center gap-1 bg-slate-900/85 dark:bg-slate-800/90 backdrop-blur-md border border-white/20 p-1.5 rounded-full shadow-2xl transition-all">
+        <button
+          type="button"
+          onClick={() => setTheme('light')}
+          className={`p-2 rounded-full transition-all cursor-pointer ${
+            theme === 'light'
+              ? 'bg-amber-400 text-slate-950 shadow-md scale-105'
+              : 'text-slate-300 hover:text-white hover:bg-white/15'
+          }`}
+          title="Light Mode"
+          aria-label="Light Mode"
+        >
+          <Sun className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTheme('dark')}
+          className={`p-2 rounded-full transition-all cursor-pointer ${
+            theme === 'dark'
+              ? 'bg-indigo-600 text-white shadow-md scale-105'
+              : 'text-slate-300 hover:text-white hover:bg-white/15'
+          }`}
+          title="Dark Mode"
+          aria-label="Dark Mode"
+        >
+          <Moon className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTheme('auto')}
+          className={`p-2 rounded-full transition-all cursor-pointer ${
+            theme === 'auto'
+              ? 'bg-emerald-500 text-white shadow-md scale-105'
+              : 'text-slate-300 hover:text-white hover:bg-white/15'
+          }`}
+          title="System Mode (auto-detects OS theme)"
+          aria-label="System Mode"
+        >
+          <Laptop className="w-4 h-4" />
+        </button>
+      </div>
+
     </div>
   );
 }

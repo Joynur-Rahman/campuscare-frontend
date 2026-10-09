@@ -267,7 +267,7 @@ body {
 
 /* Page primitives */
 .page-title { font-size: 1.375rem; line-height: 1.2; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
-.page-sub { font-size: .8125rem; color: #64748b; margin-top: 4px; }
+.page-sub { font-size: .875rem; color: #334155; margin-top: 4px; font-weight: 500; }
 @media (min-width: 640px) { .page-title { font-size: 1.625rem; } .page-sub { font-size: .875rem; } }
 
 .panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
@@ -285,6 +285,9 @@ body {
 .form-label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #334155; margin-bottom: 6px; }
 
 /* Messages drawer */
+.chat-drawer {
+  animation: drawerIn .24s cubic-bezier(.16, 1, .3, 1) both;
+}
 @keyframes drawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 #messagesDrawer:not(.hidden) .drawer-panel { animation: drawerIn .28s cubic-bezier(.2,.8,.2,1) both; }
 
@@ -800,3 +803,288 @@ input[type="range"].filter-range-slider {
 [data-theme="dark"] .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.18) !important; border-color: rgba(16, 185, 129, 0.45) !important; }
 [data-theme="dark"] .bg-blue-50 { background-color: rgba(59, 130, 246, 0.18) !important; border-color: rgba(59, 130, 246, 0.45) !important; }
 [data-theme="dark"] .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.18) !important; border-color: rgba(99, 102, 241, 0.45) !important; }
+
+/* ─────────── WhatsApp-style Ticket Chat Modal ─────────── */
+.chat-container-wa {
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.045'%3E%3Cpath d='M14 16a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm36 28a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM22 60h4v4h-4v-4zm36-40h4v4h-4v-4zM6 46l3 5H3l3-5zm48-26l3 5h-6l3-5zm18 40a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM34 10a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm26 62a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM10 74l2-3 2 3h-4zm52-60l2-3 2 3h-4z'/%3E%3C/g%3E%3C/svg%3E");
+}
+[data-theme="dark"] .chat-container-wa {
+  background-color: #0b141a !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M14 16a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm36 28a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM22 60h4v4h-4v-4zm36-40h4v4h-4v-4zM6 46l3 5H3l3-5zm48-26l3 5h-6l3-5zm18 40a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM34 10a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm26 62a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM10 74l2-3 2 3h-4zm52-60l2-3 2 3h-4z'/%3E%3C/g%3E%3C/svg%3E") !important;
+}
+
+/* Sent message bubble (mine) - WhatsApp Mint Green (Light) / Forest Teal (Dark) */
+.chat-bubble-sent {
+  background-color: #d9fdd3 !important;
+  color: #111b21 !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .chat-bubble-sent {
+  background-color: #005c4b !important;
+  color: #e9edef !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+/* Received message bubble (!mine) - Pure Crisp White (Light) / Slate Charcoal (Dark) */
+.chat-bubble-received {
+  background-color: #ffffff !important;
+  color: #111b21 !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .chat-bubble-received {
+  background-color: #202c33 !important;
+  color: #e9edef !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+/* Timestamp below messages */
+.chat-time-sent {
+  color: #667781 !important;
+  font-size: 10.5px;
+}
+[data-theme="dark"] .chat-time-sent {
+  color: #8696a0 !important;
+  font-size: 10.5px;
+}
+
+.chat-time-received {
+  color: #667781 !important;
+  font-size: 10.5px;
+}
+[data-theme="dark"] .chat-time-received {
+  color: #8696a0 !important;
+  font-size: 10.5px;
+}
+
+/* WhatsApp blue read ticks */
+.chat-tick-blue {
+  color: #53bdeb !important;
+}
+
+/* Pinned ticket issue description card */
+.chat-ticket-desc {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+[data-theme="dark"] .chat-ticket-desc {
+  background-color: #182229 !important;
+  border-color: #263540 !important;
+  color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ─────────── Single Clean Clerk Sign-In Card (Light & Dark - Seamless No Cut Edges) ─────────── */
+.clerk-signin-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.clerk-signin-container .cl-rootBox {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* Outer Shell CardBox - encapsulates form & footer with zero cut notches */
+.clerk-signin-container .cl-cardBox {
+  width: 100% !important;
+  max-width: 430px !important;
+  border-radius: 1.25rem !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-cardBox {
+  background: rgba(17, 25, 41, 0.96) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Internal Card & Main - No borders, no individual rounded bottom corners */
+.clerk-signin-container .cl-card,
+.clerk-signin-container .cl-main {
+  width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Footer & FooterAction - Seamless flush connection to card, zero side notches */
+.clerk-signin-container .cl-footer {
+  width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border: none !important;
+  border-top: 1px solid rgba(226, 232, 240, 0.8) !important;
+  background: rgba(248, 250, 252, 0.65) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+}
+
+.clerk-signin-container .cl-footerAction {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Typography & Controls - Light Mode */
+.clerk-signin-container .cl-headerTitle {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.clerk-signin-container .cl-headerSubtitle {
+  color: #475569 !important;
+}
+
+.clerk-signin-container .cl-socialButtonsBlockButton {
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-radius: 0.75rem !important;
+  transition: all 0.15s ease !important;
+}
+.clerk-signin-container .cl-socialButtonsBlockButton:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+.clerk-signin-container .cl-formFieldLabel {
+  color: #334155 !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+}
+
+.clerk-signin-container .cl-formFieldInput {
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 0.75rem !important;
+}
+.clerk-signin-container .cl-formFieldInput:focus {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+}
+
+.clerk-signin-container .cl-formButtonPrimary {
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+  border-radius: 0.75rem !important;
+  font-weight: 700 !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.3) !important;
+}
+.clerk-signin-container .cl-formButtonPrimary:hover {
+  background: #172554 !important;
+}
+
+.clerk-signin-container .cl-footerActionText {
+  color: #64748b !important;
+}
+
+.clerk-signin-container .cl-footerActionLink {
+  color: #1e3a8a !important;
+  font-weight: 700 !important;
+}
+
+/* Typography & Controls - Dark Mode */
+[data-theme="dark"] .clerk-signin-container .cl-headerTitle {
+  color: #f8fafc !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-headerSubtitle {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-socialButtonsBlockButton {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(30, 41, 59, 0.7) !important;
+  color: #f1f5f9 !important;
+  border-radius: 0.75rem !important;
+}
+[data-theme="dark"] .clerk-signin-container .cl-socialButtonsBlockButton:hover {
+  background: rgba(51, 65, 85, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+[data-theme="dark"] .clerk-signin-container .cl-socialButtonsBlockButtonText {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-dividerLine {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+[data-theme="dark"] .clerk-signin-container .cl-dividerText {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-formFieldLabel {
+  color: #cbd5e1 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-formFieldInput {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #f8fafc !important;
+  border-radius: 0.75rem !important;
+}
+[data-theme="dark"] .clerk-signin-container .cl-formFieldInput:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-formButtonPrimary {
+  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(165, 180, 252, 0.25) !important;
+  border-radius: 0.75rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
+}
+[data-theme="dark"] .clerk-signin-container .cl-formButtonPrimary:hover {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-footerActionText {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .clerk-signin-container .cl-footerActionLink {
+  color: #818cf8 !important;
+  font-weight: 700 !important;
+}
+[data-theme="dark"] .clerk-signin-container .cl-footerActionLink:hover {
+  color: #a5b4fc !important;
+}
+
+/* Landing Page Dark Mode Refinement */
+[data-theme="dark"] .campus-hero-bg {
+  background-image:
+    linear-gradient(100deg, rgba(3, 7, 18, 0.94) 0%, rgba(10, 15, 30, 0.85) 45%, rgba(3, 7, 18, 0.72) 100%),
+    url('/assets/img/iiitg_campus.jpg') !important;
+}
+[data-theme="dark"] .institute-banner {
+  background: linear-gradient(90deg, #0b111e 0%, #111a2d 50%, #0b111e 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}

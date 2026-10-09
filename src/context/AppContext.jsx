@@ -12,7 +12,7 @@ export function AppProvider({ children }) {
   const { signOut } = useClerk();
   
   const [user, setUser] = useState(null);
-  const [booting, setBooting] = useState(true);
+  const [booting, setBooting] = useState(false);
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('cc_theme') || 'auto'; } catch { return 'auto'; }
   });
@@ -91,7 +91,18 @@ export function AppProvider({ children }) {
           })
           .finally(() => setBooting(false));
       } else {
-        setUser(null);
+        // If Clerk is not logged in, keep existing mock user if available
+        try {
+          const saved = localStorage.getItem('cc_mock_user');
+          if (saved) {
+            setUser(JSON.parse(saved));
+          } else {
+            // Default demo student in mock mode
+            setUser({ id: 'stu-1', uid: 'stu-1', email: 'ujjwal@iiitg.ac.in', name: 'Ujjwal Prakash', full_name: 'Ujjwal Prakash', role: 'student' });
+          }
+        } catch {
+          setUser({ id: 'stu-1', uid: 'stu-1', email: 'ujjwal@iiitg.ac.in', name: 'Ujjwal Prakash', full_name: 'Ujjwal Prakash', role: 'student' });
+        }
         setBooting(false);
       }
     }
@@ -101,9 +112,23 @@ export function AppProvider({ children }) {
     // Legacy mock login support or throw error
     throw new Error('Please use the Clerk login interface.');
   }, []);
+
+  const mockLogin = useCallback((role = 'student') => {
+    let mockUser;
+    if (role === 'administrator' || role === 'admin') {
+      mockUser = { id: 'admin-1', uid: 'admin-1', email: 'admin@iiitg.ac.in', name: 'Administrator', full_name: 'Administrator', role: 'administrator' };
+    } else if (role === 'staff' || role === 'tech') {
+      mockUser = { id: 'tech-1', uid: 'tech-1', email: 'tech@iiitg.ac.in', name: 'Ujjwal (IT Tech)', full_name: 'Ujjwal (IT Tech)', role: 'staff', status: 'On Duty' };
+    } else {
+      mockUser = { id: 'stu-1', uid: 'stu-1', email: 'ujjwal@iiitg.ac.in', name: 'Ujjwal Prakash', full_name: 'Ujjwal Prakash', role: 'student' };
+    }
+    setUser(mockUser);
+    showToast(`Logged in as ${mockUser.name} (${role})`, 'success');
+  }, [showToast]);
   
   const logout = useCallback(async () => {
-    await signOut();
+    try { await signOut(); } catch {}
+    try { localStorage.removeItem('cc_mock_user'); } catch {}
     setUser(null);
   }, [signOut]);
 
@@ -124,6 +149,6 @@ export function AppProvider({ children }) {
   }, [theme]);
   const cycleTheme = useCallback(() => setTheme(t => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto')), []);
 
-  const value = { user, setUser, booting, login, logout, theme, cycleTheme, toasts, showToast, dismissToast, api };
+  const value = { user, setUser, booting, login, logout, mockLogin, theme, setTheme, cycleTheme, toasts, showToast, dismissToast, api };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

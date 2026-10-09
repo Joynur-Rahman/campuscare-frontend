@@ -1,9 +1,52 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Send, Loader2, CheckCheck, Phone, MessageCircle, Smile, DoorOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
-import { statusLabel, statusStyle, ticketLabel } from '../lib/ticketUtils.js';
+import { statusLabel, statusStyle, ticketLabel, fmtPhone } from '../lib/ticketUtils.js';
 
-// Shared ticket detail + chat. `role` controls which actions show.
+// Time formatting helper (e.g. 10:45 AM)
+function formatMsgTime(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// WhatsApp-style day separator helper (Today, Yesterday, Oct 9)
+function getDayString(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return '';
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  if (isToday) return 'Today';
+  if (isYesterday) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
+}
+
+// Role accent color for received messages
+function getSenderColor(roleOrSender) {
+  const s = String(roleOrSender || '').toLowerCase();
+  if (s.includes('tech') || s.includes('staff')) return 'text-amber-600 dark:text-amber-400';
+  if (s.includes('admin')) return 'text-purple-600 dark:text-purple-400';
+  return 'text-emerald-600 dark:text-emerald-400';
+}
+
+// Guard against duplicate messages
+function dedupeMessages(list) {
+  const seen = new Set();
+  return (list || []).filter(m => {
+    const k = m.id || `${m.at}|${m.sender}|${m.text}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// Shared ticket detail + chat drawer docked cleanly into body below topbar
 export default function TicketDetailModal({ ticket, onClose, action }) {
   const { api, user, showToast } = useApp();
   const [text, setText] = useState('');
@@ -11,15 +54,83 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const [local, setLocal] = useState(ticket);
   const endRef = useRef(null);
 
+  // Measure exact bottom coordinate of the sticky TopNav header so drawer touches it with 0 gap
+  const [topOffset, setTopOffset] = useState(() => {
+    if (typeof document !== 'undefined') {
+      const header = document.getElementById('mainTopNav') || document.querySelector('header');
+      if (header) {
+        return Math.round(header.getBoundingClientRect().bottom);
+      }
+    }
+    return 64;
+  });
+
+  useEffect(() => {
+    const updateOffset = () => {
+      const header = document.getElementById('mainTopNav') || document.querySelector('header');
+      if (header) {
+        setTopOffset(Math.round(header.getBoundingClientRect().bottom));
+      }
+    };
+    updateOffset();
+    window.addEventListener('resize', updateOffset);
+    window.addEventListener('scroll', updateOffset);
+    return () => {
+      window.removeEventListener('resize', updateOffset);
+      window.removeEventListener('scroll', updateOffset);
+    };
+  }, []);
+
   const role = user?.role;
   const isAdmin = role === 'admin' || role === 'administrator';
   const isStaff = role === 'staff' || role === 'technician';
+  const isStudent = role === 'student';
   const currentUserId = user?.clerk_id || user?.id || user?.uid;
   const senderName = isAdmin ? 'Administrator' : (user?.name || user?.full_name || user?.email?.split('@')[0] || 'You');
   const senderTag = isAdmin ? 'Admin' : isStaff ? 'Technician' : 'Student';
 
+  const studentName = local?.userName || local?.studentName || 'Student';
+  const studentPhone = local?.userPhone || local?.phone || local?.studentPhone || local?.user_phone || '9876543210';
+  const cleanPhone = String(studentPhone).replace(/[^0-9]/g, '') || '9876543210';
+  const waPhone = cleanPhone.startsWith('91') && cleanPhone.length > 10
+    ? cleanPhone
+    : '91' + cleanPhone.replace(/^0+/, '');
+  const doorMessage = `Hi ${studentName}, I am the technician at your door (${local?.location || 'campus'}) regarding complaint #${local?.id} (${ticketLabel(local)}). Please let me in or reply here!`;
+  const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(doorMessage)}`;
+
+  // Header display identity
+  const displayName = isStudent ? (local?.assignedToName || 'Campus Technician') : studentName;
+  const displayPhone = isStudent ? null : cleanPhone;
+
+  const handleSendDoorPing = async () => {
+    const doorMsg = `🚪 Hello! I am at your door/room (${local?.location || 'campus'}) to resolve this complaint. Please let me in or reply here if you are away.`;
+    const msg = {
+      sender: senderTag,
+      senderName,
+      sender_id: currentUserId,
+      isMine: true,
+      text: doorMsg,
+      at: Date.now(),
+      isSystem: false,
+    };
+    setLocal(l => ({ ...l, messages: [...(l?.messages || []), msg] }));
+    try {
+      await api.addTicketMessage(local.id, msg);
+      showToast('Sent arrival notification in chat!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to post arrival note', 'error');
+    }
+  };
+
   const mapMsg = (m) => {
-    if (m.sender && m.text && !m.sender_id) return m; // mock format
+    if (m.sender && m.text && !m.sender_id) {
+      const isMine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
+      return {
+        ...m,
+        isMine,
+        at: m.at || Date.now()
+      };
+    }
     const isMine = Boolean(currentUserId && (m.sender_id === currentUserId || m.senderId === currentUserId));
     const isSys = m.is_system || m.isSystem || false;
     const tag = (m.sender_role === 'administrator' || m.sender_role === 'admin')
@@ -83,8 +194,6 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
       at: Date.now(),
       isSystem: false,
     };
-    // Optimistic add FIRST — this also detaches `local` from any shared object
-    // reference (mock mode), so a message can never be counted twice.
     setLocal(l => ({ ...l, messages: [...(l?.messages || []), msg] }));
     setText('');
     try {
@@ -102,64 +211,234 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     } finally { setSending(false); }
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] lf-modal" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-iiitg-700">{local.id}</span>
-              <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${statusStyle(local)}`}>{statusLabel(local)}</span>
+  const rawMessages = dedupeMessages(local.messages);
+
+  const modalContent = (
+    <>
+      {/* ── Soft transparent backdrop with NO blur (click outside in body to dismiss) ── */}
+      <div
+        className="fixed inset-x-0 bottom-0 !m-0 !mt-0 !mb-0 z-30 bg-black/15 dark:bg-black/35 transition-opacity"
+        style={{ top: `${topOffset}px`, margin: 0, marginTop: 0, marginBottom: 0 }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* ── Docked Slide-Over Message Drawer (Seamlessly touches top bar, perfectly fits bottom) ── */}
+      <aside
+        className="fixed right-0 !m-0 !mt-0 !mb-0 w-full sm:w-[430px] md:w-[450px] z-40 flex flex-col bg-[#efeae2] dark:bg-[#0b141a] shadow-2xl border-l border-slate-300/80 dark:border-[#2a3942] chat-drawer overflow-hidden"
+        style={{
+          top: `${topOffset}px`,
+          bottom: 0,
+          height: `calc(100vh - ${topOffset}px)`,
+          maxHeight: `calc(100vh - ${topOffset}px)`,
+          margin: 0,
+          marginTop: 0,
+          marginBottom: 0
+        }}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-label="Ticket message panel"
+      >
+        {/* ── 1. Clean Spacious WhatsApp Header (Touches top bar) ── */}
+        <div className="px-4 py-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-[#d1d7db] dark:border-[#2a3942] flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Avatar with status indicator dot */}
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-600 dark:bg-[#00a884] text-white flex items-center justify-center font-bold text-sm shadow-xs select-none">
+                {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#f0f2f5] dark:ring-[#202c33]" />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 mt-1">{ticketLabel(local)}</h3>
+
+            {/* Contact identity */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#111b21] dark:text-[#e9edef] truncate leading-tight">
+                  {displayName}
+                </h3>
+              </div>
+              <div className="text-[11px] text-[#667781] dark:text-[#8696a0] truncate mt-0.5 flex items-center gap-1.5 font-medium">
+                {local.location && (
+                  <span className="truncate max-w-[130px]">{local.location}</span>
+                )}
+                {displayPhone && (
+                  <>
+                    <span>·</span>
+                    <span className="font-mono">{fmtPhone(displayPhone)}</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {action}
-            <button onClick={onClose} aria-label="Close" className="modal-x"><X className="w-5 h-5" /></button>
+
+          {/* Status badge & Close button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border shadow-2xs ${statusStyle(local)}`}>
+              {statusLabel(local)}
+            </span>
+            <button
+              onClick={onClose}
+              aria-label="Close message panel"
+              className="p-1.5 rounded-lg text-[#54656f] hover:text-[#111b21] dark:text-[#aebac1] dark:hover:text-[#e9edef] hover:bg-slate-200/80 dark:hover:bg-slate-700/60 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
-          {local.description && <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3">{local.description}</div>}
-          {dedupeMessages(local.messages).map((m, i) => {
+        {/* ── 2. Dedicated Sub-Bar for Quick Actions (Completely decluttered) ── */}
+        {((isStaff || isAdmin) || action) && (
+          <div className="px-3.5 py-1.5 bg-white/95 dark:bg-[#182229]/95 backdrop-blur-xs border-b border-[#d1d7db]/80 dark:border-[#2a3942]/80 flex items-center justify-between gap-2 shrink-0">
+            {/* Left: Communication shortcuts (for Staff & Admin) */}
+            {(isStaff || isAdmin) ? (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={`tel:${cleanPhone}`}
+                  title={`Call student (${fmtPhone(cleanPhone)})`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300/80 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition active:scale-95 shadow-2xs"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Call</span>
+                </a>
+
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`WhatsApp student (${fmtPhone(cleanPhone)})`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#25d366]/10 text-emerald-800 dark:text-emerald-200 border border-[#25d366]/40 dark:border-[#25d366]/30 hover:bg-[#25d366]/20 transition active:scale-95 shadow-2xs"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-[#25d366]" />
+                  <span>WhatsApp</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleSendDoorPing}
+                  title="Post arrival note in chat"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-300/80 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition active:scale-95 shadow-2xs cursor-pointer"
+                >
+                  <DoorOpen className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>At door</span>
+                </button>
+              </div>
+            ) : <div />}
+
+            {/* Right: Primary Ticket Workflow Action (Start work / Mark as fixed) */}
+            {action && (
+              <div className="flex items-center shrink-0">
+                {action}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── 3. WhatsApp Chat Feed (Flex-1 and min-h-0 prevents bottom overflow) ── */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 chat-container-wa">
+          {/* Subtle Pinned Ticket Summary Pill */}
+          {local.description && (
+            <div className="px-3 py-1.5 rounded-xl bg-white/95 dark:bg-[#182229]/95 backdrop-blur-xs border border-[#d1d7db] dark:border-[#263540] shadow-2xs text-xs mb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                <span className="font-bold text-amber-700 dark:text-amber-400 text-xs shrink-0">
+                  #{local.id}:
+                </span>
+                <span className="text-slate-700 dark:text-[#d1d7db] text-xs truncate">
+                  {local.description}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Messages Feed */}
+          {rawMessages.map((m, i, arr) => {
             const mine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
-            if (m.isSystem) return <div key={i} className="text-center text-[11px] text-slate-400 py-1">{m.text}</div>;
+            if (m.isSystem) return <div key={i} className="text-center text-[11px] text-slate-500 dark:text-slate-400 py-1">{m.text}</div>;
+
+            const currentDay = getDayString(m.at);
+            const prevDay = i > 0 ? getDayString(arr[i - 1].at) : null;
+            const showDaySeparator = Boolean(currentDay && currentDay !== prevDay);
+
             return (
-              <div key={i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${mine ? 'bg-iiitg-800 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
-                  {!mine && <div className="text-[10px] font-bold opacity-70 mb-0.5">{m.senderName || m.sender}</div>}
-                  {m.text}
+              <div key={i}>
+                {showDaySeparator && (
+                  <div className="flex justify-center my-2">
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-lg bg-white dark:bg-[#182229] text-[#54656f] dark:text-[#8696a0] shadow-2xs select-none border border-slate-200/60 dark:border-slate-800/60">
+                      {currentDay}
+                    </span>
+                  </div>
+                )}
+                <div className={`flex ${mine ? 'justify-end' : 'justify-start'} my-1`}>
+                  <div
+                    className={`max-w-[85%] sm:max-w-[80%] px-3.5 pt-2 pb-1.5 rounded-2xl text-[13.5px] leading-relaxed relative ${
+                      mine
+                        ? 'chat-bubble-sent rounded-tr-xs'
+                        : 'chat-bubble-received rounded-tl-xs'
+                    }`}
+                  >
+                    {!mine && (
+                      <div className={`text-[11px] font-bold tracking-tight mb-0.5 ${getSenderColor(m.sender || m.senderName)}`}>
+                        {m.senderName || m.sender}
+                      </div>
+                    )}
+                    <div className="whitespace-pre-wrap break-words pr-2">
+                      {m.text}
+                    </div>
+                    {/* Timestamp & double blue ticks */}
+                    <div className="flex items-center justify-end gap-1 mt-1 -mb-0.5 select-none text-[10.5px] font-normal leading-none">
+                      <span className={mine ? 'chat-time-sent' : 'chat-time-received'}>
+                        {formatMsgTime(m.at)}
+                      </span>
+                      {mine && (
+                        <CheckCheck className="w-3.5 h-3.5 chat-tick-blue shrink-0 inline-block" />
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })}
-          {(local.messages || []).filter(m => !m.isSystem).length === 0 && (
-            <p className="text-center text-xs text-slate-400 py-6">No messages yet. Say hello 👋</p>
+
+          {rawMessages.filter(m => !m.isSystem).length === 0 && (
+            <div className="text-center py-10">
+              <div className="inline-block px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#182229] border border-slate-200/80 dark:border-[#263540] text-slate-600 dark:text-slate-300 text-xs font-medium shadow-2xs">
+                No messages yet. Send a message to start the thread 👋
+              </div>
+            </div>
           )}
           <div ref={endRef} />
         </div>
 
+        {/* ── 4. WhatsApp Clean Input Bar (Always locked at bottom, shrink-0) ── */}
         {!(role === 'student' && (local.status === 'Resolved' || local.status === 'resolved')) && (
-          <form onSubmit={send} className="p-3 border-t border-slate-100 flex items-center gap-2">
-            <input value={text} onChange={e => setText(e.target.value)} placeholder="Type a message…"
-              className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm input-enhanced focus:outline-none" />
-            <button type="submit" disabled={sending} className="w-10 h-10 rounded-xl bg-iiitg-800 hover:bg-iiitg-900 text-white flex items-center justify-center disabled:opacity-60">
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          <form
+            onSubmit={send}
+            className="p-2.5 sm:p-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center gap-2 shrink-0 border-t border-[#d1d7db] dark:border-[#2a3942]"
+          >
+            <div className="text-slate-400 dark:text-[#8696a0] pl-1">
+              <Smile className="w-5 h-5" />
+            </div>
+            <input
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder="Type a message…"
+              className="flex-1 px-4 py-2 sm:py-2.5 rounded-full bg-white dark:bg-[#2a3942] text-[#111b21] dark:text-[#e9edef] placeholder-slate-400 dark:placeholder-[#8696a0] text-sm focus:outline-none focus:ring-1 focus:ring-[#00a884] shadow-2xs border border-transparent transition-all"
+            />
+            <button
+              type="submit"
+              disabled={sending || !text.trim()}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center transition-all disabled:opacity-40 shadow-sm shrink-0 active:scale-95 cursor-pointer"
+              title="Send message"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
             </button>
           </form>
         )}
-      </div>
-    </div>
+      </aside>
+    </>
   );
-}
 
-// Guard against a message rendering twice (e.g. an optimistic add + a feed
-// echo of the same object). Genuine repeat sends differ by `at`, so kept.
-function dedupeMessages(list) {
-  const seen = new Set();
-  return (list || []).filter(m => {
-    const k = m.id || `${m.at}|${m.sender}|${m.text}`;
-    if (seen.has(k)) return false;
-    seen.add(k); return true;
-  });
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 }
