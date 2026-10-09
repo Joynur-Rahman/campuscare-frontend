@@ -30,14 +30,14 @@ export default function AdminDashboard({ tickets = [], techs = [], onNavigate, o
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Live Operations Fleet
+              Campus Operations Active
             </span>
             <span className="text-xs font-semibold text-slate-300">
-              · {onDutyCount} Staff On Duty {offDutyCount > 0 && `(${offDutyCount} Off Duty)`}
+              · {onDutyCount} Technicians On Duty {offDutyCount > 0 && `(${offDutyCount} Off Duty)`}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-200">
-            Current Resolution SLA Health: <strong className="text-emerald-300 font-extrabold">{slaResolutionRate}%</strong> across all campus sectors.
+            Current Resolution Rate: <strong className="text-emerald-300 font-extrabold">{slaResolutionRate}%</strong> across all campus sectors.
           </p>
         </div>
 

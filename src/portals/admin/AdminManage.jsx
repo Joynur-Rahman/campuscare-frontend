@@ -3,6 +3,7 @@ import { Wrench, UserPlus, Loader2, Trash2, Users, KeyRound } from 'lucide-react
 import { useApp } from '../../context/AppContext.jsx';
 import { Section } from '../../components/admin/Bits.jsx';
 import { CATEGORIES } from '../../data/catalog.js';
+import { fmtPhone } from '../../lib/ticketUtils.js';
 
 const TEAMS = [...new Set(CATEGORIES.map(c => c.team).filter(Boolean))];
 
