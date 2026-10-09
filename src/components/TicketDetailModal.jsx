@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext.jsx';
 import { statusLabel, statusStyle, ticketLabel } from '../lib/ticketUtils.js';
 
 // Shared ticket detail + chat. `role` controls which actions show.
-export default function TicketDetailModal({ ticket, onClose }) {
+export default function TicketDetailModal({ ticket, onClose, action }) {
   const { api, user, showToast } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -113,7 +113,10 @@ export default function TicketDetailModal({ ticket, onClose }) {
             </div>
             <h3 className="text-sm font-bold text-slate-900 mt-1">{ticketLabel(local)}</h3>
           </div>
-          <button onClick={onClose} aria-label="Close" className="modal-x"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2">
+            {action}
+            <button onClick={onClose} aria-label="Close" className="modal-x"><X className="w-5 h-5" /></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
