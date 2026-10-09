@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useClerk } from '@clerk/react';
 import {
   Siren, Monitor, Moon, Sun, LogOut, User, KeyRound,
@@ -6,7 +6,22 @@ import {
   Globe, ExternalLink
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
+import { api } from '../api';
 import EmergencyModal from './EmergencyModal.jsx';
+
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'Recently';
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  if (isNaN(diffMs) || diffMs < 0) return 'Just now';
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay}d ago`;
+}
 
 export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const { user, logout, theme, cycleTheme } = useApp();
@@ -24,35 +39,110 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const initials = (user?.name || user?.full_name || user?.email || 'U').slice(0, 1).toUpperCase();
   const role = user?.role || 'student';
 
-  // Role-adaptive notifications
-  const defaultNotifs = role === 'administrator' ? [
-    { id: 1, title: 'Urgent Campus Issue', desc: 'Fiber cut in Academic Block A (38 upvotes)', time: '5m ago', unread: true, type: 'urgent', Icon: AlertCircle, color: 'text-rose-500' },
-    { id: 2, title: 'Task Completed', desc: 'Ramesh Kumar resolved ceiling fan repair (IIITG-5625)', time: '40m ago', unread: true, type: 'success', Icon: Check, color: 'text-emerald-500' },
-    { id: 3, title: 'Campus Water Outage', desc: 'High priority ticket reported in Library Block', time: '2h ago', unread: false, type: 'info', Icon: Ticket, color: 'text-blue-500' },
-  ] : role === 'staff' ? [
-    { id: 1, title: 'New Ticket Assigned', desc: 'Hostel Wi-Fi dropping in Room 214 (IIITG-8486)', time: '10m ago', unread: true, type: 'info', Icon: Wrench, color: 'text-amber-500' },
-    { id: 2, title: '5-Star Feedback Received', desc: 'Student Ujjwal Prakash rated your fan repair 5.0 ★', time: '1h ago', unread: true, type: 'success', Icon: Check, color: 'text-emerald-500' },
-    { id: 3, title: 'Duty Status Reminder', desc: 'You are currently ON DUTY for IT & Network Cell', time: '3h ago', unread: false, type: 'duty', Icon: ShieldCheck, color: 'text-indigo-500' },
-  ] : [
-    { id: 1, title: 'Ticket In Progress', desc: 'Ujjwal (IT Tech) is actively working on your Wi-Fi issue', time: '8m ago', unread: true, type: 'info', Icon: Wrench, color: 'text-blue-500' },
-    { id: 2, title: 'Ticket Resolved', desc: 'Ceiling fan repair marked resolved. Tap to rate service!', time: '1h ago', unread: true, type: 'success', Icon: Check, color: 'text-emerald-500' },
-    { id: 3, title: 'Campus Broadcast', desc: 'Water supply scheduled maintenance in Library Block', time: '3h ago', unread: false, type: 'notice', Icon: AlertCircle, color: 'text-amber-500' },
-  ];
+  // Live ticket-driven notifications
+  const [tickets, setTickets] = useState([]);
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('cc_read_notifs');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // Role-adaptive messages
-  const defaultMessages = role === 'administrator' ? [
-    { id: 1, sender: 'Warden Office', snippet: 'Urgent: Water pump spare part arrived from Guwahati.', time: '12m ago', unread: true, tag: 'Facilities' },
-    { id: 2, sender: 'Hostel Rep (Block B)', snippet: 'Multiple students reporting 2nd floor Wi-Fi loss.', time: '1h ago', unread: true, tag: 'Network' },
-  ] : role === 'staff' ? [
-    { id: 1, sender: 'Ujjwal Prakash (Student)', snippet: 'Facing this Wi-Fi issue since morning. Thanks for checking!', time: '15m ago', unread: true, tag: 'IIITG-8486' },
-    { id: 2, sender: 'Caretaker Estate', snippet: 'Please check terminal 18 in Lab 2 after completing room 214.', time: '45m ago', unread: false, tag: 'Notice' },
-  ] : [
-    { id: 1, sender: 'Ujjwal (IT Technician)', snippet: 'I have replaced the router patch cable. Please test your connection now.', time: '10m ago', unread: true, tag: 'Ticket #8486' },
-    { id: 2, sender: 'Care Desk Support', snippet: 'Your study table repair request #9120 has been queued.', time: '2h ago', unread: false, tag: 'Support' },
-  ];
+  useEffect(() => {
+    if (!user) {
+      setTickets([]);
+      return;
+    }
+    const unsub = api.subscribeToTickets(
+      { role: user.role, uid: user.clerk_id || user.id, email: user.email },
+      (list) => {
+        if (Array.isArray(list)) {
+          setTickets(list);
+        }
+      },
+      (err) => console.debug('[TopNav] tickets fetch error:', err)
+    );
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [user?.role, user?.clerk_id, user?.id, user?.email]);
 
-  const [notifs, setNotifs] = useState(defaultNotifs);
-  const [messages, setMessages] = useState(defaultMessages);
+  // Derive notifications from real tickets
+  const notifs = useMemo(() => {
+    return tickets
+      .slice()
+      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
+      .slice(0, 10)
+      .map(t => {
+        const id = String(t.id);
+        const isUnread = !readNotifIds.includes(id);
+        const time = formatTimeAgo(t.updated_at || t.created_at);
+
+        if (t.status === 'resolved') {
+          return {
+            id,
+            title: 'Ticket Resolved',
+            desc: `"${t.title || 'Complaint'}" was marked resolved${t.acknowledged_name ? ` by ${t.acknowledged_name}` : ''}.`,
+            time,
+            unread: isUnread,
+            type: 'success',
+            Icon: Check,
+            color: 'text-emerald-500'
+          };
+        }
+        if (t.status === 'in_progress') {
+          return {
+            id,
+            title: 'Work In Progress',
+            desc: `${t.acknowledged_name ? `${t.acknowledged_name} is working on ` : 'Assigned to work on '}"${t.title || 'Complaint'}".`,
+            time,
+            unread: isUnread,
+            type: 'info',
+            Icon: Wrench,
+            color: 'text-blue-500'
+          };
+        }
+        if (t.status === 'escalated') {
+          return {
+            id,
+            title: 'Ticket Escalated',
+            desc: `"${t.title || 'Complaint'}" escalated for priority review.`,
+            time,
+            unread: isUnread,
+            type: 'urgent',
+            Icon: AlertCircle,
+            color: 'text-rose-500'
+          };
+        }
+        if (t.status === 'reopened') {
+          return {
+            id,
+            title: 'Ticket Reopened',
+            desc: `"${t.title || 'Complaint'}" was reopened for follow-up.`,
+            time,
+            unread: isUnread,
+            type: 'warning',
+            Icon: AlertCircle,
+            color: 'text-amber-500'
+          };
+        }
+        return {
+          id,
+          title: role === 'staff' ? 'Assigned Ticket' : 'Complaint Submitted',
+          desc: `"${t.title || 'Complaint'}" registered in system.`,
+          time,
+          unread: isUnread,
+          type: 'info',
+          Icon: Ticket,
+          color: 'text-amber-500'
+        };
+      });
+  }, [tickets, readNotifIds, role]);
+
+  // Messages (no synthetic/demo records)
+  const [messages, setMessages] = useState([]);
 
   // Close popups on click outside
   useEffect(() => {
@@ -68,7 +158,24 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const unreadNotifsCount = notifs.filter(n => n.unread).length;
   const unreadMsgsCount = messages.filter(m => m.unread).length;
 
-  const markAllNotifsRead = () => setNotifs(ns => ns.map(n => ({ ...n, unread: false })));
+  const markAllNotifsRead = () => {
+    const allIds = notifs.map(n => n.id);
+    setReadNotifIds(prev => {
+      const next = Array.from(new Set([...prev, ...allIds]));
+      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleNotifClick = (id) => {
+    setReadNotifIds(prev => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
   const markAllMsgsRead = () => setMessages(ms => ms.map(m => ({ ...m, unread: false })));
 
   return (
@@ -199,7 +306,11 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     </div>
                   ))}
                   {messages.length === 0 && (
-                    <div className="py-8 text-center text-xs text-slate-400">No messages yet.</div>
+                    <div className="py-8 px-4 text-center">
+                      <MessageSquare className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
+                      <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No messages yet</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Ticket discussions and direct messages will appear here.</p>
+                    </div>
                   )}
                 </div>
 
@@ -252,7 +363,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     return (
                       <div
                         key={n.id}
-                        onClick={() => setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, unread: false } : x))}
+                        onClick={() => handleNotifClick(n.id)}
                         className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${n.unread ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}
                       >
                         <div className={`w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-0.5 ${n.color}`}>
@@ -270,7 +381,11 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     );
                   })}
                   {notifs.length === 0 && (
-                    <div className="py-8 text-center text-xs text-slate-400">No notifications yet.</div>
+                    <div className="py-8 px-4 text-center">
+                      <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
+                      <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No notifications yet</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Real-time alerts will appear when tickets are updated.</p>
+                    </div>
                   )}
                 </div>
 
