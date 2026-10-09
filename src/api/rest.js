@@ -173,7 +173,8 @@ export function createRestApi() {
     },
     deleteTechnician: (id) => http.del(`/api/admin/users/${encodeURIComponent(id)}`),
     deleteCampusMember: (id) => http.del(`/api/admin/users/${encodeURIComponent(id)}`),
-    updateTechnicianStatus: (id, status) => Promise.resolve({ id, status }),
+    updateTechnicianStatus: (id, status) => http.put(`/api/staff/technicians/${encodeURIComponent(id)}/status`, { status }),
+    updateMyDutyStatus: (status) => http.put('/api/staff/me/status', { status }),
     resetTechnicianPassword: (id) => Promise.resolve({ tempPassword: 'Reset email sent' }),
 
     adminStartConversation: (recipientId, text) => http.post('/api/messages', { recipient_id: recipientId, text }),

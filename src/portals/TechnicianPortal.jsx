@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Inbox, Wrench, CheckCircle2, Loader2, Coffee, AlertCircle, X } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Inbox, Wrench, CheckCircle2, Loader2, Coffee, AlertCircle, X, Power } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
 import TicketCard from '../components/TicketCard.jsx';
@@ -16,6 +16,16 @@ export default function TechnicianPortal() {
   const [tab, setTab] = useState('New');
   const [open, setOpen] = useState(null);
   const [busyId, setBusyId] = useState(null);
+
+  // Duty status state
+  const [dutyStatus, setDutyStatus] = useState(user?.status || 'On Duty');
+  const [togglingDuty, setTogglingDuty] = useState(false);
+
+  useEffect(() => {
+    if (user?.status) {
+      setDutyStatus(user.status);
+    }
+  }, [user?.status]);
 
   // Resolution modal state
   const [resolveTarget, setResolveTarget] = useState(null);
@@ -108,6 +118,25 @@ export default function TechnicianPortal() {
     }
   };
 
+  const handleToggleDuty = async () => {
+    const next = dutyStatus === 'On Duty' ? 'Off Duty' : 'On Duty';
+    setTogglingDuty(true);
+    setDutyStatus(next);
+    try {
+      if (api.updateMyDutyStatus) {
+        await api.updateMyDutyStatus(next);
+      } else {
+        await api.updateTechnicianStatus(uid, next);
+      }
+      showToast(next === 'On Duty' ? 'You are now On Duty!' : 'You are now Off Duty. Enjoy your break!', 'success');
+    } catch (e) {
+      setDutyStatus(dutyStatus);
+      showToast(e.message || 'Failed to update duty status', 'error');
+    } finally {
+      setTogglingDuty(false);
+    }
+  };
+
   const renderAction = (t, inModal = false) => {
     if (isNew(t)) {
       return (
@@ -136,9 +165,44 @@ export default function TechnicianPortal() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
-      <div>
-        <h1 className="page-title">Work Desk</h1>
-        <p className="page-sub">New tickets for you. Press Start Work when you begin, and Mark as Fixed when finished.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Work Desk</h1>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                dutyStatus === 'On Duty'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border-slate-200'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${dutyStatus === 'On Duty' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+              {dutyStatus}
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            {dutyStatus === 'On Duty'
+              ? 'You are active and receiving new complaint assignments.'
+              : 'You are currently off duty. New complaints will not be assigned to you.'}
+          </p>
+        </div>
+
+        <button
+          disabled={togglingDuty}
+          onClick={handleToggleDuty}
+          className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-60 shrink-0 ${
+            dutyStatus === 'On Duty'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+          }`}
+        >
+          {togglingDuty ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Power className="w-4 h-4" />
+          )}
+          {dutyStatus === 'On Duty' ? 'Go Off Duty' : 'Go On Duty'}
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">

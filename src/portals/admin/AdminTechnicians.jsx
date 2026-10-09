@@ -7,14 +7,32 @@ import { techStats } from '../../lib/adminMetrics.js';
 export default function AdminTechnicians({ tickets, techs }) {
   const { api, showToast } = useApp();
   const [busy, setBusy] = useState(null);
-  const rows = techStats(tickets, techs);
+  const [optimisticDuty, setOptimisticDuty] = useState({});
+
+  const enrichedTechs = (techs || []).map(t => {
+    const tid = t.clerk_id || t.id || t.firebaseId;
+    return optimisticDuty[tid] ? { ...t, status: optimisticDuty[tid] } : t;
+  });
+  const rows = techStats(tickets, enrichedTechs);
 
   async function toggle(tech) {
-    const id = tech.firebaseId || tech.clerk_id || tech.id;
+    const id = tech.clerk_id || tech.id || tech.firebaseId;
     setBusy(id);
     const next = tech.status === 'On Duty' ? 'Off Duty' : 'On Duty';
-    try { await api.updateTechnicianStatus(id, next); showToast(`${tech.name || tech.full_name} is now ${next}.`, 'success'); }
-    catch (e) { showToast(e.message, 'error'); } finally { setBusy(null); }
+    setOptimisticDuty(prev => ({ ...prev, [id]: next }));
+    try {
+      await api.updateTechnicianStatus(id, next);
+      showToast(`${tech.name || tech.full_name} is now ${next}.`, 'success');
+    } catch (e) {
+      setOptimisticDuty(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+      showToast(e.message || 'Failed to update duty status', 'error');
+    } finally {
+      setBusy(null);
+    }
   }
   async function reset(tech) {
     const id = tech.firebaseId || tech.clerk_id || tech.id;
