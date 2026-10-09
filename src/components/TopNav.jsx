@@ -24,39 +24,8 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const initials = (user?.name || user?.full_name || user?.email || 'U').slice(0, 1).toUpperCase();
   const role = user?.role || 'student';
 
-  // Role-adaptive notifications
-  const defaultNotifs = role === 'administrator' ? [
-    { id: 1, title: 'Urgent Campus Issue', desc: 'Fiber cut in Academic Block A (38 upvotes)', time: '5m ago', unread: true, type: 'urgent', Icon: AlertCircle, color: 'text-rose-500' },
-    { id: 2, title: 'Task Completed', desc: 'Ramesh Kumar resolved ceiling fan repair (IIITG-5625)', time: '40m ago', unread: true, type: 'success', Icon: Check, color: 'text-emerald-500' },
-    { id: 3, title: 'Campus Water Outage', desc: 'High priority ticket reported in Library Block', time: '2h ago', unread: false, type: 'info', Icon: Ticket, color: 'text-blue-500' },
-  ] : role === 'staff' ? [
-    { id: 1, title: 'New Ticket Assigned', desc: 'Hostel Wi-Fi dropping in Room 214 (IIITG-8486)', time: '10m ago', unread: true, type: 'info', Icon: Wrench, color: 'text-amber-500' },
-    { id: 2, title: '5-Star Feedback Received', desc: 'Student Ujjwal Prakash rated your fan repair 5.0 ★', time: '1h ago', unread: true, type: 'success', Icon: Check, color: 'text-emerald-500' },
-    { id: 3, title: 'Duty Status Reminder', desc: 'You are currently ON DUTY for IT & Network Cell', time: '3h ago', unread: false, type: 'duty', Icon: ShieldCheck, color: 'text-indigo-500' },
-  ] : [
-    { id: 1, title: 'Ticket In Progress', desc: 'Ujjwal (IT Tech) is actively working on your Wi-Fi issue', time: '8m ago', unread: true, type: 'info', Icon: Wrench, color: 'text-blue-500' },
-    { id: 2, title: 'Ticket Resolved', desc: 'Ceiling fan repair marked resolved. Tap to rate service!', time: '1h ago', unread: true, type: 'success', Icon: Check, color: 'text-emerald-500' },
-    { id: 3, title: 'Campus Broadcast', desc: 'Water supply scheduled maintenance in Library Block', time: '3h ago', unread: false, type: 'notice', Icon: AlertCircle, color: 'text-amber-500' },
-  ];
-
-  // Role-adaptive messages with Administrator sender identification
-  const defaultMessages = role === 'administrator' ? [
-    { id: 1, sender: 'Chief Admin Officer', snippet: 'Monthly campus infrastructure inspection scheduled for Thursday.', time: '5m ago', unread: true, tag: 'Admin Directive', isAdmin: true },
-    { id: 2, sender: 'Warden Office', snippet: 'Urgent: Water pump spare part arrived from Guwahati.', time: '12m ago', unread: true, tag: 'Facilities', isAdmin: true },
-    { id: 3, sender: 'Hostel Rep (Block B)', snippet: 'Multiple students reporting 2nd floor Wi-Fi loss.', time: '1h ago', unread: false, tag: 'Student Rep', isAdmin: false },
-  ] : role === 'staff' ? [
-    { id: 1, sender: 'Campus Administrator', snippet: 'Approved store requisition for 5x Anchor regulators and Cat6 cable spools.', time: '10m ago', unread: true, tag: 'Store Clearance', isAdmin: true },
-    { id: 2, sender: 'Ujjwal Prakash (Student)', snippet: 'Facing this Wi-Fi issue since morning. Thanks for checking!', time: '15m ago', unread: true, tag: 'IIITG-8486', isAdmin: false },
-    { id: 3, sender: 'Estate Office (Admin)', snippet: 'All pending water issues in Library Block must be signed off by 6 PM today.', time: '1h ago', unread: false, tag: 'Admin Directive', isAdmin: true },
-    { id: 4, sender: 'Caretaker Estate', snippet: 'Please check terminal 18 in Lab 2 after completing room 214.', time: '3h ago', unread: false, tag: 'Staff Note', isAdmin: false },
-  ] : [
-    { id: 1, sender: 'Estate Administrator', snippet: 'Planned Wi-Fi access point firmware upgrade tonight from 2 AM to 4 AM.', time: '15m ago', unread: true, tag: 'Official Notice', isAdmin: true },
-    { id: 2, sender: 'Ujjwal (IT Technician)', snippet: 'I have replaced the router patch cable. Please test your connection now.', time: '20m ago', unread: true, tag: 'Ticket #8486', isAdmin: false },
-    { id: 3, sender: 'Care Desk Admin', snippet: 'Your study table repair request #9120 has been verified and assigned to carpentry.', time: '2h ago', unread: false, tag: 'Admin Action', isAdmin: true },
-  ];
-
-  const [notifs, setNotifs] = useState(defaultNotifs);
-  const [messages, setMessages] = useState(defaultMessages);
+  const [notifs, setNotifs] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [msgFilter, setMsgFilter] = useState('all'); // 'all' | 'admin'
 
   // Close popups on click outside

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Send, Loader2, CheckCheck, Phone, MessageCircle, Smile, DoorOpen } from 'lucide-react';
+import { X, Send, Loader2, CheckCheck, Phone, MessageCircle, Smile, DoorOpen, ChevronDown, User, Wrench } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { statusLabel, statusStyle, ticketLabel, fmtPhone } from '../lib/ticketUtils.js';
 
@@ -47,12 +47,25 @@ function dedupeMessages(list) {
 }
 
 // Shared ticket detail + chat drawer docked cleanly into body below topbar
-export default function TicketDetailModal({ ticket, onClose, action }) {
+export default function TicketDetailModal({ ticket, onClose, action, techs = [] }) {
   const { api, user, showToast } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [local, setLocal] = useState(ticket);
   const endRef = useRef(null);
+  const [modalCallMenuOpen, setModalCallMenuOpen] = useState(false);
+  const modalCallMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!modalCallMenuOpen) return;
+    const handleOutside = (e) => {
+      if (modalCallMenuRef.current && !modalCallMenuRef.current.contains(e.target)) {
+        setModalCallMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [modalCallMenuOpen]);
 
   // Measure exact bottom coordinate of the sticky TopNav header so drawer touches it with 0 gap
   const [topOffset, setTopOffset] = useState(() => {
@@ -80,6 +93,13 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
       window.removeEventListener('scroll', updateOffset);
     };
   }, []);
+
+  const techId = local?.assignedTo || local?.assigned_to;
+  const assignedTech = (techs || []).find(x => (x.firebaseId || x.clerk_id || x.id) === techId) || null;
+  const techName = local?.assignedToName || assignedTech?.name || assignedTech?.full_name || (techId ? "Technician" : null);
+  const techPhone = local?.assignedToPhone || assignedTech?.phone || (techId ? "9000000001" : null);
+  const cleanTechPhone = techPhone ? String(techPhone).replace(/[^0-9]/g, "") : "";
+  const canAdminCallBoth = isAdmin && techName && cleanTechPhone;
 
   const role = user?.role;
   const isAdmin = role === 'admin' || role === 'administrator';
@@ -289,8 +309,64 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
         {/* ── 2. Dedicated Sub-Bar for Quick Actions (Completely decluttered) ── */}
         {((isStaff || isAdmin) || action) && (
           <div className="px-3.5 py-1.5 bg-white/95 dark:bg-[#182229]/95 backdrop-blur-xs border-b border-[#d1d7db]/80 dark:border-[#2a3942]/80 flex items-center justify-between gap-2 shrink-0">
-            {/* Left: Communication shortcuts (for Staff & Admin) */}
-            {(isStaff || isAdmin) ? (
+            {/* Left: Communication shortcuts tailored for Admin vs Staff */}
+            {isAdmin ? (
+              <div className="flex items-center gap-1.5">
+                {canAdminCallBoth ? (
+                  <div className="relative" ref={modalCallMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setModalCallMenuOpen(!modalCallMenuOpen)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-300/80 dark:border-sky-800/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition active:scale-95 shadow-2xs cursor-pointer"
+                      title="Choose to call student or technician"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                      <span>Call</span>
+                      <ChevronDown className="w-3 h-3 text-sky-500" />
+                    </button>
+
+                    {modalCallMenuOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 p-1.5 space-y-1">
+                        <div className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Direct Call
+                        </div>
+                        <a
+                          href={`tel:${cleanPhone}`}
+                          onClick={() => setModalCallMenuOpen(false)}
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-950/60 text-slate-800 dark:text-slate-200 transition"
+                        >
+                          <User className="w-3.5 h-3.5 text-sky-600" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold truncate">{studentName} (Student)</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{fmtPhone(cleanPhone)}</div>
+                          </div>
+                        </a>
+                        <a
+                          href={`tel:${cleanTechPhone}`}
+                          onClick={() => setModalCallMenuOpen(false)}
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-800 dark:text-slate-200 transition"
+                        >
+                          <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold truncate">{techName} (Technician)</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{fmtPhone(cleanTechPhone)}</div>
+                          </div>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <a
+                    href={`tel:${cleanPhone}`}
+                    title={`Call student (${fmtPhone(cleanPhone)})`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-300/80 dark:border-sky-800/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition active:scale-95 shadow-2xs"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>Call Student</span>
+                  </a>
+                )}
+              </div>
+            ) : isStaff ? (
               <div className="flex items-center gap-1.5">
                 <a
                   href={`tel:${cleanPhone}`}

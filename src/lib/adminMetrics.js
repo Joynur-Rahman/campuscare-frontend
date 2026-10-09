@@ -41,7 +41,11 @@ export function byCategory(tickets) {
 export function byPlace(tickets) {
   const map = {};
   tickets.forEach(t => {
-    const p = (t.location || 'Campus').split(' — ')[0].trim() || 'Campus';
+    let raw = (t.location || 'Campus Grounds').trim();
+    let p = raw.split(' — ')[0].trim();
+    if (!p || p === '—' || p === '-' || p === 'undefined') {
+      p = 'Campus Grounds';
+    }
     map[p] = (map[p] || 0) + 1;
   });
   return Object.entries(map).map(([k, v]) => ({ place: k, count: v })).sort((a, b) => b.count - a.count);
