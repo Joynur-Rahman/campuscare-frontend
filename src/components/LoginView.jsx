@@ -74,7 +74,7 @@ export default function LoginView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
           <a href="https://www.iiitg.ac.in" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 min-w-0">
             <span className="logo-plate rounded-xl p-1.5 shrink-0 shadow-sm flex items-center justify-center">
-              <img src="/assets/img/iiitg_logo.png" alt="IIIT Guwahati" className="h-9 sm:h-11 w-auto object-contain" />
+              <img src="/assets/img/iiitg_emblem.png" alt="IIIT Guwahati" className="h-9 sm:h-11 w-9 sm:w-11 object-contain" />
             </span>
             <div className="min-w-0 hidden sm:block">
               <span className="block text-sm sm:text-base font-extrabold text-white leading-tight tracking-tight truncate">Indian Institute of Information Technology Guwahati</span>
