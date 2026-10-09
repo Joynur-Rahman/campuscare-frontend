@@ -19,8 +19,16 @@ export default function AdminReports({ tickets, techs }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Section title="By problem type">
-          <Table heads={['Type', { label: 'Reported', right: true }, { label: 'Fixed', right: true }, { label: 'Urgent', right: true }]}
-            rows={cats.map(c => [c.label, c.reported, c.fixed, c.urgent])} empty="No tickets yet." />
+          <Table
+            heads={['Type', { label: 'Reported', center: true }, { label: 'Fixed', center: true }, { label: 'Urgent', center: true }]}
+            rows={cats.map(c => [
+              <span className="font-semibold text-slate-800 dark:text-slate-100">{c.label}</span>,
+              <span className="font-bold text-slate-700 dark:text-slate-200">{c.reported}</span>,
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">{c.fixed}</span>,
+              <span className={`font-bold ${c.urgent > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400'}`}>{c.urgent}</span>
+            ])}
+            empty="No tickets yet."
+          />
         </Section>
         <Section title="By building / place" sub="Where problems were reported">
           <div className="place-compact">
@@ -32,9 +40,24 @@ export default function AdminReports({ tickets, techs }) {
 
       <Section title="Technician performance" sub="Given, fixed, reopened and average rating per technician">
         <Table
-          heads={['Technician', 'Team', { label: 'Given', right: true }, { label: 'Fixed', right: true }, { label: 'Reopened', right: true }, { label: 'Rating', right: true }]}
-          rows={trows.map(r => [r.name, r.dept || '—', r.given, r.fixed, r.reopened || '–', r.avgRating ? '★ ' + r.avgRating.toFixed(1) : '–'])}
-          empty="No technicians yet." />
+          heads={['Technician', 'Team', { label: 'Given', center: true }, { label: 'Fixed', center: true }, { label: 'Reopened', center: true }, { label: 'Rating', center: true }]}
+          rows={trows.map(r => [
+            <span className="font-semibold text-slate-800 dark:text-slate-100">{r.name}</span>,
+            <span className="text-slate-600 dark:text-slate-300">{r.dept || '—'}</span>,
+            <span className="font-medium text-slate-700 dark:text-slate-200">{r.given}</span>,
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.fixed}</span>,
+            <span className="text-slate-400">{r.reopened || '–'}</span>,
+            r.avgRating ? (
+              <span className="text-amber-500 font-bold inline-flex items-center justify-center gap-1">
+                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                {r.avgRating.toFixed(1)}
+              </span>
+            ) : (
+              <span className="text-slate-400">–</span>
+            )
+          ])}
+          empty="No technicians yet."
+        />
       </Section>
     </div>
   );

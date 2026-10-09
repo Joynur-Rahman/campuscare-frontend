@@ -49,12 +49,35 @@ export function BarList({ items, max, color = '#4f46e5' }) {
 export function Table({ heads, rows, empty = 'No data.' }) {
   if (!rows.length) return <p className="text-xs text-slate-400 py-3">{empty}</p>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-xs report-table">
-        <thead><tr>{heads.map((h, i) => <th key={i} className={h.right ? 'text-right' : ''}>{h.label || h}</th>)}</tr></thead>
+    <div className="overflow-x-auto rounded-xl">
+      <table className="w-full text-xs report-table">
+        <thead>
+          <tr>
+            {heads.map((h, i) => {
+              const isCenter = typeof h === 'object' && (h.center || h.right);
+              const align = isCenter ? 'text-center' : 'text-left';
+              return (
+                <th key={i} className={`${align} py-3 px-4 font-extrabold uppercase tracking-wider`}>
+                  {h.label || h}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i}>{r.map((c, j) => <td key={j} className={heads[j]?.right ? 'text-right' : ''}>{c}</td>)}</tr>
+            <tr key={i} className="hover:bg-slate-100/60 dark:hover:bg-slate-800/50 transition-colors">
+              {r.map((c, j) => {
+                const h = heads[j];
+                const isCenter = typeof h === 'object' && (h.center || h.right);
+                const align = isCenter ? 'text-center' : 'text-left';
+                return (
+                  <td key={j} className={`${align} py-3 px-4 align-middle`}>
+                    {c}
+                  </td>
+                );
+              })}
+            </tr>
           ))}
         </tbody>
       </table>

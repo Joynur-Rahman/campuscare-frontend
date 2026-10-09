@@ -51,32 +51,46 @@ export default function AdminTechnicians({ tickets, techs }) {
   return (
     <Section title="Technician performance" sub="Audit each technician's workload, speed and quality — computed live from tickets.">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs report-table">
+        <table className="w-full text-xs report-table">
           <thead>
             <tr>
-              <th>Technician</th><th>Team</th><th>Status</th>
-              <th className="text-right">Given</th><th className="text-right">Fixed</th>
-              <th className="text-right">Active</th><th className="text-right">Reopened</th>
-              <th className="text-right">Rating</th><th className="text-right">Actions</th>
+              <th className="text-left">Technician</th>
+              <th className="text-left">Team</th>
+              <th className="text-center">Status</th>
+              <th className="text-center">Given</th>
+              <th className="text-center">Fixed</th>
+              <th className="text-center">Active</th>
+              <th className="text-center">Reopened</th>
+              <th className="text-center">Rating</th>
+              <th className="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(r => (
-              <tr key={r.firebaseId}>
-                <td className="font-semibold text-slate-900">{r.name}</td>
-                <td>{r.dept || '—'}</td>
-                <td>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${r.status === 'On Duty' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{r.status || 'Off Duty'}</span>
+              <tr key={r.firebaseId || r.id}>
+                <td className="text-left font-semibold text-slate-900 dark:text-slate-100">{r.name}</td>
+                <td className="text-left">{r.dept || '—'}</td>
+                <td className="text-center">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-block ${r.status === 'On Duty' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}>{r.status || 'Off Duty'}</span>
                 </td>
-                <td className="text-right">{r.given}</td>
-                <td className="text-right font-bold text-emerald-700">{r.fixed}</td>
-                <td className="text-right">{r.active}</td>
-                <td className="text-right">{r.reopened || '–'}</td>
-                <td className="text-right">{r.avgRating ? <span className="text-amber-600 font-bold inline-flex items-center gap-0.5"><Star className="w-3 h-3 fill-amber-500 text-amber-500" />{r.avgRating.toFixed(1)}</span> : '–'}</td>
-                <td className="text-right whitespace-nowrap">
-                  <button disabled={busy === r.firebaseId} onClick={() => toggle(r)} title="Toggle duty" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"><Power className="w-3.5 h-3.5" /></button>
-                  <button disabled={busy === r.firebaseId} onClick={() => reset(r)} title="Reset password" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"><KeyRound className="w-3.5 h-3.5" /></button>
-                  <button disabled={busy === r.firebaseId} onClick={() => remove(r)} title="Remove" className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                <td className="text-center font-medium">{r.given}</td>
+                <td className="text-center font-bold text-emerald-600 dark:text-emerald-400">{r.fixed}</td>
+                <td className="text-center font-medium">{r.active}</td>
+                <td className="text-center text-slate-400">{r.reopened || '–'}</td>
+                <td className="text-center">
+                  {r.avgRating ? (
+                    <span className="text-amber-500 font-bold inline-flex items-center justify-center gap-0.5">
+                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      {r.avgRating.toFixed(1)}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">–</span>
+                  )}
+                </td>
+                <td className="text-center whitespace-nowrap">
+                  <button disabled={busy === (r.firebaseId || r.id)} onClick={() => toggle(r)} title="Toggle duty" className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"><Power className="w-3.5 h-3.5" /></button>
+                  <button disabled={busy === (r.firebaseId || r.id)} onClick={() => reset(r)} title="Reset password" className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition ml-1"><KeyRound className="w-3.5 h-3.5" /></button>
+                  <button disabled={busy === (r.firebaseId || r.id)} onClick={() => remove(r)} title="Remove" className="p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-400 hover:text-rose-500 transition ml-1"><Trash2 className="w-3.5 h-3.5" /></button>
                 </td>
               </tr>
             ))}
