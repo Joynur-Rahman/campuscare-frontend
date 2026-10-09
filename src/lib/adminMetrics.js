@@ -1,6 +1,6 @@
 import { categoryLabel } from '../data/catalog.js';
 
-const isResolved = t => t.status === 'Resolved' || t.status === 'resolved';
+const isResolved = t => ['resolved', 'done'].includes((t?.status || '').toLowerCase().trim());
 
 const matchesTech = (t, tech) => {
   const tid = tech.firebaseId || tech.clerk_id || tech.id;

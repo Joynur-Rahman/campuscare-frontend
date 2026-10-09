@@ -7,8 +7,8 @@ const STATUS_COLORS = { Pending: '#f59e0b', 'In Progress': '#3b82f6', Resolved: 
 export default function AdminDashboard({ tickets }) {
   const s = summary(tickets);
   const cats = byCategory(tickets).slice(0, 6).map(c => ({ label: c.label, value: c.reported, color: '#4f46e5' }));
-  const isResolved = t => t.status === 'Resolved' || t.status === 'resolved';
-  const isInProgress = t => t.status === 'In Progress' || t.status === 'in_progress';
+  const isResolved = t => ['resolved', 'done'].includes((t?.status || '').toLowerCase().trim());
+  const isInProgress = t => ['in progress', 'in_progress'].includes((t?.status || '').toLowerCase().trim());
   const isWaiting = t => !isResolved(t) && !isInProgress(t);
   const byStatus = [
     { label: 'Waiting', value: tickets.filter(isWaiting).length, color: '#f59e0b' },
