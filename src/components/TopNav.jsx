@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Siren, Monitor, Moon, Sun, LogOut, User } from 'lucide-react';
+import { useClerk } from '@clerk/react';
+import { Siren, Monitor, Moon, Sun, LogOut, User, KeyRound } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import EmergencyModal from './EmergencyModal.jsx';
 
 export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const { user, logout, theme, cycleTheme } = useApp();
+  const { openUserProfile } = useClerk();
   const [emergency, setEmergency] = useState(false);
   const [menu, setMenu] = useState(false);
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
@@ -44,10 +46,16 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             {menu && (
               <div className="absolute right-0 mt-3 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 text-sm text-slate-700 z-50" onMouseLeave={() => setMenu(false)}>
                 <div className="px-4 py-3 border-b border-slate-100">
-                  <span className="font-bold text-slate-900 block truncate flex items-center gap-2"><User className="w-4 h-4 text-slate-400" />{user?.name || 'User'}</span>
+                  <span className="font-bold text-slate-900 block truncate flex items-center gap-2"><User className="w-4 h-4 text-slate-400" />{user?.name || user?.full_name || 'User'}</span>
                   <span className="text-slate-500 text-xs block truncate font-mono mt-1">{user?.email}</span>
                 </div>
-                <button onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 text-rose-600 font-semibold">
+                <button
+                  onClick={() => { setMenu(false); openUserProfile?.(); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 text-slate-700 font-semibold border-b border-slate-100 transition-colors"
+                >
+                  <KeyRound className="w-4 h-4 text-slate-500" /> Account &amp; Password
+                </button>
+                <button onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 text-rose-600 font-semibold transition-colors">
                   <LogOut className="w-4 h-4" /> Sign out
                 </button>
               </div>

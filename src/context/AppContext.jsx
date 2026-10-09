@@ -19,6 +19,14 @@ export function AppProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const toastId = useRef(0);
 
+  // ── toasts ──
+  const showToast = useCallback((message, type = 'info') => {
+    const id = ++toastId.current;
+    setToasts(ts => [...ts, { id, message, type }]);
+    setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 4000);
+  }, []);
+  const dismissToast = useCallback((id) => setToasts(ts => ts.filter(t => t.id !== id)), []);
+
   // ── auth session ──
   useEffect(() => {
     setClerkGetToken(getToken);
@@ -47,22 +55,47 @@ export function AppProvider({ children }) {
                   console.log('[Auth] /api/auth/me response:', profile);
                   setUser({ ...baseUser, ...(profile || {}) });
                 })
-                .catch(err => {
+                .catch(async err => {
                   console.error('[Auth] /api/auth/me failed:', err.message, err.status);
-                  setUser(baseUser);
+                  if (err.status === 403 || (err.message && err.message.toLowerCase().includes('restricted'))) {
+                    showToast(
+                      err.message || 'Registration is restricted to @iiitg.ac.in emails. Staff and technicians must be added by the Administrator.',
+                      'error'
+                    );
+                    setUser(null);
+                    try { await signOut(); } catch {}
+                  } else {
+                    const email = (clerkUser.primaryEmailAddress?.emailAddress || '').toLowerCase();
+                    if (email.endsWith('@iiitg.ac.in')) {
+                      setUser(baseUser);
+                    } else {
+                      showToast(err.message || 'Authentication error. Please contact administrator.', 'error');
+                      setUser(null);
+                      try { await signOut(); } catch {}
+                    }
+                  }
                 });
             }
-            console.warn('[Auth] No Clerk token — using default student role');
-            setUser(baseUser);
+            console.warn('[Auth] No Clerk token');
+            const email = (clerkUser.primaryEmailAddress?.emailAddress || '').toLowerCase();
+            if (email.endsWith('@iiitg.ac.in')) {
+              setUser(baseUser);
+            } else {
+              setUser(null);
+            }
           })
-          .catch(err => { console.error('[Auth] getToken failed:', err); setUser(baseUser); })
+          .catch(async err => {
+            console.error('[Auth] getToken failed:', err);
+            setUser(null);
+            try { await signOut(); } catch {}
+          })
           .finally(() => setBooting(false));
       } else {
         setUser(null);
         setBooting(false);
       }
     }
-  }, [authLoaded, userLoaded, clerkUser]);
+  }, [authLoaded, userLoaded, clerkUser, signOut, showToast]);
 
   const login = useCallback(async (payload) => {
     // Legacy mock login support or throw error
@@ -90,14 +123,6 @@ export function AppProvider({ children }) {
     }
   }, [theme]);
   const cycleTheme = useCallback(() => setTheme(t => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto')), []);
-
-  // ── toasts ──
-  const showToast = useCallback((message, type = 'info') => {
-    const id = ++toastId.current;
-    setToasts(ts => [...ts, { id, message, type }]);
-    setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 4000);
-  }, []);
-  const dismissToast = useCallback((id) => setToasts(ts => ts.filter(t => t.id !== id)), []);
 
   const value = { user, setUser, booting, login, logout, theme, cycleTheme, toasts, showToast, dismissToast, api };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
