@@ -114,26 +114,33 @@ export default function AdminTickets({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Filter Pills */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
-          {FILTERS.map(x => (
-            <button
-              key={x.key}
-              onClick={() => setFilter(x.key)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                ((currentFilterKey === x.key || (x.key === 'all' && currentFilterKey === 'reported')) || (x.key === 'all' && currentFilterKey === 'reported'))
-                  ? 'bg-iiitg-800 text-white shadow-sm'
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
-            >
-              <span>{x.label}</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                currentFilterKey === x.key
-                  ? 'bg-white/20 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-              }`}>
-                {tickets.filter(x.test).length}
-              </span>
-            </button>
-          ))}
+          {FILTERS.map(x => {
+            const count = tickets.filter(x.test).length;
+            const isActive = currentFilterKey === x.key || (x.key === 'all' && currentFilterKey === 'reported');
+
+            return (
+              <button
+                key={x.key}
+                onClick={() => setFilter(x.key)}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-iiitg-800 text-white shadow-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span>{x.label}</span>
+                <span
+                  className={`min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 leading-none transition-colors ${
+                    isActive
+                      ? 'bg-white/25 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search & View Mode Toggle */}
