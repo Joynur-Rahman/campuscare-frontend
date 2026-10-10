@@ -5,6 +5,7 @@ import { useSubscription } from '../hooks/useSubscription.js';
 import TicketCard from '../components/TicketCard.jsx';
 import TicketDetailModal from '../components/TicketDetailModal.jsx';
 import CampusMapView from '../components/CampusMapView.jsx';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 const TABS = [
   { key: 'New', label: 'New', status: 'Pending', Icon: Inbox },
@@ -31,6 +32,7 @@ export default function TechnicianPortal() {
 
   // Resolution modal state
   const [resolveTarget, setResolveTarget] = useState(null);
+  useBodyScrollLock(Boolean(resolveTarget));
   const [resolutionRemarks, setResolutionRemarks] = useState('');
   const [resolving, setResolving] = useState(false);
 

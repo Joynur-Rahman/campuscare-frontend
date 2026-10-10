@@ -56,8 +56,14 @@ function normalizeTicket(t) {
     }
   }
 
+  let cleanDesc = t.description;
+  if (typeof cleanDesc === 'string' && cleanDesc.includes('📍 Location:')) {
+    cleanDesc = cleanDesc.replace(/\s*📍\s*Location:[\s\S]*$/, '').trim();
+  }
+
   return {
     ...t,
+    description: cleanDesc,
     location: location || null,
     latitude: latitude || null,
     longitude: longitude || null,

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { MapPin, Calendar, Wrench, Users, MessageSquareText } from 'lucide-react';
-import { statusLabel, statusStyle, ticketLabel, createdMs, fmtDate, getTicketCoords } from '../lib/ticketUtils.js';
+import { statusLabel, statusStyle, ticketLabel, createdMs, fmtDate, getTicketCoords, cleanDescription } from '../lib/ticketUtils.js';
 import LocationModal from './LocationModal.jsx';
 
 export default function TicketCard({ t, onOpen, action }) {
   const [showLocation, setShowLocation] = useState(false);
   const coords = getTicketCoords(t);
   const hasLocation = Boolean(t.location || coords);
+  const desc = cleanDescription(t.description);
   return (
     <div className="panel p-4 sm:p-5 h-full flex flex-col justify-between transition-all hover:shadow-md dark:hover:border-slate-700/80">
       {/* Top Header Badge Row */}
@@ -36,9 +37,9 @@ export default function TicketCard({ t, onOpen, action }) {
           <h3 className="text-sm sm:text-[15px] font-bold text-slate-900 dark:text-slate-100 leading-snug">
             {ticketLabel(t)}
           </h3>
-          {t.description && (
+          {desc && (
             <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
-              {t.description}
+              {desc}
             </p>
           )}
         </div>

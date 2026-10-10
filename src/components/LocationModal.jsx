@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react';
 import { X, MapPin, ExternalLink, Navigation, Compass } from 'lucide-react';
 import { loadMapplsSdk, getMapplsKey } from '../lib/mappls.js';
 import { getTicketCoords } from '../lib/ticketUtils.js';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 export default function LocationModal({ ticket, onClose }) {
+  useBodyScrollLock();
   const mapContainerRef = useRef(null);
   const mapplsMapRef = useRef(null);
   const leafletMapRef = useRef(null);

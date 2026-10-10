@@ -23,7 +23,7 @@ import {
   getMapplsKey, 
   setMapplsKey 
 } from '../lib/mappls.js';
-import { ticketLabel, statusStyle, statusLabel, getTicketCoords } from '../lib/ticketUtils.js';
+import { ticketLabel, statusStyle, statusLabel, getTicketCoords, cleanDescription } from '../lib/ticketUtils.js';
 
 // Category color and icon configuration
 const CATEGORY_META = {
@@ -525,7 +525,7 @@ export default function CampusMapView({
               {selectedPin.type === 'ticket' ? (
                 <div className="space-y-2.5">
                   <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                    {selectedPin.ticket.description || 'No additional description provided.'}
+                    {cleanDescription(selectedPin.ticket.description) || 'No additional description provided.'}
                   </p>
                   <div className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
                     <MapPin className="w-3 h-3 text-rose-500 shrink-0" />

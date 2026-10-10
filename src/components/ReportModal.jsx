@@ -3,8 +3,10 @@ import { X, Send, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { CATEGORIES, categoryLabel } from '../data/catalog.js';
 import LocationPicker from './LocationPicker.jsx';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null }) {
+  useBodyScrollLock();
   const { api, showToast } = useApp();
   const [cat, setCat] = useState('');
   const [issue, setIssue] = useState('');

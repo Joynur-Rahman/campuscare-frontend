@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, Loader2, MapPin, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
-import { statusLabel, statusStyle, ticketLabel, getTicketCoords } from '../lib/ticketUtils.js';
+import { statusLabel, statusStyle, ticketLabel, getTicketCoords, cleanDescription } from '../lib/ticketUtils.js';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import LocationModal from './LocationModal.jsx';
 
 // Shared ticket detail + chat. `role` controls which actions show.
 export default function TicketDetailModal({ ticket, onClose, action }) {
+  useBodyScrollLock();
   const { api, user, showToast } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -146,7 +148,11 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
               </button>
             </div>
           )}
-          {local.description && <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3 leading-relaxed">{local.description}</div>}
+          {cleanDescription(local.description) && (
+            <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#152d43] border border-slate-200 dark:border-[#36365f] rounded-xl p-3 leading-relaxed">
+              {cleanDescription(local.description)}
+            </div>
+          )}
           {dedupeMessages(local.messages).map((m, i) => {
             const mine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
             if (m.isSystem) return <div key={i} className="text-center text-[11px] text-slate-400 py-1">{m.text}</div>;

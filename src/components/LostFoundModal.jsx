@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { X, Send, Loader2, Search, Frown, HandHeart, Camera, Globe } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import LocationPicker from './LocationPicker.jsx';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 // Dedicated Lost & Found posting flow — NOT the generic ticket form.
 export default function LostFoundModal({ onClose, onCreated }) {
+  useBodyScrollLock();
   const { api, user, showToast } = useApp();
   const [kind, setKind] = useState('lost'); // 'lost' | 'found'
   const [item, setItem] = useState('');

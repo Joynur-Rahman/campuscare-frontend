@@ -69,3 +69,9 @@ export function getTicketCoords(ticket) {
   }
   return null;
 }
+
+export function cleanDescription(desc) {
+  if (!desc || typeof desc !== 'string') return '';
+  return desc.replace(/\s*📍\s*Location:[\s\S]*$/, '').trim();
+}
+
