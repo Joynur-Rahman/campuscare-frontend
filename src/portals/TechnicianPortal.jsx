@@ -35,14 +35,35 @@ export default function TechnicianPortal() {
   // Local optimistic overlay map: ticketId -> updated status
   const [optimisticStatus, setOptimisticStatus] = useState({});
 
-  const subscribe = useCallback(
-    (cb, onErr, onSync) => api.subscribeToTickets({ role: 'staff', uid: user?.clerk_id || user?.uid || user?.id, email: user?.email }, cb, onErr, onSync),
-    [api, user?.clerk_id, user?.uid, user?.id, user?.email]
-  );
-  const { data: all, loading } = useSubscription(subscribe, [user?.email, user?.clerk_id]);
-
   const email = (user?.email || '').toLowerCase();
   const uid = user?.clerk_id || user?.id || user?.uid || user?.techId;
+  const cacheKey = 'cc_tech_tickets_' + (uid || 'staff');
+
+  // Instant local cache initialization so tickets render immediately (0ms)
+  const [initialTickets] = useState(() => {
+    try {
+      const stored = localStorage.getItem(cacheKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const subscribe = useCallback(
+    (cb, onErr, onSync) => api.subscribeToTickets(
+      { role: 'staff', uid, email },
+      (list) => {
+        if (Array.isArray(list)) {
+          try { localStorage.setItem(cacheKey, JSON.stringify(list)); } catch {}
+        }
+        cb(list);
+      },
+      onErr,
+      onSync
+    ),
+    [api, uid, email, cacheKey]
+  );
+  const { data: all, loading } = useSubscription(subscribe, [email, uid], initialTickets);
 
   // Apply optimistic overlay to incoming tickets
   const enrichedTickets = useMemo(() => {
@@ -214,8 +235,11 @@ export default function TechnicianPortal() {
         ))}
       </div>
 
-      {loading ? (
-        <p className="text-center text-sm text-slate-400 py-14">Loading…</p>
+      {loading && (!all || all.length === 0) ? (
+        <div className="text-center py-14">
+          <Loader2 className="w-6 h-6 animate-spin text-iiitg-600 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-slate-500">Retrieving tickets…</p>
+        </div>
       ) : list.length === 0 ? (
         <div className="text-center py-14 px-6 bg-white rounded-2xl border border-slate-200 border-dashed">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 flex items-center justify-center mb-3"><Coffee className="w-7 h-7 text-slate-300" /></div>

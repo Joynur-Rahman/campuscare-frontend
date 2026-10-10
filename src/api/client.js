@@ -3,15 +3,35 @@
 import { API_BASE_URL, TOKEN_KEY } from './config.js';
 
 let _clerkGetToken = null;
-export function setClerkGetToken(fn) { _clerkGetToken = fn; }
+let _cachedToken = null;
+let _cachedTokenExpiresAt = 0;
+
+export function setClerkGetToken(fn) {
+  _clerkGetToken = fn;
+  _cachedToken = null;
+}
 
 export async function getToken() {
+  const now = Date.now();
+  if (_cachedToken && now < _cachedTokenExpiresAt) {
+    return _cachedToken;
+  }
   if (_clerkGetToken) {
-    try { return await _clerkGetToken(); } catch {}
+    try {
+      const token = await _clerkGetToken();
+      if (token) {
+        _cachedToken = token;
+        _cachedTokenExpiresAt = now + 45000;
+        return token;
+      }
+    } catch {}
   }
   try { return localStorage.getItem(TOKEN_KEY) || null; } catch { return null; }
 }
+
 export function setToken(t) {
+  _cachedToken = t;
+  _cachedTokenExpiresAt = t ? Date.now() + 45000 : 0;
   try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {}
 }
 

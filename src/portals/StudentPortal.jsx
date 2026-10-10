@@ -88,10 +88,10 @@ export default function StudentPortal() {
   }, [showFilterMenu]);
 
   const subscribe = useCallback(
-    (cb, onErr, onSync) => api.subscribeToTickets({ role: 'student', uid: user?.uid, email: user?.email }, cb, onErr, onSync),
-    [api, user?.uid, user?.email]
+    (cb, onErr, onSync) => api.subscribeToTickets({ role: 'student', uid: user?.clerk_id || user?.id || user?.uid, email: user?.email }, cb, onErr, onSync),
+    [api, user?.clerk_id, user?.id, user?.uid, user?.email]
   );
-  const { data: all, loading } = useSubscription(subscribe, [user?.uid]);
+  const { data: all, loading } = useSubscription(subscribe, [user?.clerk_id, user?.id, user?.uid, user?.email]);
 
   const myUid = user?.id || user?.uid;
   const myEmail = (user?.email || '').toLowerCase();
