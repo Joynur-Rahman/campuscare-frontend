@@ -1,14 +1,16 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Inbox, Wrench, CheckCircle2, Loader2, Coffee, AlertCircle, X, Power } from 'lucide-react';
+import { Inbox, Wrench, CheckCircle2, Loader2, Coffee, AlertCircle, X, Power, Map } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
 import TicketCard from '../components/TicketCard.jsx';
 import TicketDetailModal from '../components/TicketDetailModal.jsx';
+import CampusMapView from '../components/CampusMapView.jsx';
 
 const TABS = [
   { key: 'New', label: 'New', status: 'Pending', Icon: Inbox },
   { key: 'Working', label: 'Working on', status: 'In Progress', Icon: Wrench },
   { key: 'Done', label: 'Done', status: 'Resolved', Icon: CheckCircle2 },
+  { key: 'Map', label: 'Campus Map', status: 'Map', Icon: Map },
 ];
 
 export default function TechnicianPortal() {
@@ -91,7 +93,8 @@ export default function TechnicianPortal() {
   const counts = {
     New: mine.filter(isNew).length,
     Working: mine.filter(isWorking).length,
-    Done: mine.filter(isDone).length
+    Done: mine.filter(isDone).length,
+    Map: mine.length,
   };
   const list = mine.filter(t => tab === 'New' ? isNew(t) : tab === 'Working' ? isWorking(t) : isDone(t));
 
@@ -226,7 +229,7 @@ export default function TechnicianPortal() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} className={`panel p-4 text-left transition-all ${tab === t.key ? 'ring-2 ring-iiitg-500' : ''}`}>
             <div className="stat-label text-slate-500 flex items-center gap-1.5"><t.Icon className="w-3.5 h-3.5" />{t.label}</div>
@@ -235,7 +238,9 @@ export default function TechnicianPortal() {
         ))}
       </div>
 
-      {loading && (!all || all.length === 0) ? (
+      {tab === 'Map' ? (
+        <CampusMapView tickets={mine} onSelectTicket={setOpen} />
+      ) : loading && (!all || all.length === 0) ? (
         <div className="text-center py-14">
           <Loader2 className="w-6 h-6 animate-spin text-iiitg-600 mx-auto mb-2" />
           <p className="text-sm font-semibold text-slate-500">Retrieving tickets…</p>

@@ -1,6 +1,6 @@
 // REST client - maps every backend endpoint in router.py 1-to-1.
 // Auth: Clerk JWT is injected automatically by client.js via setClerkGetToken.
-import { http, setToken } from './client.js';
+import { http, setToken, getToken } from './client.js';
 import { POLL_INTERVAL } from './config.js';
 
 function poll(fetchFn, cb, onError, onSync) {
@@ -8,6 +8,8 @@ function poll(fetchFn, cb, onError, onSync) {
   let first = true;
   const tick = async () => {
     try {
+      const token = await getToken();
+      if (!token) return; // Wait until token is available before calling protected backend routes
       const data = await fetchFn();
       if (stopped) return;
       cb(data);
@@ -31,8 +33,34 @@ function flatten(obj) {
 
 function normalizeTicket(t) {
   if (!t || typeof t !== 'object') return t;
+  let location = t.location;
+  let latitude = t.latitude;
+  let longitude = t.longitude;
+
+  if ((!latitude || !longitude) && typeof t.description === 'string') {
+    const coordMatch = t.description.match(/\(?([0-9]{1,2}\.[0-9]{3,8}),\s*([0-9]{1,3}\.[0-9]{3,8})\)?/);
+    if (coordMatch) {
+      latitude = parseFloat(coordMatch[1]);
+      longitude = parseFloat(coordMatch[2]);
+    }
+  }
+
+  if (!location && typeof t.description === 'string' && t.description.includes('📍 Location:')) {
+    const locMatch = t.description.match(/📍 Location:\s*([^\n(]+)(?:\s*\(([\d.-]+),\s*([\d.-]+)\))?/);
+    if (locMatch) {
+      location = locMatch[1].trim();
+      if (!latitude && !longitude && locMatch[2] && locMatch[3]) {
+        latitude = parseFloat(locMatch[2]);
+        longitude = parseFloat(locMatch[3]);
+      }
+    }
+  }
+
   return {
     ...t,
+    location: location || null,
+    latitude: latitude || null,
+    longitude: longitude || null,
     assignedTo: t.assignedTo || t.assigned_to || null,
     assigned_to: t.assigned_to || t.assignedTo || null,
     userId: t.userId || t.owner_id || null,
@@ -130,14 +158,20 @@ export function createRestApi() {
         }
       }
 
+      let desc = p.description || '';
+      if (p.location && !desc.includes('📍 Location:')) {
+        const coordsStr = (p.latitude && p.longitude) ? ` (${Number(p.latitude).toFixed(5)}, ${Number(p.longitude).toFixed(5)})` : '';
+        desc = `${desc}\n\n📍 Location: ${p.location}${coordsStr}`;
+      }
+
       const res = await http.post('/api/tickets', {
         title: p.title || p.categoryDisplay || `${p.category} - ${p.subCategory}`,
-        description: p.description,
+        description: desc,
         category_id: catId,
         department_id: deptId,
         confidential: p.confidential ?? false,
       });
-      return normalizeTicket(res);
+      return normalizeTicket({ ...res, location: p.location, latitude: p.latitude, longitude: p.longitude });
     },
     followTicket: (id) => http.post(`/api/tickets/${encodeURIComponent(id)}/follow`),
     unfollowTicket: (id) => http.del(`/api/tickets/${encodeURIComponent(id)}/follow`),

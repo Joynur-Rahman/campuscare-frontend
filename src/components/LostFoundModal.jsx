@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Send, Loader2, Search, Frown, HandHeart, Camera, Globe } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
+import LocationPicker from './LocationPicker.jsx';
 
 // Dedicated Lost & Found posting flow — NOT the generic ticket form.
 export default function LostFoundModal({ onClose, onCreated }) {
@@ -8,6 +9,7 @@ export default function LostFoundModal({ onClose, onCreated }) {
   const [kind, setKind] = useState('lost'); // 'lost' | 'found'
   const [item, setItem] = useState('');
   const [place, setPlace] = useState('');
+  const [coords, setCoords] = useState(null);
   const [when, setWhen] = useState('');
   const [phone, setPhone] = useState(user?.phone || '');
   const [notes, setNotes] = useState('');
@@ -28,7 +30,7 @@ export default function LostFoundModal({ onClose, onCreated }) {
       const t = await api.createTicket({
         category: 'Security', subCategory: 'Lost & found',
         categoryDisplay: `Lost & found — ${kind === 'found' ? 'Found item' : 'Lost item'}`,
-        location: place.trim(), description, phone: phone.trim(),
+        location: place.trim(), latitude: coords?.lat, longitude: coords?.lng, description, phone: phone.trim(),
         priority: 'Normal', urgent: false, isPublic: true, upvotes: 1,
         ...(photoUrl ? { photoUrl } : {}),
       });
@@ -57,10 +59,13 @@ export default function LostFoundModal({ onClose, onCreated }) {
             <label className="block text-xs font-bold text-slate-700 mb-1.5">What is it? *</label>
             <input value={item} onChange={e => setItem(e.target.value)} placeholder="e.g. Black wallet, blue water bottle, ID card…" className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg input-enhanced focus:outline-none" />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">{kind === 'found' ? 'Where did you find it? *' : 'Where did you lose it? *'}</label>
-            <input value={place} onChange={e => setPlace(e.target.value)} placeholder="e.g. Library 2nd floor, Mess, Bus stop…" className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg input-enhanced focus:outline-none" />
-          </div>
+          <LocationPicker
+            value={place}
+            onChange={setPlace}
+            coords={coords}
+            onCoordsChange={setCoords}
+            placeholder={kind === 'found' ? 'Where did you find it? e.g. Library 2nd floor, Mess…' : 'Where was it lost? e.g. Canteen, Academic Block…'}
+          />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">When? (optional)</label>

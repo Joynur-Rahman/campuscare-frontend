@@ -1,7 +1,12 @@
+import { useState } from 'react';
 import { MapPin, Calendar, Wrench, Users, MessageSquareText } from 'lucide-react';
-import { statusLabel, statusStyle, ticketLabel, createdMs, fmtDate } from '../lib/ticketUtils.js';
+import { statusLabel, statusStyle, ticketLabel, createdMs, fmtDate, getTicketCoords } from '../lib/ticketUtils.js';
+import LocationModal from './LocationModal.jsx';
 
 export default function TicketCard({ t, onOpen, action }) {
+  const [showLocation, setShowLocation] = useState(false);
+  const coords = getTicketCoords(t);
+  const hasLocation = Boolean(t.location || coords);
   return (
     <div className="panel p-4 sm:p-5 h-full flex flex-col justify-between transition-all hover:shadow-md dark:hover:border-slate-700/80">
       {/* Top Header Badge Row */}
@@ -40,11 +45,20 @@ export default function TicketCard({ t, onOpen, action }) {
 
         {/* Metadata info */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-slate-400 dark:text-slate-400 mb-3">
-          {t.location && (
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
-              <span className="truncate max-w-[190px]">{t.location}</span>
-            </span>
+          {hasLocation && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowLocation(true);
+              }}
+              title={coords ? `GPS: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} — Click to view Map` : 'Click to view on Map'}
+              className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 hover:text-rose-700 bg-rose-50/80 hover:bg-rose-100/90 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 px-2 py-0.5 rounded-lg border border-rose-200/60 dark:border-rose-900/40 transition-all cursor-pointer group"
+            >
+              <MapPin className="w-3.5 h-3.5 shrink-0 text-rose-500 group-hover:scale-110 transition-transform" />
+              <span className="truncate max-w-[170px] font-medium">{t.location || 'Campus Location'}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500/90 underline decoration-rose-300 ml-0.5">Map</span>
+            </button>
           )}
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
@@ -74,6 +88,14 @@ export default function TicketCard({ t, onOpen, action }) {
           </button>
         )}
       </div>
+
+      {/* Interactive MapmyIndia / Leaflet Pin Modal */}
+      {showLocation && (
+        <LocationModal
+          ticket={coords ? { ...t, latitude: coords.lat, longitude: coords.lng } : t}
+          onClose={() => setShowLocation(false)}
+        />
+      )}
     </div>
   );
 }

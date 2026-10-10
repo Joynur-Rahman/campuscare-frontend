@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, Loader2 } from 'lucide-react';
+import { X, Send, Loader2, MapPin, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
-import { statusLabel, statusStyle, ticketLabel } from '../lib/ticketUtils.js';
+import { statusLabel, statusStyle, ticketLabel, getTicketCoords } from '../lib/ticketUtils.js';
+import LocationModal from './LocationModal.jsx';
 
 // Shared ticket detail + chat. `role` controls which actions show.
 export default function TicketDetailModal({ ticket, onClose, action }) {
@@ -9,7 +10,11 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [local, setLocal] = useState(ticket);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const endRef = useRef(null);
+
+  const coords = getTicketCoords(local);
+  const hasLocation = Boolean(local?.location || coords);
 
   const role = user?.role;
   const isAdmin = role === 'admin' || role === 'administrator';
@@ -120,7 +125,28 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
-          {local.description && <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3">{local.description}</div>}
+          {hasLocation && (
+            <div className="flex items-center justify-between gap-2 p-2.5 bg-rose-50/80 border border-rose-100 rounded-xl text-xs text-rose-950">
+              <div className="flex items-center gap-2 min-w-0">
+                <MapPin className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-semibold truncate">{local.location || 'Campus Location'}</span>
+                {coords && (
+                  <span className="text-[10px] font-mono text-slate-500 hidden sm:inline">
+                    ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLocationModal(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors shadow-sm shrink-0 cursor-pointer"
+              >
+                <span>View on Map</span>
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          {local.description && <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3 leading-relaxed">{local.description}</div>}
           {dedupeMessages(local.messages).map((m, i) => {
             const mine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
             if (m.isSystem) return <div key={i} className="text-center text-[11px] text-slate-400 py-1">{m.text}</div>;
@@ -149,6 +175,13 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
           </form>
         )}
       </div>
+
+      {showLocationModal && (
+        <LocationModal
+          ticket={coords ? { ...local, latitude: coords.lat, longitude: coords.lng } : local}
+          onClose={() => setShowLocationModal(false)}
+        />
+      )}
     </div>
   );
 }

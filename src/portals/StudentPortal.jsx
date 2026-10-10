@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ClipboardList, Users, Search, Plus, Inbox,
   Calendar, Clock, Tag, X, RotateCcw,
-  Wrench, Archive, CalendarDays, SlidersHorizontal, ChevronDown, Sliders
+  Wrench, Archive, CalendarDays, SlidersHorizontal, ChevronDown, Sliders, Map
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
@@ -10,12 +10,14 @@ import TicketCard from '../components/TicketCard.jsx';
 import TicketDetailModal from '../components/TicketDetailModal.jsx';
 import ReportModal from '../components/ReportModal.jsx';
 import LostFoundModal from '../components/LostFoundModal.jsx';
+import CampusMapView from '../components/CampusMapView.jsx';
 import { isLostFound, createdMs } from '../lib/ticketUtils.js';
 
 const TABS = [
   { key: 'Mine', label: 'My Tickets', title: 'My Tickets', sub: "Problems you reported, and how they're going." },
   { key: 'Community', label: 'Shared Issues', title: 'Shared Issues', sub: 'Public issues affecting many people. Press "Me too" instead of reporting again.' },
   { key: 'LostFound', label: 'Lost & Found', title: 'Lost & Found', sub: 'Lost or found something on campus? Posted here for everyone.' },
+  { key: 'Map', label: 'Campus Map', title: 'Campus Issue Map', sub: 'Explore issues and lost & found spots on the interactive MapmyIndia campus map.' },
 ];
 
 function isSameDay(d1, d2) {
@@ -258,7 +260,7 @@ export default function StudentPortal() {
       {/* Primary Navigation Tabs */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
         {TABS.map(t => {
-          const Icon = t.key === 'Mine' ? ClipboardList : t.key === 'Community' ? Users : Search;
+          const Icon = t.key === 'Mine' ? ClipboardList : t.key === 'Community' ? Users : t.key === 'LostFound' ? Search : Map;
           return (
             <button key={t.key} onClick={() => { setTab(t.key); resetAllFilters(); setShowFilterMenu(false); }}
               className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${tab === t.key ? 'bg-iiitg-800 text-white shadow' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
@@ -282,11 +284,20 @@ export default function StudentPortal() {
         </div>
       )}
 
-      {/* ── Search Bar + Clean Filter Button ── */}
-      <div className="relative">
-        <div className="flex items-center gap-2.5">
-          {/* Search Input */}
-          <div className="relative flex-1">
+      {/* Main Content: Map View or Ticket List */}
+      {tab === 'Map' ? (
+        <CampusMapView
+          tickets={all}
+          onSelectTicket={setOpen}
+          onRequestReport={(prefill) => setReport(prefill || true)}
+        />
+      ) : (
+        <>
+          {/* ── Search Bar + Clean Filter Button ── */}
+          <div className="relative">
+            <div className="flex items-center gap-2.5">
+              {/* Search Input */}
+              <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               value={q}
@@ -687,9 +698,18 @@ export default function StudentPortal() {
           ))}
         </div>
       )}
+        </>
+      )}
 
       {open && <TicketDetailModal ticket={open} onClose={() => setOpen(null)} />}
-      {report && <ReportModal onClose={() => setReport(false)} onCreated={() => setTab('Mine')} />}
+      {report && (
+        <ReportModal 
+          onClose={() => setReport(false)} 
+          onCreated={() => setTab('Mine')} 
+          initialLocation={typeof report === 'object' ? report.location : ''} 
+          initialCoords={typeof report === 'object' && report.lat ? { lat: report.lat, lng: report.lng } : null} 
+        />
+      )}
       {lf && <LostFoundModal onClose={() => setLf(false)} onCreated={() => setTab('LostFound')} />}
     </div>
   );

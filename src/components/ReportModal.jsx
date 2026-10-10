@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { CATEGORIES, categoryLabel } from '../data/catalog.js';
+import LocationPicker from './LocationPicker.jsx';
 
-export default function ReportModal({ onClose, onCreated }) {
+export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null }) {
   const { api, showToast } = useApp();
   const [cat, setCat] = useState('');
   const [issue, setIssue] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState(initialLocation);
+  const [coords, setCoords] = useState(initialCoords);
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -23,7 +25,8 @@ export default function ReportModal({ onClose, onCreated }) {
     try {
       const t = await api.createTicket({
         category: cat, subCategory: issue, categoryDisplay: `${categoryLabel(cat)} — ${issue}`,
-        location: location.trim(), description: description.trim(), phone: phone.trim(),
+        location: location.trim(), latitude: coords?.lat, longitude: coords?.lng,
+        description: description.trim(), phone: phone.trim(),
         priority: urgent ? 'High' : 'Normal', urgent, isPublic, upvotes: isPublic ? 1 : 0,
       });
       showToast(`Ticket ${t.id} created.`, 'success');
@@ -56,10 +59,13 @@ export default function ReportModal({ onClose, onCreated }) {
               </select>
             </div>
           )}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Where is it?</label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Hostel Room 214, Library 2nd floor…" className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg input-enhanced focus:outline-none" />
-          </div>
+          <LocationPicker
+            value={location}
+            onChange={setLocation}
+            coords={coords}
+            onCoordsChange={setCoords}
+            placeholder="e.g. Hostel Room 214, Library 2nd floor, Academic Block…"
+          />
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">Describe the problem *</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="What's wrong?" className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg resize-none input-enhanced focus:outline-none" />

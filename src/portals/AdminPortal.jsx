@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { LayoutDashboard, Ticket, HardHat, BarChart3, UserCog } from 'lucide-react';
+import { LayoutDashboard, Ticket, HardHat, BarChart3, UserCog, Map } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
 import TicketDetailModal from '../components/TicketDetailModal.jsx';
+import CampusMapView from '../components/CampusMapView.jsx';
 import AdminDashboard from './admin/AdminDashboard.jsx';
 import AdminTickets from './admin/AdminTickets.jsx';
 import AdminTechnicians from './admin/AdminTechnicians.jsx';
@@ -12,6 +13,7 @@ import AdminManage from './admin/AdminManage.jsx';
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, title: 'Dashboard', sub: 'Live overview of campus issues.' },
   { key: 'tickets', label: 'Tickets', Icon: Ticket, title: 'Tickets', sub: 'Every open problem. Give each one to a technician.' },
+  { key: 'map', label: 'Campus Map', Icon: Map, title: 'Campus Map', sub: 'Geographical distribution of complaints and maintenance requests across campus.' },
   { key: 'technicians', label: 'Technicians', Icon: HardHat, title: 'Technicians', sub: 'Audit each technician\'s performance.' },
   { key: 'reports', label: 'Reports', Icon: BarChart3, title: 'Reports', sub: 'Summary, problem types, places and technician performance.' },
   { key: 'manage', label: 'Manage Users', Icon: UserCog, title: 'Manage Users', sub: 'Create and manage staff accounts.' },
@@ -53,6 +55,7 @@ export default function AdminPortal() {
         <>
           {tab === 'dashboard' && <AdminDashboard tickets={tickets} />}
           {tab === 'tickets' && <AdminTickets tickets={tickets} techs={techs} onOpen={setOpen} />}
+          {tab === 'map' && <CampusMapView tickets={tickets} onSelectTicket={setOpen} />}
           {tab === 'technicians' && <AdminTechnicians tickets={tickets} techs={techs} />}
           {tab === 'reports' && <AdminReports tickets={tickets} techs={techs} />}
           {tab === 'manage' && <AdminManage techs={techs} members={members} />}
