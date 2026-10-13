@@ -956,6 +956,12 @@ html:not([data-theme="dark"]) body {
   accent-color: #5252a2 !important;
 }
 
-/* Leaflet map dim in dark mode */
+/* Leaflet map dim in dark mode, but preserve rich satellite photos */
 [data-theme="dark"] .leaflet-tile { filter: brightness(0.85) contrast(1.1); }
+[data-theme="dark"] .leaflet-satellite-tile,
+[data-theme="dark"] .leaflet-tile-pane img[src*="ArcGIS"],
+[data-theme="dark"] .leaflet-tile-pane img[src*="arcgisonline"] { 
+  filter: brightness(0.96) contrast(1.05) !important; 
+}
+
 

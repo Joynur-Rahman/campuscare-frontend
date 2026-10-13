@@ -24,6 +24,7 @@ import {
   setMapplsKey 
 } from '../lib/mappls.js';
 import { ticketLabel, statusStyle, statusLabel, getTicketCoords, cleanDescription } from '../lib/ticketUtils.js';
+import { applyLeafletTileLayer } from '../lib/mapLayers.js';
 
 // Category color and icon configuration
 const CATEGORY_META = {
@@ -49,26 +50,7 @@ function getTicketCategoryMeta(t) {
 function resolveTicketCoords(ticket) {
   const extracted = getTicketCoords(ticket);
   if (extracted) return extracted;
-  const loc = (ticket?.location || '').toLowerCase();
-  if (loc.includes('hostel') || loc.includes('room')) {
-    return { lat: 26.0815, lng: 91.5595 };
-  }
-  if (loc.includes('library')) {
-    return { lat: 26.0828, lng: 91.5602 };
-  }
-  if (loc.includes('academic') || loc.includes('class') || loc.includes('lab') || loc.includes('a-110')) {
-    return { lat: 26.0833, lng: 91.5612 };
-  }
-  if (loc.includes('canteen') || loc.includes('mess') || loc.includes('cafe')) {
-    return { lat: 26.0822, lng: 91.5600 };
-  }
-  if (loc.includes('admin') || loc.includes('office')) {
-    return { lat: 26.0837, lng: 91.5620 };
-  }
-  if (loc.includes('sports') || loc.includes('ground') || loc.includes('gym')) {
-    return { lat: 26.0808, lng: 91.5615 };
-  }
-  // Slight jitter around default campus center so markers don't overlap completely
+  // Slight jitter around default campus center for uncategorized tickets
   const hash = (ticket?.id || 't').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const offsetLat = ((hash % 10) - 5) * 0.0003;
   const offsetLng = (((hash >> 2) % 10) - 5) * 0.0003;
@@ -99,6 +81,9 @@ export default function CampusMapView({
   const mapplsMapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef([]);
+  const tileLayersRef = useRef(null);
+  const [mapViewMode, setMapViewMode] = useState('satellite'); // 'satellite' | 'street'
+  const [showLandmarks, setShowLandmarks] = useState(true);
 
   // Filter tickets matching category and optional search text
   const filteredTickets = useMemo(() => {
@@ -198,10 +183,8 @@ export default function CampusMapView({
         });
         leafletMapRef.current = map;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '© OpenStreetMap contributors',
-        }).addTo(map);
+        // Apply high-resolution Hybrid Satellite layer by default
+        applyLeafletTileLayer(L, map, tileLayersRef, 'satellite');
 
         map.on('click', async (e) => {
           const lat = e.latlng.lat;
@@ -239,7 +222,8 @@ export default function CampusMapView({
   }, [activeKey]);
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 2. Sync Markers when filteredTickets or mapEngine change.
+  // ──────────────────────────────────────────────────────────────────────────
+  // 2. Sync Markers when filteredTickets, mapEngine, or showLandmarks change.
   //    This updates markers WITHOUT resetting or reloading the map instance!
   // ──────────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -252,13 +236,81 @@ export default function CampusMapView({
     });
     markersRef.current = [];
 
+    // Group tickets to disperse duplicate / overlapping coordinates
+    const coordGroups = {};
+    filteredTickets.forEach((t) => {
+      const c = resolveTicketCoords(t);
+      const key = `${c.lat.toFixed(4)},${c.lng.toFixed(4)}`;
+      if (!coordGroups[key]) coordGroups[key] = [];
+      coordGroups[key].push({ ticket: t, baseCoords: c });
+    });
+
+    const dispersedCoords = new Map();
+    Object.values(coordGroups).forEach((group) => {
+      if (group.length === 1) {
+        dispersedCoords.set(group[0].ticket.id, group[0].baseCoords);
+      } else {
+        const radius = 0.00018; // ~18m radius spread around building
+        group.forEach((item, idx) => {
+          const angle = (idx / group.length) * 2 * Math.PI;
+          dispersedCoords.set(item.ticket.id, {
+            lat: item.baseCoords.lat + radius * Math.sin(angle),
+            lng: item.baseCoords.lng + radius * Math.cos(angle),
+            baseCoords: item.baseCoords,
+          });
+        });
+      }
+    });
+
     // ── Leaflet Engine Markers ──
     if (mapEngine === 'fallback' && leafletMapRef.current && window.L) {
       const L = window.L;
       const map = leafletMapRef.current;
 
+      // 1. Official Campus Landmarks (if enabled)
+      if (showLandmarks) {
+        CAMPUS_PRESETS.forEach((spot) => {
+          const isSelected = selectedPin?.type === 'landmark' && selectedPin?.landmark?.name === spot.name;
+          const openCount = tickets.filter(t => {
+            const c = resolveTicketCoords(t);
+            return Math.abs(c.lat - spot.lat) < 0.0004 && Math.abs(c.lng - spot.lng) < 0.0004;
+          }).length;
+
+          const badgeHtml = `
+            <div class="campus-landmark-badge cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${isSelected ? 'bg-indigo-600 ring-4 ring-indigo-300' : 'bg-slate-900/90 hover:bg-slate-900'} text-white border border-white/40 shadow-lg backdrop-blur transition-all duration-200 hover:scale-110 select-none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));">
+              <span style="font-size: 13px; line-height: 1;">${spot.icon}</span>
+              <span style="font-size: 11px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap;">${spot.name}</span>
+              ${openCount > 0 ? `<span style="font-size: 9px; font-weight: 800; background: #ef4444; color: white; padding: 1px 5px; border-radius: 9999px; margin-left: 2px;">${openCount}</span>` : ''}
+            </div>
+          `;
+
+          const landmarkIcon = L.divIcon({
+            className: 'landmark-marker-badge',
+            html: badgeHtml,
+            iconSize: [110, 26],
+            iconAnchor: [55, 13],
+          });
+
+          const marker = L.marker([spot.lat, spot.lng], { icon: landmarkIcon, zIndexOffset: -50 }).addTo(map);
+
+          marker.on('click', () => {
+            setSelectedPin({
+              type: 'landmark',
+              landmark: spot,
+              lat: spot.lat,
+              lng: spot.lng,
+              address: `${spot.name}, IIIT Guwahati`,
+            });
+            map.panTo([spot.lat, spot.lng], { animate: true, duration: 0.4 });
+          });
+
+          markersRef.current.push(marker);
+        });
+      }
+
+      // 2. Issue Ticket Pins
       filteredTickets.forEach((t) => {
-        const coords = resolveTicketCoords(t);
+        const coords = dispersedCoords.get(t.id) || resolveTicketCoords(t);
         const meta = getTicketCategoryMeta(t);
         const isSelected = activeTicketId === t.id;
 
@@ -304,8 +356,35 @@ export default function CampusMapView({
       const mappls = window.mappls;
       const map = mapplsMapRef.current;
 
+      // 1. Campus Landmarks
+      if (showLandmarks) {
+        CAMPUS_PRESETS.forEach((spot) => {
+          try {
+            const m = new mappls.Marker({
+              map,
+              position: { lat: spot.lat, lng: spot.lng },
+              label: spot.name,
+            });
+            m.addListener('click', () => {
+              setSelectedPin({
+                type: 'landmark',
+                landmark: spot,
+                lat: spot.lat,
+                lng: spot.lng,
+                address: `${spot.name}, IIIT Guwahati`,
+              });
+              if (map.setCenter) map.setCenter([spot.lat, spot.lng]);
+            });
+            markersRef.current.push(m);
+          } catch (e) {
+            console.warn('Failed to place Mappls landmark marker', e);
+          }
+        });
+      }
+
+      // 2. Issue Pins
       filteredTickets.forEach((t) => {
-        const coords = resolveTicketCoords(t);
+        const coords = dispersedCoords.get(t.id) || resolveTicketCoords(t);
         try {
           const m = new mappls.Marker({
             map,
@@ -322,7 +401,7 @@ export default function CampusMapView({
         }
       });
     }
-  }, [filteredTickets, mapEngine, activeTicketId]);
+  }, [filteredTickets, mapEngine, activeTicketId, showLandmarks, selectedPin?.landmark?.name]);
 
   // Jump to and highlight a ticket on the map
   function focusTicket(t) {
@@ -331,10 +410,36 @@ export default function CampusMapView({
     setSelectedPin({ type: 'ticket', ticket: t, ...coords });
 
     if (mapEngine === 'fallback' && leafletMapRef.current) {
-      leafletMapRef.current.flyTo([coords.lat, coords.lng], 17, { duration: 0.8 });
+      leafletMapRef.current.flyTo([coords.lat, coords.lng], 18, { duration: 0.8 });
     } else if (mapEngine === 'mappls' && mapplsMapRef.current) {
       mapplsMapRef.current.setCenter([coords.lat, coords.lng]);
-      mapplsMapRef.current.setZoom(17);
+      mapplsMapRef.current.setZoom(18);
+    }
+  }
+
+  // Jump to and highlight a campus landmark
+  function focusLandmark(spot) {
+    setSelectedPin({
+      type: 'landmark',
+      landmark: spot,
+      lat: spot.lat,
+      lng: spot.lng,
+      address: `${spot.name}, IIIT Guwahati`,
+    });
+
+    if (mapEngine === 'fallback' && leafletMapRef.current) {
+      leafletMapRef.current.flyTo([spot.lat, spot.lng], 18, { duration: 0.8 });
+    } else if (mapEngine === 'mappls' && mapplsMapRef.current) {
+      mapplsMapRef.current.setCenter([spot.lat, spot.lng]);
+      mapplsMapRef.current.setZoom(18);
+    }
+  }
+
+  // Switch between Satellite and Street views
+  function switchLayer(mode) {
+    setMapViewMode(mode);
+    if (mapEngine === 'fallback' && leafletMapRef.current && window.L) {
+      applyLeafletTileLayer(window.L, leafletMapRef.current, tileLayersRef, mode);
     }
   }
 
@@ -467,6 +572,31 @@ export default function CampusMapView({
         </div>
       </div>
 
+      {/* ── Quick Campus Landmarks Ribbon ── */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1 pl-0.5">
+          <span>🏛️</span> Campus Spots:
+        </span>
+        {CAMPUS_PRESETS.map((spot) => {
+          const isSelected = selectedPin?.type === 'landmark' && selectedPin?.landmark?.name === spot.name;
+          return (
+            <button
+              key={spot.name}
+              type="button"
+              onClick={() => focusLandmark(spot)}
+              className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                isSelected
+                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                  : 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+              }`}
+            >
+              <span>{spot.icon}</span>
+              <span>{spot.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Main Layout: Split View with Interactive Map + Issues Sidebar ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Map Container (takes 8 cols on desktop) */}
@@ -476,14 +606,16 @@ export default function CampusMapView({
             className="w-full h-[520px] lg:h-[580px] relative z-0"
           />
 
-          {/* Engine Status Badge */}
+          {/* Engine & View Status Badge */}
           <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold shadow-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
               <Compass className="w-3.5 h-3.5 text-indigo-600" />
               {mapEngine === 'mappls' ? (
                 <span className="text-emerald-600 font-extrabold">MapmyIndia Vector Map</span>
               ) : (
-                <span className="text-slate-700 dark:text-slate-300">Campus Interactive Map</span>
+                <span className="text-slate-700 dark:text-slate-300">
+                  {mapViewMode === 'satellite' ? '🛰️ Satellite View' : '🗺️ Street View'}
+                </span>
               )}
             </span>
             <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 shadow-xs hidden sm:inline">
@@ -491,10 +623,48 @@ export default function CampusMapView({
             </span>
           </div>
 
-          {/* Tip Badge */}
-          <div className="absolute top-3 right-3 z-10 hidden md:flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium shadow-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">
-            <Info className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Click any pin to inspect details</span>
+          {/* View Modes & Landmarks Switcher */}
+          <div className="absolute top-3 right-3 z-10 flex items-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 text-xs gap-1">
+            <button
+              type="button"
+              onClick={() => setShowLandmarks(!showLandmarks)}
+              title={showLandmarks ? "Hide Landmark Badges" : "Show Landmark Badges"}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                showLandmarks
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <span>🏛️</span>
+              <span className="hidden sm:inline">Landmarks</span>
+            </button>
+            <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+            <button
+              type="button"
+              onClick={() => switchLayer('satellite')}
+              title="Switch to high-resolution Satellite View"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                mapViewMode === 'satellite'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <span>🛰️</span>
+              <span className="hidden sm:inline">Satellite</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLayer('street')}
+              title="Switch to Street Map View"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                mapViewMode === 'street'
+                  ? 'bg-iiitg-800 dark:bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <span>🗺️</span>
+              <span className="hidden sm:inline">Street</span>
+            </button>
           </div>
 
           {/* Selected Pin Bottom Action Card */}
@@ -503,20 +673,24 @@ export default function CampusMapView({
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center shrink-0">
-                    <MapPin className="w-4 h-4" />
+                    {selectedPin.type === 'landmark' ? (
+                      <span className="text-sm">{selectedPin.landmark.icon}</span>
+                    ) : (
+                      <MapPin className="w-4 h-4" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <span className="font-mono text-[10px] text-slate-400 block">
-                      {selectedPin.type === 'ticket' ? selectedPin.ticket.id : 'CAMPUS PIN'}
+                      {selectedPin.type === 'ticket' ? selectedPin.ticket.id : selectedPin.type === 'landmark' ? 'CAMPUS LANDMARK' : 'CAMPUS PIN'}
                     </span>
                     <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">
-                      {selectedPin.type === 'ticket' ? ticketLabel(selectedPin.ticket) : 'Selected Location'}
+                      {selectedPin.type === 'ticket' ? ticketLabel(selectedPin.ticket) : selectedPin.type === 'landmark' ? selectedPin.landmark.name : 'Selected Location'}
                     </h4>
                   </div>
                 </div>
                 <button 
                   onClick={() => { setSelectedPin(null); setActiveTicketId(null); }} 
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -551,6 +725,54 @@ export default function CampusMapView({
                       >
                         View Ticket
                       </button>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedPin.type === 'landmark' ? (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      {selectedPin.landmark.type}
+                    </span>
+                    {selectedPin.landmark.plusCode && (
+                      <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-md font-semibold border border-indigo-200/50">
+                        {selectedPin.landmark.plusCode}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                    {selectedPin.address}
+                  </p>
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[11px] font-mono text-slate-400">
+                      {selectedPin.lat.toFixed(6)}, {selectedPin.lng.toFixed(6)}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPin.lat},${selectedPin.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg inline-flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+                      >
+                        <Navigation className="w-3 h-3 text-indigo-500" />
+                        <span>Navigate</span>
+                      </a>
+                      {onRequestReport && (
+                        <button
+                          onClick={() => {
+                            onRequestReport?.({
+                              location: `${selectedPin.landmark.name}, IIIT Guwahati`,
+                              lat: selectedPin.lat,
+                              lng: selectedPin.lng,
+                            });
+                            setSelectedPin(null);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Report Here</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
