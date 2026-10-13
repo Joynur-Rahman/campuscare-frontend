@@ -5,24 +5,199 @@
 
 const MAPPLS_SDK_URL = 'https://apis.mappls.com/advancedmaps/api';
 
-// Default campus location (IIIT Guwahati)
+// Default campus location (IIIT Guwahati Center)
 export const DEFAULT_CAMPUS_LOCATION = {
-  lat: 26.0827,
-  lng: 91.5606,
+  lat: 26.0815,
+  lng: 91.5608,
   label: 'IIIT Guwahati Campus',
 };
 
-// Preset campus spots for quick selection
+// Official campus spots with exact coordinates and search aliases
 export const CAMPUS_PRESETS = [
-  { name: 'Academic Block', lat: 26.0833, lng: 91.5612 },
-  { name: 'Central Library', lat: 26.0828, lng: 91.5602 },
-  { name: 'Boys Hostel', lat: 26.0815, lng: 91.5595 },
-  { name: 'Girls Hostel', lat: 26.0840, lng: 91.5588 },
-  { name: 'Canteen & Mess', lat: 26.0822, lng: 91.5600 },
-  { name: 'Admin Building', lat: 26.0837, lng: 91.5620 },
-  { name: 'Sports Complex', lat: 26.0808, lng: 91.5615 },
-  { name: 'Main Campus Gate', lat: 26.0850, lng: 91.5628 },
+  { 
+    name: 'Academic Building', 
+    lat: 26.081306, 
+    lng: 91.561917, 
+    icon: '🏛️', 
+    type: 'Academic', 
+    plusCode: null,
+    subtitle: 'Classrooms, Labs & Faculty Offices',
+    aliases: ['academic', 'class', 'classroom', 'lab', 'lecture', 'a-110', 'admin', 'office', 'acad', 'department', 'academic block'] 
+  },
+  { 
+    name: 'Library', 
+    lat: 26.081127, 
+    lng: 91.562130, 
+    icon: '📚', 
+    type: 'Academic', 
+    plusCode: '3HJ6+FV9',
+    subtitle: 'Central Library & Reading Halls',
+    aliases: ['library', 'lib', 'reading room', 'study hall', 'central library', 'books', 'libr'] 
+  },
+  { 
+    name: 'Canteen', 
+    lat: 26.082251, 
+    lng: 91.562126, 
+    icon: '☕', 
+    type: 'Amenity', 
+    plusCode: '3HJ6+WV2',
+    subtitle: 'Dining Hall & Cafeteria',
+    aliases: ['canteen', 'mess', 'cafe', 'cafeteria', 'dining', 'food', 'snacks', 'cant', 'eating'] 
+  },
+  { 
+    name: 'Boys Hostel', 
+    lat: 26.080111, 
+    lng: 91.558444, 
+    icon: '🏢', 
+    type: 'Hostel', 
+    plusCode: null,
+    subtitle: 'Men Residential Blocks',
+    aliases: ['boys hostel', 'boy hostel', 'bh', 'hostel', 'room', 'b-block', 'a-block', 'boys', 'bh1', 'bh2'] 
+  },
+  { 
+    name: 'Girls Hostel', 
+    lat: 26.082111, 
+    lng: 91.559444, 
+    icon: '🏡', 
+    type: 'Hostel', 
+    plusCode: null,
+    subtitle: 'Women Residential Block',
+    aliases: ['girls hostel', 'girl hostel', 'gh', 'women hostel', 'girls', 'gh1'] 
+  },
+  { 
+    name: 'Town Hall', 
+    lat: 26.081444, 
+    lng: 91.559778, 
+    icon: '🎭', 
+    type: 'Hall', 
+    plusCode: null,
+    subtitle: 'Auditorium & Events Arena',
+    aliases: ['town hall', 'hall', 'auditorium', 'audi', 'seminar hall', 'stage', 'th'] 
+  },
+  { 
+    name: 'Indoor Badminton Court', 
+    lat: 26.081500, 
+    lng: 91.559389, 
+    icon: '🏸', 
+    type: 'Sports', 
+    plusCode: null,
+    subtitle: 'Indoor Sports Complex',
+    aliases: ['indoor badminton court', 'badminton', 'indoor court', 'court', 'shuttle', 'badminton court', 'bad', 'indoor'] 
+  },
+  { 
+    name: 'Playground', 
+    lat: 26.080722, 
+    lng: 91.559139, 
+    icon: '⚽', 
+    type: 'Sports', 
+    plusCode: null,
+    subtitle: 'Outdoor Field & Running Track',
+    aliases: ['playground', 'ground', 'cricket', 'football', 'play ground', 'sports field', 'field', 'sports'] 
+  },
+  { 
+    name: 'IIITG Lake', 
+    lat: 26.081667, 
+    lng: 91.561000, 
+    icon: '🌊', 
+    type: 'Nature', 
+    plusCode: null,
+    subtitle: 'Campus Waterbody & Promenade',
+    aliases: ['iiitg lake', 'lake', 'pond', 'water', 'water body'] 
+  },
+  { 
+    name: 'Power House', 
+    lat: 26.082278, 
+    lng: 91.561444, 
+    icon: '⚡', 
+    type: 'Facility', 
+    plusCode: null,
+    subtitle: 'Electrical Substation & Generator Room',
+    aliases: ['power house', 'power', 'substation', 'transformer', 'generator', 'electric room', 'ph'] 
+  },
+  { 
+    name: 'Faculty Residence', 
+    lat: 26.082889, 
+    lng: 91.559639, 
+    icon: '🏘️', 
+    type: 'Residence', 
+    plusCode: null,
+    subtitle: 'Staff & Professor Housing',
+    aliases: ['faculty residence', 'faculty', 'quarters', 'residence', 'staff', 'prof quarters', 'housing'] 
+  },
+  { 
+    name: 'Iron Bridge', 
+    lat: 26.080003, 
+    lng: 91.560003, 
+    icon: '🌉', 
+    type: 'Transit', 
+    plusCode: '3HJ6+22',
+    subtitle: 'South Campus Access Bridge',
+    aliases: ['iron bridge', 'bridge', 'culvert', 'iron'] 
+  },
+  { 
+    name: 'Main Gate', 
+    lat: 26.081753, 
+    lng: 91.563255, 
+    icon: '🚪', 
+    type: 'Transit', 
+    plusCode: '3HJ7+P8H',
+    subtitle: 'Main Security Entrance & Checkpost',
+    aliases: ['main gate', 'gate', 'entrance', 'security gate', 'guard room', 'entry'] 
+  },
 ];
+
+/**
+ * Matches a query string to one of the 13 official campus landmarks.
+ * Returns the matching landmark object or null if invalid.
+ */
+export function findMatchingLandmark(query) {
+  if (!query || typeof query !== 'string') return null;
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+
+  // 1. Direct exact name match
+  for (const spot of CAMPUS_PRESETS) {
+    if (spot.name.toLowerCase() === q) return spot;
+  }
+
+  // 2. Exact alias match
+  for (const spot of CAMPUS_PRESETS) {
+    if (spot.aliases && spot.aliases.some(a => a.toLowerCase() === q)) return spot;
+  }
+
+  // 3. Prefix match on name
+  for (const spot of CAMPUS_PRESETS) {
+    if (spot.name.toLowerCase().startsWith(q)) return spot;
+  }
+
+  // 4. Word boundary / substring match
+  for (const spot of CAMPUS_PRESETS) {
+    if (spot.name.toLowerCase().includes(q)) return spot;
+    if (spot.aliases && spot.aliases.some(a => a.toLowerCase().includes(q) || q.includes(a.toLowerCase()))) return spot;
+    if (spot.plusCode && spot.plusCode.toLowerCase().includes(q)) return spot;
+  }
+
+  return null;
+}
+
+/**
+ * Returns suggestions from CAMPUS_PRESETS matching the query.
+ * If query is empty, returns all 13 locations.
+ */
+export function getLandmarkSuggestions(query) {
+  if (!query || typeof query !== 'string' || !query.trim()) {
+    return CAMPUS_PRESETS;
+  }
+  const q = query.trim().toLowerCase();
+
+  return CAMPUS_PRESETS.filter(spot => {
+    const nameMatch = spot.name.toLowerCase().includes(q);
+    const aliasMatch = spot.aliases && spot.aliases.some(a => a.toLowerCase().includes(q) || q.includes(a.toLowerCase()));
+    const plusMatch = spot.plusCode && spot.plusCode.toLowerCase().includes(q);
+    const typeMatch = spot.type && spot.type.toLowerCase().includes(q);
+    return nameMatch || aliasMatch || plusMatch || typeMatch;
+  });
+}
 
 let scriptLoadPromise = null;
 

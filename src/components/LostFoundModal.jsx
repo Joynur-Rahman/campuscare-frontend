@@ -3,6 +3,7 @@ import { X, Send, Loader2, Search, Frown, HandHeart, Camera, Globe } from 'lucid
 import { useApp } from '../context/AppContext.jsx';
 import LocationPicker from './LocationPicker.jsx';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
+import { findMatchingLandmark } from '../lib/mappls.js';
 
 // Dedicated Lost & Found posting flow — NOT the generic ticket form.
 export default function LostFoundModal({ onClose, onCreated }) {
@@ -23,8 +24,19 @@ export default function LostFoundModal({ onClose, onCreated }) {
     if (!item.trim()) return showToast('Please say what the item is.', 'warning');
     if (!place.trim()) return showToast(kind === 'found' ? 'Where did you find it?' : 'Where did you lose it?', 'warning');
     if (!phone.trim()) return showToast('Please add a contact number.', 'warning');
+
+    // Strict validation for the 13 official campus locations
+    const matchedLandmark = findMatchingLandmark(place);
+    if (!matchedLandmark) {
+      return showToast('Please select one of the 13 official campus locations (e.g. Library, Canteen, Boys Hostel...).', 'warning');
+    }
+
     setBusy(true);
     try {
+      const roomMatch = place.match(/(Room\s+[A-Za-z0-9-]+|Floor\s+\d+|Lab\s+[A-Za-z0-9-]+|Flat\s+\d+)/i);
+      const detail = roomMatch ? ` (${roomMatch[0]})` : '';
+      const finalLocation = `${matchedLandmark.name}${detail}, IIIT Guwahati Campus`;
+
       const kindWord = kind === 'found' ? 'FOUND' : 'LOST';
       const description = `[${kindWord}] ${item.trim()}` + (notes.trim() ? ` — ${notes.trim()}` : '') + (when ? ` (${when})` : '');
       let photoUrl;
@@ -32,7 +44,7 @@ export default function LostFoundModal({ onClose, onCreated }) {
       const t = await api.createTicket({
         category: 'Security', subCategory: 'Lost & found',
         categoryDisplay: `Lost & found — ${kind === 'found' ? 'Found item' : 'Lost item'}`,
-        location: place.trim(), latitude: coords?.lat, longitude: coords?.lng, description, phone: phone.trim(),
+        location: finalLocation, latitude: matchedLandmark.lat, longitude: matchedLandmark.lng, description, phone: phone.trim(),
         priority: 'Normal', urgent: false, isPublic: true, upvotes: 1,
         ...(photoUrl ? { photoUrl } : {}),
       });

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext.jsx';
 import { CATEGORIES, categoryLabel } from '../data/catalog.js';
 import LocationPicker from './LocationPicker.jsx';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
+import { findMatchingLandmark } from '../lib/mappls.js';
 
 export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null }) {
   useBodyScrollLock();
@@ -23,11 +24,22 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
     e.preventDefault();
     if (!cat || !issue) return showToast('Pick a category and the problem.', 'warning');
     if (!description.trim()) return showToast('Please describe the problem.', 'warning');
+    
+    // Strict validation for the 13 official campus locations
+    const matchedLandmark = findMatchingLandmark(location);
+    if (!matchedLandmark) {
+      return showToast('Please choose one of the 13 official campus locations (e.g. Library, Canteen, Boys Hostel...).', 'warning');
+    }
+
     setBusy(true);
     try {
+      const roomMatch = location.match(/(Room\s+[A-Za-z0-9-]+|Floor\s+\d+|Lab\s+[A-Za-z0-9-]+|Flat\s+\d+)/i);
+      const detail = roomMatch ? ` (${roomMatch[0]})` : '';
+      const finalLocation = `${matchedLandmark.name}${detail}, IIIT Guwahati Campus`;
+
       const t = await api.createTicket({
         category: cat, subCategory: issue, categoryDisplay: `${categoryLabel(cat)} — ${issue}`,
-        location: location.trim(), latitude: coords?.lat, longitude: coords?.lng,
+        location: finalLocation, latitude: matchedLandmark.lat, longitude: matchedLandmark.lng,
         description: description.trim(), phone: phone.trim(),
         priority: urgent ? 'High' : 'Normal', urgent, isPublic, upvotes: isPublic ? 1 : 0,
       });

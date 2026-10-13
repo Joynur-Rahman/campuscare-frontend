@@ -1,14 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, MapPin, ExternalLink, Navigation, Compass } from 'lucide-react';
 import { loadMapplsSdk, getMapplsKey } from '../lib/mappls.js';
 import { getTicketCoords } from '../lib/ticketUtils.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
+import { applyLeafletTileLayer } from '../lib/mapLayers.js';
 
 export default function LocationModal({ ticket, onClose }) {
   useBodyScrollLock();
   const mapContainerRef = useRef(null);
   const mapplsMapRef = useRef(null);
   const leafletMapRef = useRef(null);
+  const tileLayersRef = useRef(null);
+  const [viewMode, setViewMode] = useState('satellite');
 
   const coords = getTicketCoords(ticket);
   const lat = coords?.lat ?? (ticket?.latitude ? Number(ticket.latitude) : null);
@@ -65,10 +68,8 @@ export default function LocationModal({ ticket, onClose }) {
         const map = L.map(mapContainerRef.current).setView([lat, lng], 17);
         leafletMapRef.current = map;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '© OpenStreetMap contributors | MapmyIndia Compatible',
-        }).addTo(map);
+        // Apply high-resolution Hybrid Satellite layer by default
+        applyLeafletTileLayer(L, map, tileLayersRef, 'satellite');
 
         const customPinIcon = L.divIcon({
           className: 'modal-ticket-pin',
@@ -105,6 +106,13 @@ export default function LocationModal({ ticket, onClose }) {
     };
   }, [lat, lng, apiKey]);
 
+  function switchLayer(mode) {
+    setViewMode(mode);
+    if (leafletMapRef.current && window.L) {
+      applyLeafletTileLayer(window.L, leafletMapRef.current, tileLayersRef, mode);
+    }
+  }
+
   if (!ticket) return null;
 
   return (
@@ -128,7 +136,36 @@ export default function LocationModal({ ticket, onClose }) {
         {/* Map View */}
         <div className="relative w-full h-64 bg-slate-100 dark:bg-slate-800">
           {lat && lng ? (
-            <div ref={mapContainerRef} className="w-full h-full" />
+            <>
+              <div ref={mapContainerRef} className="w-full h-full" />
+              {/* Satellite / Street Switcher */}
+              <div className="absolute top-2.5 right-2.5 z-[400] flex items-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 text-[11px] gap-1">
+                <button
+                  type="button"
+                  onClick={() => switchLayer('satellite')}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    viewMode === 'satellite'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span>🛰️</span>
+                  <span>Satellite</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchLayer('street')}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    viewMode === 'street'
+                      ? 'bg-iiitg-800 dark:bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span>🗺️</span>
+                  <span>Street</span>
+                </button>
+              </div>
+            </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs p-6 text-center">
               <Compass className="w-8 h-8 text-slate-300 mb-2" />

@@ -2,6 +2,7 @@
 // Auth: Clerk JWT is injected automatically by client.js via setClerkGetToken.
 import { http, setToken, getToken } from './client.js';
 import { POLL_INTERVAL } from './config.js';
+import { getTicketCoords } from '../lib/ticketUtils.js';
 
 function poll(fetchFn, cb, onError, onSync) {
   let stopped = false;
@@ -54,6 +55,13 @@ function normalizeTicket(t) {
         longitude = parseFloat(locMatch[3]);
       }
     }
+  }
+
+  // Automatically resolve / fix coordinates for existing tickets
+  const resolved = getTicketCoords({ ...t, location, latitude, longitude });
+  if (resolved) {
+    latitude = resolved.lat;
+    longitude = resolved.lng;
   }
 
   let cleanDesc = t.description;
