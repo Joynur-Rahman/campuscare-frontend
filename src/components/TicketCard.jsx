@@ -79,6 +79,10 @@ export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, actio
                 <Archive className="w-3.5 h-3.5" />
                 <span>{/\[lost\]/i.test(`${t.title || ''} ${t.description || ''}`) ? 'Lost item' : 'Found item'}</span>
               </span>
+            ) : (!t.assignedToName && isResolved) ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                <span>✓ Fixed</span>
+              </span>
             ) : t.assignedToName ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eaf1ef] dark:bg-[#20405c] border border-[#d3dfdc] dark:border-[#36365f] text-[#2f4e56] dark:text-[#b3cacf] text-xs font-bold shadow-2xs">
                 <Wrench className="w-3.5 h-3.5 text-[#2f4e56] dark:text-[#b3cacf]" />
@@ -97,7 +101,9 @@ export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, actio
             )}
           </div>
 
-          {(t.upvotes || 0) > 1 && (
+          {action && !isLostFound(t) ? (
+            <div className="shrink-0">{action}</div>
+          ) : (t.upvotes || 0) > 1 && (
             <span className="inline-flex items-center gap-1.5 text-xs text-[#2f4e56] dark:text-[#b3cacf] font-bold bg-[#e3ebe9] dark:bg-[#20405c] px-2.5 py-1 rounded-full border border-[#d6ded7] dark:border-[#36365f] shrink-0">
               <Users className="w-3.5 h-3.5 text-[#2f4e56] dark:text-[#b3cacf]" />
               <span>{t.upvotes}</span>
@@ -171,9 +177,6 @@ export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, actio
 
         <div className="flex items-center justify-end gap-1.5 shrink-0 ml-auto">
           {/* Rating Option Button — ONLY shown if work is completed (fixed/resolved) or already rated */}
-          {/* Shared-issue action (Me too / Joined / Your report) sits beside the tracker */}
-          {action && !isLostFound(t) && action}
-
           {/* Rating — only after the work is fixed, and only for the reporter or people who joined */}
           {isResolved && canRate && (
             <button
