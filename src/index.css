@@ -7,8 +7,8 @@
   --palette-blue: #b3cacf;
   --palette-sage: #c5d4d3;
   --palette-stone: #d6ded7;
-  --palette-parchment: #e8e7da;
-  --palette-cream: #f9f1de;
+  --palette-parchment: #e3ebe9;
+  --palette-cream: #dfe7e5;
   --palette-ink: #1e2f33;
   --palette-navy: #2f4e56;
 
@@ -23,7 +23,7 @@ html, body, #root { height: 100%; }
 body {
   margin: 0;
   font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-  background: #f9f1de;
+  background: #dfe7e5;
   color: #1e2f33;
   -webkit-font-smoothing: antialiased;
 }
@@ -308,6 +308,13 @@ body {
 
 /* Messages drawer */
 @keyframes drawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.chat-drawer-panel {
+  animation: drawerIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform;
+}
+.chat-drawer-backdrop {
+  animation: fadeIn 0.2s ease-out both;
+}
 #messagesDrawer:not(.hidden) .drawer-panel { animation: drawerIn .28s cubic-bezier(.2,.8,.2,1) both; }
 
 /* Ticket-detail collapsible details on phones */
@@ -477,14 +484,14 @@ body {
      #b3cacf - Soft Slate Blue (Accent, Highlights, Focus, Badges)
      #c5d4d3 - Pale Sage (Borders, Active Chips, Subtle Fills)
      #d6ded7 - Stone Gray (Dividers, Borders, Input Outlines)
-     #e8e7da - Oatmeal Parchment (Secondary Containers, Table Headers)
-     #f9f1de - Warm Ivory Cream (Main Background, Canvas)
+     #e3ebe9 - Oatmeal Parchment (Secondary Containers, Table Headers)
+     #dfe7e5 - Sage Mist (Main Background, Canvas)
      #2f4e56 - Deep Forest Slate (Primary Buttons, Active Navigation)
      #1e2f33 - Deep Ink Slate (High-contrast Body & Heading Text)
    ════════════════════════════════════════════════════════════════════ */
 :root:not([data-theme="dark"]),
 html:not([data-theme="dark"]) body {
-  background-color: #f9f1de !important;
+  background-color: #dfe7e5 !important;
   color: #1e2f33 !important;
 }
 
@@ -492,15 +499,15 @@ html:not([data-theme="dark"]) body {
   /* Surfaces */
   .bg-slate-50,
   #authenticatedView {
-    background-color: #f9f1de !important;
+    background-color: #dfe7e5 !important;
   }
   .bg-slate-100 {
-    background-color: #e8e7da !important;
+    background-color: #e3ebe9 !important;
   }
   .bg-slate-50\/50,
   .bg-slate-50\/60,
   .bg-slate-100\/60 {
-    background-color: #f4eee2 !important;
+    background-color: #edf2f1 !important;
   }
   .bg-slate-200,
   .bg-slate-200\/70 {
@@ -525,7 +532,7 @@ html:not([data-theme="dark"]) body {
 
   /* Borders */
   .border-slate-100 {
-    border-color: #e8e7da !important;
+    border-color: #e3ebe9 !important;
   }
   .border-slate-200,
   .border-slate-200\/80 {
@@ -535,7 +542,7 @@ html:not([data-theme="dark"]) body {
     border-color: #c5d4d3 !important;
   }
   .divide-slate-100 > * + * {
-    border-color: #e8e7da !important;
+    border-color: #e3ebe9 !important;
   }
   .divide-slate-200 > * + * {
     border-color: #d6ded7 !important;
@@ -573,11 +580,11 @@ html:not([data-theme="dark"]) body {
     background-color: #233b41 !important;
   }
   .bg-iiitg-50 {
-    background-color: #f9f1de !important;
+    background-color: #e4ecea !important;
     color: #2f4e56 !important;
   }
   .border-iiitg-100 {
-    border-color: #e8e7da !important;
+    border-color: #e3ebe9 !important;
   }
   .text-iiitg-700 {
     color: #2f4e56 !important;
@@ -611,16 +618,16 @@ html:not([data-theme="dark"]) body {
     color: #355057 !important;
   }
   .report-table th {
-    background: #e8e7da !important;
+    background: #e3ebe9 !important;
     color: #2f4e56 !important;
     border-bottom: 2px solid #d6ded7 !important;
   }
   .report-table td {
-    border-bottom-color: #e8e7da !important;
+    border-bottom-color: #e3ebe9 !important;
     color: #1a2c30 !important;
   }
   .report-table tr:hover td {
-    background-color: #fdfaf3 !important;
+    background-color: #f3f7f6 !important;
   }
 
   /* Top Navigation Bar in Light Mode */
@@ -637,7 +644,7 @@ html:not([data-theme="dark"]) body {
     color: #355057 !important;
   }
   .chip:hover {
-    background: #e8e7da !important;
+    background: #e3ebe9 !important;
   }
   .chip.active {
     background: #2f4e56 !important;
@@ -645,7 +652,7 @@ html:not([data-theme="dark"]) body {
     color: #ffffff !important;
   }
   .chip .chip-n {
-    background: #e8e7da !important;
+    background: #e3ebe9 !important;
     color: #355057 !important;
   }
   .chip.active .chip-n {
@@ -658,7 +665,7 @@ html:not([data-theme="dark"]) body {
     color: #ffffff !important;
   }
   .filter-subpanel {
-    background-color: #f9f1de !important;
+    background-color: #eef3f2 !important;
     border-color: #d6ded7 !important;
   }
 }
@@ -959,3 +966,123 @@ html:not([data-theme="dark"]) body {
 /* Leaflet map dim in dark mode */
 [data-theme="dark"] .leaflet-tile { filter: brightness(0.85) contrast(1.1); }
 
+
+/* ════════════════════════════════════════════════════════════════════
+   WhatsApp Chat Drawer Theme
+   ════════════════════════════════════════════════════════════════════ */
+.chat-container-wa {
+  background-color: #e8eeed;
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.045'%3E%3Cpath d='M14 16a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm36 28a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM22 60h4v4h-4v-4zm36-40h4v4h-4v-4zM6 46l3 5H3l3-5zm48-26l3 5h-6l3-5zm18 40a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM34 10a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm26 62a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM10 74l2-3 2 3h-4zm52-60l2-3 2 3h-4z'/%3E%3C/g%3E%3C/svg%3E");
+}
+[data-theme="dark"] .chat-container-wa {
+  background-color: #0b141a !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M14 16a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm36 28a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM22 60h4v4h-4v-4zm36-40h4v4h-4v-4zM6 46l3 5H3l3-5zm48-26l3 5h-6l3-5zm18 40a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM34 10a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm26 62a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM10 74l2-3 2 3h-4zm52-60l2-3 2 3h-4z'/%3E%3C/g%3E%3C/svg%3E") !important;
+}
+
+/* Sent message bubble (mine) - WhatsApp Mint Green (Light) / Forest Teal (Dark) */
+.chat-bubble-sent {
+  background-color: #d9fdd3 !important;
+  color: #111b21 !important;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.12);
+}
+[data-theme="dark"] .chat-bubble-sent {
+  background-color: #005c4b !important;
+  color: #e9edef !important;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.25);
+}
+
+/* Received message bubble (!mine) - Pure Crisp White (Light) / Slate Charcoal (Dark) */
+.chat-bubble-received {
+  background-color: #ffffff !important;
+  color: #111b21 !important;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.12);
+}
+[data-theme="dark"] .chat-bubble-received {
+  background-color: #202c33 !important;
+  color: #e9edef !important;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.25);
+}
+
+/* Timestamp below messages */
+.chat-time-sent {
+  color: #667781 !important;
+  font-size: 10.5px;
+}
+[data-theme="dark"] .chat-time-sent {
+  color: #8696a0 !important;
+  font-size: 10.5px;
+}
+
+.chat-time-received {
+  color: #667781 !important;
+  font-size: 10.5px;
+}
+[data-theme="dark"] .chat-time-received {
+  color: #8696a0 !important;
+  font-size: 10.5px;
+}
+
+.chat-tick-blue {
+  color: #53bdeb !important;
+}
+
+/* Custom visible scrollbar for fixed ticket container */
+.custom-ticket-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+.custom-ticket-scrollbar::-webkit-scrollbar {
+  width: 7px;
+}
+.custom-ticket-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 9999px;
+}
+.custom-ticket-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+.custom-ticket-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+[data-theme="dark"] .custom-ticket-scrollbar {
+  scrollbar-color: #2b4969 transparent;
+}
+[data-theme="dark"] .custom-ticket-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+[data-theme="dark"] .custom-ticket-scrollbar::-webkit-scrollbar-thumb {
+  background: #2b4969;
+}
+[data-theme="dark"] .custom-ticket-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3c6591;
+}
+
+/* White badge behind the IIITG emblem — stays white in both themes */
+.logo-plate,
+[data-theme="dark"] .logo-plate { background-color: #ffffff !important; }
+
+/* ===== App canvas (light): soft sage-mist backdrop instead of flat colour ===== */
+:root:not([data-theme="dark"]) .app-canvas {
+  background-color: #dfe7e5 !important;
+  background-image:
+    radial-gradient(1200px 520px at 12% -8%, rgba(179, 202, 207, 0.55), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(197, 212, 211, 0.6), transparent 62%),
+    linear-gradient(180deg, #e2eae8 0%, #dbe4e2 100%) !important;
+  background-attachment: fixed;
+}
+[data-theme="dark"] .app-canvas {
+  background-image:
+    radial-gradient(1100px 500px at 10% -10%, rgba(82, 82, 162, 0.18), transparent 60%),
+    radial-gradient(900px 460px at 100% 0%, rgba(70, 97, 136, 0.22), transparent 62%) !important;
+  background-attachment: fixed;
+}
+/* Shared page width so the top bar and page content line up on every screen */
+.app-container { width: 100%; max-width: 1280px; margin-left: auto; margin-right: auto; }
+
+/* Ticket list: scrolls inside the panel and fits the viewport (no page overflow) */
+.ticket-scroll-area { max-height: none; }
+@media (min-width: 768px) {
+  .ticket-scroll-area { height: calc(100dvh - var(--ticket-list-offset, 314px)); min-height: 280px; }
+}

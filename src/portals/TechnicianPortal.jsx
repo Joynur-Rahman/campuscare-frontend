@@ -190,7 +190,7 @@ export default function TechnicianPortal() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+    <div className="app-container px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-3">
@@ -256,10 +256,12 @@ export default function TechnicianPortal() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-          {list.map(t => (
-            <TicketCard key={t.id} t={t} onOpen={setOpen} action={renderAction(t)} />
-          ))}
+        <div className="overflow-y-auto max-h-[calc(100vh-280px)] min-h-[420px] pr-2 -mr-1 custom-ticket-scrollbar overscroll-contain">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 pb-4">
+            {list.map(t => (
+              <TicketCard key={t.id} t={t} onOpen={setOpen} action={renderAction(t)} />
+            ))}
+          </div>
         </div>
       )}
 

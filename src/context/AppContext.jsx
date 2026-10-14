@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useUser, useAuth, useClerk } from '@clerk/react';
-import { api } from '../api';
+import { api, IS_MOCK } from '../api';
 import { setClerkGetToken, getToken, http } from '../api/client';
 
 const AppCtx = createContext(null);
@@ -32,7 +32,22 @@ export function AppProvider({ children }) {
     setClerkGetToken(getToken);
   }, [getToken]);
 
+  // Mock mode session restore
   useEffect(() => {
+    if (!IS_MOCK) return;
+    try {
+      const stored = localStorage.getItem('cc_mock_session');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUser(u);
+      }
+    } catch {}
+    setBooting(false);
+  }, []);
+
+  // Real Clerk session restore
+  useEffect(() => {
+    if (IS_MOCK) return;
     if (!authLoaded || !userLoaded) return;
 
     if (!clerkUser) {
@@ -124,12 +139,44 @@ export function AppProvider({ children }) {
     return () => clearTimeout(bootTimer);
   }, [authLoaded, userLoaded, clerkUser, signOut, showToast]);
 
+  const mockLogin = useCallback((roleKey) => {
+    if (!IS_MOCK) return;
+    const users = (api && api.getMockUsers) ? api.getMockUsers() : {};
+    const u = users[roleKey] || users.student;
+    if (u) {
+      const sessionUser = {
+        ...u,
+        role: u.role === 'admin' ? 'administrator' : u.role,
+      };
+      setUser(sessionUser);
+      try { localStorage.setItem('cc_mock_session', JSON.stringify(sessionUser)); } catch {}
+    }
+  }, []);
+
   const login = useCallback(async (payload) => {
-    // Legacy mock login support or throw error
+    if (IS_MOCK) {
+      const res = await api.login(payload);
+      if (res?.user) {
+        const u = {
+          ...res.user,
+          role: res.user.role === 'admin' ? 'administrator' : res.user.role,
+          full_name: res.user.name || res.user.full_name || 'User',
+        };
+        setUser(u);
+        try { localStorage.setItem('cc_mock_session', JSON.stringify(u)); } catch {}
+        return u;
+      }
+    }
     throw new Error('Please use the Clerk login interface.');
   }, []);
   
   const logout = useCallback(async () => {
+    if (IS_MOCK) {
+      try { await api.logout(); } catch {}
+      try { localStorage.removeItem('cc_mock_session'); } catch {}
+      setUser(null);
+      return;
+    }
     await signOut();
     setUser(null);
   }, [signOut]);
@@ -151,6 +198,6 @@ export function AppProvider({ children }) {
   }, [theme]);
   const cycleTheme = useCallback(() => setTheme(t => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto')), []);
 
-  const value = { user, setUser, booting, login, logout, theme, cycleTheme, toasts, showToast, dismissToast, api };
+  const value = { user, setUser, booting, login, logout, mockLogin, IS_MOCK, theme, cycleTheme, toasts, showToast, dismissToast, api };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

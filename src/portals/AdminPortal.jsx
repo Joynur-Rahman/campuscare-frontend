@@ -34,7 +34,7 @@ export default function AdminPortal() {
   const meta = TABS.find(t => t.key === tab);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+    <div className="app-container px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-5">
       <div>
         <h1 className="page-title">{meta.title}</h1>
         <p className="page-sub">{meta.sub}</p>

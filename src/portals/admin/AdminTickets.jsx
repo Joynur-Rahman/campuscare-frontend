@@ -53,8 +53,9 @@ export default function AdminTickets({ tickets, techs, onOpen }) {
           <p className="text-xs text-slate-400 mt-1">No tickets in this filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-          {list.map(t => (
+        <div className="overflow-y-auto max-h-[calc(100vh-280px)] min-h-[420px] pr-2 -mr-1 custom-ticket-scrollbar overscroll-contain">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 pb-4">
+            {list.map(t => (
             <TicketCard key={t.id} t={t} onOpen={onOpen} action={
               isResolved(t) ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -78,6 +79,7 @@ export default function AdminTickets({ tickets, techs, onOpen }) {
               )
             } />
           ))}
+          </div>
         </div>
       )}
     </div>

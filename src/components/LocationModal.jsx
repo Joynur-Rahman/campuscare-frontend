@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MapPin, ExternalLink, Navigation, Compass } from 'lucide-react';
 import { loadMapplsSdk, getMapplsKey } from '../lib/mappls.js';
 import { getTicketCoords } from '../lib/ticketUtils.js';
@@ -107,8 +108,8 @@ export default function LocationModal({ ticket, onClose }) {
 
   if (!ticket) return null;
 
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" onClick={onClose}>
+  const modalNode = (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs" onClick={onClose}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800 animate-fadeIn" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between bg-slate-50 dark:bg-slate-900/50">
@@ -177,6 +178,10 @@ export default function LocationModal({ ticket, onClose }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalNode, document.body)
+    : modalNode;
 }
 
 function loadLeafletLibrary() {
