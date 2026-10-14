@@ -26,6 +26,16 @@ export async function getToken() {
       }
     } catch {}
   }
+  if (typeof window !== 'undefined' && window.Clerk?.session) {
+    try {
+      const token = await window.Clerk.session.getToken();
+      if (token) {
+        _cachedToken = token;
+        _cachedTokenExpiresAt = now + 45000;
+        return token;
+      }
+    } catch {}
+  }
   try { return localStorage.getItem(TOKEN_KEY) || null; } catch { return null; }
 }
 

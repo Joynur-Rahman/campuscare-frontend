@@ -2,8 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useClerk } from '@clerk/react';
 import {
   Siren, Monitor, Moon, Sun, LogOut, User, KeyRound,
-  Bell, MessageSquare, Check, Clock, AlertCircle, Wrench, ShieldCheck, Ticket, CheckCheck,
-  Globe, ExternalLink
+  Bell, MessageSquare, Check, Clock, AlertCircle, Wrench, ShieldCheck, Ticket, CheckCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../api';
@@ -141,8 +140,68 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
       });
   }, [tickets, readNotifIds, role]);
 
-  // Messages (no synthetic/demo records)
-  const [messages, setMessages] = useState([]);
+  // ── Administrator & Ticket Messages ──
+  const [adminMsgs, setAdminMsgs] = useState([]);
+  const [msgTab, setMsgTab] = useState('tickets'); // 'tickets' | 'admin'
+  const [readAdminMsgIds, setReadAdminMsgIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('cc_read_admin_msgs');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Subscribe to live administrator messages
+  useEffect(() => {
+    if (!api?.subscribeToAdminMessages) return;
+    const unsub = api.subscribeToAdminMessages((list) => {
+      if (Array.isArray(list)) setAdminMsgs(list);
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [api]);
+
+  // Derive conversations from tickets
+  const ticketMsgs = useMemo(() => {
+    const res = [];
+    tickets.forEach(t => {
+      if (Array.isArray(t.messages) && t.messages.length > 0) {
+        const lastMsg = t.messages[t.messages.length - 1];
+        res.push({
+          id: `tmsg_${t.id}_${lastMsg.at || Date.now()}`,
+          ticketId: t.id,
+          ticketTitle: t.title || t.categoryDisplay || t.subCategory || 'Complaint',
+          sender: lastMsg.senderName || lastMsg.sender || 'Technician',
+          snippet: lastMsg.text,
+          time: formatTimeAgo(lastMsg.created_at || lastMsg.at),
+          at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0),
+          tag: `Ticket #${t.id}`,
+          unread: !readNotifIds.includes(String(t.id)),
+        });
+      }
+    });
+    return res.sort((a, b) => b.at - a.at);
+  }, [tickets, readNotifIds]);
+
+  // Format administrator messages
+  const formattedAdminMsgs = useMemo(() => {
+    return adminMsgs.map(m => ({
+      id: m.id || String(m.at),
+      title: m.title || 'Official Administrator Notice',
+      sender: m.sender || m.senderName || 'Administrator Office',
+      snippet: m.body || m.text || m.snippet || '',
+      time: formatTimeAgo(m.created_at || m.at),
+      at: m.created_at ? new Date(m.created_at).getTime() : (m.at || 0),
+      tag: m.tag || 'Official Broadcast',
+      unread: !readAdminMsgIds.includes(m.id || String(m.at)),
+    })).sort((a, b) => b.at - a.at);
+  }, [adminMsgs, readAdminMsgIds]);
+
+  const unreadAdminCount = formattedAdminMsgs.filter(m => m.unread).length;
+  const unreadTicketMsgsCount = ticketMsgs.filter(m => m.unread).length;
+  const unreadMsgsCount = unreadAdminCount + unreadTicketMsgsCount;
 
   // Close popups on click outside
   useEffect(() => {
@@ -156,8 +215,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   }, []);
 
   const unreadNotifsCount = notifs.filter(n => n.unread).length;
-  const unreadMsgsCount = messages.filter(m => m.unread).length;
-
+  
   const markAllNotifsRead = () => {
     const allIds = notifs.map(n => n.id);
     setReadNotifIds(prev => {
@@ -176,17 +234,61 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     });
   };
 
-  const markAllMsgsRead = () => setMessages(ms => ms.map(m => ({ ...m, unread: false })));
+    const markAllMsgsRead = () => {
+    const allAdminIds = formattedAdminMsgs.map(m => m.id);
+    setReadAdminMsgIds(prev => {
+      const next = Array.from(new Set([...prev, ...allAdminIds]));
+      try { localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    const allTicketIds = ticketMsgs.map(m => String(m.ticketId));
+    setReadNotifIds(prev => {
+      const next = Array.from(new Set([...prev, ...allTicketIds]));
+      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleAdminMsgClick = (id) => {
+    setReadAdminMsgIds(prev => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      try { localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleTicketMsgClick = (ticketId) => {
+    setReadNotifIds(prev => {
+      const sId = String(ticketId);
+      if (prev.includes(sId)) return prev;
+      const next = [...prev, sId];
+      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-[#262262] text-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 relative">
+      <div className="app-container px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
         {/* Brand (Left) */}
-        <div className="flex items-center gap-2.5 shrink-0 z-10">
-          <img src="/assets/img/campuscare-mark.svg" alt="" className="w-9 h-9" />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Phones: IIITG emblem sits with the brand (co-branded lockup) instead of floating in the middle */}
+          <a
+            href="https://www.iiitg.ac.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Indian Institute of Information Technology Guwahati — open official website"
+            title="Open iiitg.ac.in"
+            className="md:hidden shrink-0 rounded-lg p-0.5 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
+          >
+            <img src="/assets/img/iiitg_emblem.png" alt="" className="h-8 w-8 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+          </a>
+          <span className="md:hidden w-px h-7 bg-white/25 mx-0.5" aria-hidden="true" />
+          <img src="/assets/img/campuscare-mark.svg" alt="" className="hidden md:block w-9 h-9" />
           <div className="leading-none">
-            <span className="block text-[15px] font-extrabold tracking-tight">Campus<span className="text-iiitg-gold">Care</span></span>
-            <span className="block text-[9px] text-slate-300 uppercase font-bold mt-1 tracking-widest">{portal}</span>
+            <span className="block text-[14px] sm:text-[15px] font-extrabold tracking-tight">Campus<span className="text-iiitg-gold">Care</span></span>
+            <span className="hidden min-[400px]:block text-[8.5px] sm:text-[9px] text-slate-300 uppercase font-bold mt-1 tracking-widest">{portal}</span>
           </div>
         </div>
 
@@ -202,49 +304,38 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           </nav>
         )}
 
-        {/* ── Wide Official IIITG Logo Banner in Middle of Top Bar ── */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
-          <div
-            className="flex items-center gap-2 sm:gap-2.5 px-2.5 py-1 rounded-xl max-w-[260px] sm:max-w-md md:max-w-lg lg:max-w-xl"
+        {/* ── IIITG logo (click → official website). Phone: emblem only · tablet: + name · laptop: + Hindi line ── */}
+        <div className="hidden md:flex flex-1 min-w-0 items-center justify-center">
+          <a
+            href="https://www.iiitg.ac.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Indian Institute of Information Technology Guwahati — open official website"
+            title="Open iiitg.ac.in"
+            className="logo-plate group min-w-0 max-w-full flex items-center gap-2.5 rounded-xl pl-1.5 pr-3 py-1 shadow-sm ring-1 ring-black/5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 transition"
           >
-            {/* Static non-clickable emblem */}
-            <span className="logo-plate rounded-xl p-1 sm:p-1.5 shrink-0 shadow-sm flex items-center justify-center pointer-events-none select-none">
-              <img
-                src="/assets/img/iiitg_emblem.png"
-                alt="IIIT Guwahati"
-                className="h-7 sm:h-8 w-auto object-contain"
-              />
-            </span>
-            {/* Static non-clickable title */}
-            <div className="flex flex-col text-left leading-tight min-w-0 pointer-events-none select-none">
-              <span className="text-[11px] sm:text-[13px] md:text-sm font-extrabold text-white tracking-tight truncate">
+            {/* Tablet & laptop: whole logo on a white filled card, original colours */}
+            <img src="/assets/img/iiitg_emblem.png" alt="" className="h-9 w-9 shrink-0 object-contain group-hover:scale-105 transition-transform" />
+            <span className="hidden md:flex flex-col text-left leading-tight min-w-0">
+              <span className="lg:hidden text-[14px] font-extrabold text-[#262262] tracking-tight truncate">IIIT Guwahati</span>
+              <span className="hidden lg:block text-[13px] xl:text-sm font-extrabold text-[#262262] tracking-tight truncate">
                 Indian Institute of Information Technology Guwahati
               </span>
-              <span className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-300 tracking-tight truncate font-hindi mt-0.5">
+              <span className="hidden lg:block text-[10.5px] xl:text-[11px] font-semibold text-[#4b5563] tracking-tight truncate font-hindi mt-0.5">
                 भारतीय सूचना प्रौद्योगिकी संस्थान गुवाहाटी · Bongora, Assam
               </span>
-            </div>
-            {/* Small dedicated container button to visit official IIITG website */}
-            <a
-              href="https://www.iiitg.ac.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-1 sm:ml-2 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/15 transition-all flex items-center gap-1 group shrink-0"
-              title="Visit official IIIT Guwahati website (iiitg.ac.in)"
-            >
-              <Globe className="w-3 h-3 text-iiitg-gold group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Website</span>
-              <ExternalLink className="w-3 h-3 text-slate-300 group-hover:text-white transition-colors" />
-            </a>
-          </div>
+            </span>
+          </a>
         </div>
 
         {/* Right action controls */}
-        <div className="flex items-center gap-2.5 shrink-0 z-10">
-          {/* Theme switcher */}
-          <button onClick={cycleTheme} className="nav-icon-btn p-2 rounded-xl hover:bg-white/10 transition" title={`Theme: ${theme}`}>
-            <ThemeIcon className="w-5 h-5" />
-          </button>
+        <div className="ml-auto md:ml-0 flex items-center gap-0.5 sm:gap-1.5 shrink-0">
+          {/* Theme switcher (in the account menu on phones) */}
+          <span className="hidden sm:inline-flex">
+            <button onClick={cycleTheme} className="nav-icon-btn p-2 rounded-xl hover:bg-white/10 transition" title={`Theme: ${theme}`} aria-label={`Theme: ${theme}`}>
+              <ThemeIcon className="w-5 h-5" />
+            </button>
+          </span>
 
           {/* ── Messages Box ── */}
           <div className="relative" ref={msgRef}>
@@ -262,12 +353,13 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             </button>
 
             {msgOpen && (
-              <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 z-50 overflow-hidden animate-in fade-in duration-150">
+              <div className="fixed left-3 right-3 top-[3.75rem] max-h-[75vh] overflow-y-auto sm:overflow-visible sm:max-h-none sm:absolute sm:left-auto sm:top-auto sm:right-0 sm:mt-3 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 z-50 overflow-hidden animate-in fade-in duration-150">
+                {/* Header */}
                 <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white">Messages</span>
                     {unreadMsgsCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
                         {unreadMsgsCount} new
                       </span>
                     )}
@@ -282,40 +374,140 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                   )}
                 </div>
 
-                <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-80 overflow-y-auto">
-                  {messages.map(m => (
-                    <div
-                      key={m.id}
-                      onClick={() => setMessages(ms => ms.map(x => x.id === m.id ? { ...x, unread: false } : x))}
-                      className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${m.unread ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                        {m.sender[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{m.sender}</span>
-                          <span className="text-[10px] text-slate-400 shrink-0 font-medium">{m.time}</span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{m.snippet}</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded">
-                          {m.tag}
-                        </span>
-                      </div>
-                      {m.unread && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5" />}
-                    </div>
-                  ))}
-                  {messages.length === 0 && (
-                    <div className="py-8 px-4 text-center">
-                      <MessageSquare className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
-                      <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No messages yet</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Ticket discussions and direct messages will appear here.</p>
-                    </div>
-                  )}
+                {/* Segmented Tabs: Ticket Chats (Left) vs Administrator (Right) */}
+                <div className="p-2 bg-slate-100/70 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setMsgTab('tickets')}
+                    className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      msgTab === 'tickets'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <MessageSquare className={`w-3.5 h-3.5 ${msgTab === 'tickets' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                    <span>Ticket Chats</span>
+                    {unreadTicketMsgsCount > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-600 text-white">
+                        {unreadTicketMsgsCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMsgTab('admin')}
+                    className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      msgTab === 'admin'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <ShieldCheck className={`w-3.5 h-3.5 ${msgTab === 'admin' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                    <span>Administrator</span>
+                    {unreadAdminCount > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-600 text-white">
+                        {unreadAdminCount}
+                      </span>
+                    )}
+                  </button>
                 </div>
 
-                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 text-center">
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">All ticket conversation updates are live</span>
+                {/* Tab 1: Administrator Messages */}
+                {msgTab === 'admin' && (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-80 overflow-y-auto">
+                    {formattedAdminMsgs.map(m => (
+                      <div
+                        key={m.id}
+                        onClick={() => handleAdminMsgClick(m.id)}
+                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${
+                          m.unread ? 'bg-indigo-50/50 dark:bg-indigo-950/25 border-l-2 border-indigo-600' : ''
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-iiitg-800 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                          <ShieldCheck className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                              {m.title}
+                            </span>
+                            <span className="text-[10px] text-slate-400 shrink-0 font-medium">{m.time}</span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 mb-1">
+                            {m.sender}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                            {m.snippet}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full">
+                              🏛️ {m.tag}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">Official Dispatch</span>
+                          </div>
+                        </div>
+                        {m.unread && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5 ring-2 ring-indigo-200 dark:ring-indigo-900" />}
+                      </div>
+                    ))}
+                    {formattedAdminMsgs.length === 0 && (
+                      <div className="py-8 px-4 text-center">
+                        <ShieldCheck className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
+                        <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No Administrator Messages</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Official campus notices and administration broadcasts will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 2: Ticket Chats */}
+                {msgTab === 'tickets' && (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-80 overflow-y-auto">
+                    {ticketMsgs.map(m => (
+                      <div
+                        key={m.id}
+                        onClick={() => handleTicketMsgClick(m.ticketId)}
+                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${
+                          m.unread ? 'bg-emerald-50/50 dark:bg-emerald-950/25 border-l-2 border-emerald-600' : ''
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                          {(m.sender || 'T')[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{m.sender}</span>
+                            <span className="text-[10px] text-slate-400 shrink-0 font-medium">{m.time}</span>
+                          </div>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mb-0.5">
+                            Re: {m.ticketTitle}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                            {m.snippet}
+                          </p>
+                          <span className="inline-block mt-1.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">
+                            {m.tag}
+                          </span>
+                        </div>
+                        {m.unread && <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 mt-1.5 ring-2 ring-emerald-200 dark:ring-emerald-900" />}
+                      </div>
+                    ))}
+                    {ticketMsgs.length === 0 && (
+                      <div className="py-8 px-4 text-center">
+                        <MessageSquare className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
+                        <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No Ticket Chats</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Live messages exchanged with technicians will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 text-center flex items-center justify-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {msgTab === 'admin' ? 'Official Campus Administration Announcements' : 'All ticket conversations are synchronized'}
+                  </span>
                 </div>
               </div>
             )}
@@ -337,7 +529,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 z-50 overflow-hidden animate-in fade-in duration-150">
+              <div className="fixed left-3 right-3 top-[3.75rem] max-h-[75vh] overflow-y-auto sm:overflow-visible sm:max-h-none sm:absolute sm:left-auto sm:top-auto sm:right-0 sm:mt-3 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 z-50 overflow-hidden animate-in fade-in duration-150">
                 <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white">Notifications</span>
@@ -396,18 +588,24 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             )}
           </div>
 
-          {/* Emergency SOS button */}
-          <button onClick={() => setEmergency(true)} className="emergency-btn" title="Emergency — campus help numbers">
-            <Siren className="w-5 h-5" /><span className="emergency-btn-label">SOS</span>
+          {/* Emergency SOS Red Box Button */}
+          <button
+            onClick={() => setEmergency(true)}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs rounded-xl shadow-md shadow-rose-950/40 border border-rose-500 hover:border-rose-400 transition-all cursor-pointer active:scale-95 group ml-0.5 sm:ml-1"
+            aria-label="SOS emergency"
+            title="Emergency — campus help numbers & immediate assistance"
+          >
+            <Siren className="w-4 h-4 text-white group-hover:scale-110 transition-transform animate-pulse" />
+            <span className="hidden sm:inline tracking-wider uppercase font-black text-[12px]">SOS</span>
           </button>
 
           {/* User Profile Avatar */}
           <div className="relative ml-1" ref={menuRef}>
-            <button onClick={() => setMenu(m => !m)} className="w-9 h-9 rounded-full bg-gradient-to-tr from-iiitg-gold to-amber-300 text-iiitg-900 font-extrabold text-xs flex items-center justify-center ring-2 ring-white/20">
+            <button onClick={() => setMenu(m => !m)} aria-label="Account menu" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-iiitg-gold to-amber-300 text-iiitg-900 font-extrabold text-xs flex items-center justify-center ring-2 ring-white/20">
               {initials}
             </button>
             {menu && (
-              <div className="absolute right-0 mt-3 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 text-sm text-slate-700 dark:text-slate-200 z-50 animate-in fade-in duration-150">
+              <div className="absolute right-0 mt-3 w-60 max-w-[calc(100vw-1.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 text-sm text-slate-700 dark:text-slate-200 z-50 animate-in fade-in duration-150">
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="font-bold text-slate-900 dark:text-white block truncate flex items-center gap-2">
                     <User className="w-4 h-4 text-slate-400" />{user?.name || user?.full_name || 'User'}
@@ -419,6 +617,12 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-100 dark:border-slate-800 transition-colors"
                 >
                   <KeyRound className="w-4 h-4 text-slate-500 dark:text-slate-400" /> Account &amp; Password
+                </button>
+                <button
+                  onClick={cycleTheme}
+                  className="sm:hidden w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-100 dark:border-slate-800 transition-colors"
+                >
+                  <ThemeIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" /> Theme: <span className="capitalize">{theme}</span>
                 </button>
                 <button onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 text-rose-600 dark:text-rose-400 font-semibold transition-colors">
                   <LogOut className="w-4 h-4" /> Sign out
