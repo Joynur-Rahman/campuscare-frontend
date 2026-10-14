@@ -210,9 +210,9 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             {/* Static non-clickable emblem */}
             <span className="logo-plate rounded-xl p-1 sm:p-1.5 shrink-0 shadow-sm flex items-center justify-center pointer-events-none select-none">
               <img
-                src="/assets/img/iiitg_emblem.png"
+                src="/assets/img/iiitg_emblem_white.png"
                 alt="IIIT Guwahati"
-                className="h-7 sm:h-8 w-auto object-contain"
+                className="h-7 sm:h-8 w-auto object-contain iiitg-logo-white brightness-0 invert"
               />
             </span>
             {/* Static non-clickable title */}

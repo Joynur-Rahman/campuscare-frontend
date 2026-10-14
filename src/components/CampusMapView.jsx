@@ -516,7 +516,7 @@ export default function CampusMapView({
               onClick={() => setCategoryFilter(c.id)}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs cursor-pointer ${
                 categoryFilter === c.id 
-                  ? 'bg-iiitg-800 dark:bg-indigo-600 text-white shadow-sm' 
+                  ? 'bg-iiitg-800 text-white shadow-sm' 
                   : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
             >
@@ -658,7 +658,7 @@ export default function CampusMapView({
               title="Switch to Street Map View"
               className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                 mapViewMode === 'street'
-                  ? 'bg-iiitg-800 dark:bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-iiitg-800 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >

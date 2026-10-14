@@ -454,7 +454,7 @@ export default function StudentPortal() {
                           onClick={() => setTypeFilter(opt.key)}
                           className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
                             active
-                              ? 'bg-iiitg-800 dark:bg-blue-600 text-white border-iiitg-800 dark:border-blue-500 shadow-sm'
+                              ? 'bg-iiitg-800 text-white border-iiitg-800 shadow-sm'
                               : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
@@ -499,7 +499,7 @@ export default function StudentPortal() {
                         }}
                         className={`px-2 py-2 rounded-xl border text-xs font-bold transition-all text-center ${
                           active
-                            ? 'bg-iiitg-800 dark:bg-blue-600 text-white border-iiitg-800 dark:border-blue-500 shadow-sm'
+                            ? 'bg-iiitg-800 text-white border-iiitg-800 shadow-sm'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -629,7 +629,7 @@ export default function StudentPortal() {
                         onClick={() => setStatusFilter(opt.key)}
                         className={`px-2 py-2 rounded-xl border text-xs font-bold transition-all text-center ${
                           active
-                            ? 'bg-slate-800 dark:bg-blue-600 text-white border-slate-800 dark:border-blue-500 shadow-sm'
+                            ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -654,7 +654,7 @@ export default function StudentPortal() {
               <button
                 type="button"
                 onClick={() => setShowFilterMenu(false)}
-                className="px-4 py-2 bg-iiitg-800 hover:bg-iiitg-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+                className="px-4 py-2 bg-iiitg-800 hover:bg-iiitg-900 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
               >
                 Apply & Close
               </button>

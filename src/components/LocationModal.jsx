@@ -157,7 +157,7 @@ export default function LocationModal({ ticket, onClose }) {
                   onClick={() => switchLayer('street')}
                   className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
                     viewMode === 'street'
-                      ? 'bg-iiitg-800 dark:bg-indigo-600 text-white shadow-xs'
+                      ? 'bg-iiitg-800 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >

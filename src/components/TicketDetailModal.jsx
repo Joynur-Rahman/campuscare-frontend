@@ -149,7 +149,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
             </div>
           )}
           {cleanDescription(local.description) && (
-            <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#152d43] border border-slate-200 dark:border-[#36365f] rounded-xl p-3 leading-relaxed">
+            <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-gradient-to-b dark:from-[#161616] dark:to-[#000000] border border-slate-200 dark:border-[#262626] rounded-xl p-3 leading-relaxed">
               {cleanDescription(local.description)}
             </div>
           )}

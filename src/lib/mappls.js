@@ -52,7 +52,7 @@ export const CAMPUS_PRESETS = [
     type: 'Hostel', 
     plusCode: null,
     subtitle: 'Men Residential Blocks',
-    aliases: ['boys hostel', 'boy hostel', 'bh', 'hostel', 'room', 'b-block', 'a-block', 'boys', 'bh1', 'bh2'] 
+    aliases: ['boys hostel', 'boy hostel', 'bh', 'men hostel', 'boys', 'bh1', 'bh2', 'b-block'] 
   },
   { 
     name: 'Girls Hostel', 
@@ -62,7 +62,7 @@ export const CAMPUS_PRESETS = [
     type: 'Hostel', 
     plusCode: null,
     subtitle: 'Women Residential Block',
-    aliases: ['girls hostel', 'girl hostel', 'gh', 'women hostel', 'girls', 'gh1'] 
+    aliases: ['girls hostel', 'girl hostel', 'gh', 'women hostel', 'girls', 'gh1', 'gh2', 'g-block'] 
   },
   { 
     name: 'Town Hall', 
@@ -160,21 +160,41 @@ export function findMatchingLandmark(query) {
     if (spot.name.toLowerCase() === q) return spot;
   }
 
-  // 2. Exact alias match
+  // 2. Direct exact alias match (e.g. "gh" -> Girls Hostel, "bh" -> Boys Hostel)
   for (const spot of CAMPUS_PRESETS) {
     if (spot.aliases && spot.aliases.some(a => a.toLowerCase() === q)) return spot;
   }
 
-  // 3. Prefix match on name
+  // 3. Query contains the full official name of the spot (e.g. "Girls Hostel, IIIT Guwahati Campus")
+  // Check longer names first so specific landmarks take precedence
+  const spotsByLength = [...CAMPUS_PRESETS].sort((a, b) => b.name.length - a.name.length);
+  for (const spot of spotsByLength) {
+    if (q.includes(spot.name.toLowerCase())) return spot;
+  }
+
+  // 4. Query starts with the spot name
   for (const spot of CAMPUS_PRESETS) {
     if (spot.name.toLowerCase().startsWith(q)) return spot;
   }
 
-  // 4. Word boundary / substring match
+  // 5. Query contains alias with exact word boundaries
   for (const spot of CAMPUS_PRESETS) {
-    if (spot.name.toLowerCase().includes(q)) return spot;
-    if (spot.aliases && spot.aliases.some(a => a.toLowerCase().includes(q) || q.includes(a.toLowerCase()))) return spot;
-    if (spot.plusCode && spot.plusCode.toLowerCase().includes(q)) return spot;
+    if (spot.aliases) {
+      for (const a of spot.aliases) {
+        const al = a.toLowerCase();
+        const regex = new RegExp(`(^|[^a-z0-9])${al}([^a-z0-9]|$)`, 'i');
+        if (regex.test(q)) {
+          return spot;
+        }
+      }
+    }
+  }
+
+  // 6. Plus code match
+  for (const spot of CAMPUS_PRESETS) {
+    if (spot.plusCode && (spot.plusCode.toLowerCase() === q || q.includes(spot.plusCode.toLowerCase()))) {
+      return spot;
+    }
   }
 
   return null;
@@ -191,10 +211,14 @@ export function getLandmarkSuggestions(query) {
   const q = query.trim().toLowerCase();
 
   return CAMPUS_PRESETS.filter(spot => {
-    const nameMatch = spot.name.toLowerCase().includes(q);
-    const aliasMatch = spot.aliases && spot.aliases.some(a => a.toLowerCase().includes(q) || q.includes(a.toLowerCase()));
+    const sName = spot.name.toLowerCase();
+    const nameMatch = sName.includes(q) || q.includes(sName);
+    const aliasMatch = spot.aliases && spot.aliases.some(a => {
+      const al = a.toLowerCase();
+      return al === q || al.startsWith(q) || (q.length >= 3 && al.includes(q));
+    });
     const plusMatch = spot.plusCode && spot.plusCode.toLowerCase().includes(q);
-    const typeMatch = spot.type && spot.type.toLowerCase().includes(q);
+    const typeMatch = spot.type && spot.type.toLowerCase().startsWith(q);
     return nameMatch || aliasMatch || plusMatch || typeMatch;
   });
 }

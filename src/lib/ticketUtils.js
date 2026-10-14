@@ -75,7 +75,7 @@ export function getTicketCoords(ticket) {
   if (text.includes('badminton') || text.includes('indoor court')) {
     return { lat: 26.081500, lng: 91.559389 };
   }
-  if (text.includes('girls hostel') || text.includes('girl hostel') || text.includes("girls' hostel") || text.includes('gh')) {
+  if (text.includes('girls hostel') || text.includes('girl hostel') || text.includes("girls' hostel") || /\bgh\b/i.test(text) || text.includes('women hostel') || /\bg-block\b/i.test(text)) {
     return { lat: 26.082111, lng: 91.559444 };
   }
   if (text.includes('faculty') || text.includes('quarters') || text.includes('residence') || text.includes('staff')) {
@@ -99,7 +99,7 @@ export function getTicketCoords(ticket) {
   if (text.includes('academic') || text.includes('class') || text.includes('lab') || text.includes('a-110') || text.includes('admin') || text.includes('office')) {
     return { lat: 26.081306, lng: 91.561917 };
   }
-  if (text.includes('boys hostel') || text.includes('boy hostel') || text.includes("boys' hostel") || text.includes('hostel') || text.includes('room') || text.includes('b-block') || text.includes('a-block')) {
+  if (text.includes('boys hostel') || text.includes('boy hostel') || text.includes("boys' hostel") || /\bbh\b/i.test(text) || text.includes('men hostel') || /\bb-block\b/i.test(text)) {
     return { lat: 26.080111, lng: 91.558444 };
   }
 
