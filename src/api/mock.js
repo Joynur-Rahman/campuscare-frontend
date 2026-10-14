@@ -120,7 +120,7 @@ export function getMockTickets() {
     userName: 'Ujjwal Prakash',
     userEmail: 'ujjwal@iiitg.ac.in',
     userId: 'stu-1',
-    userPhone: '',
+    userPhone: '+91 98640 12345', // demo number
     ...o,
   });
 
@@ -610,3 +610,6 @@ export function createMockApi() {
 
 function delay(ms = 300) { return new Promise(r => setTimeout(r, ms)); }
 function sys(text) { return { sender: 'System', text, at: now(), created_at: new Date().toISOString(), isSystem: true }; }
+
+// Demo admin-office number used by the staff "Call" menu in mock mode
+export const DEMO_ADMIN_PHONE = '+91 90000 00000';

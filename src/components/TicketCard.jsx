@@ -40,7 +40,7 @@ function formatTimeAgo(ms) {
   return `${diffDay}d ago`;
 }
 
-export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, action, footerAction, canRate = true }) {
+export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, action, footerAction, headerAction, canRate = true }) {
   const t = tProp || ticketProp;
   if (!t) return null;
   const [showLocation, setShowLocation] = useState(false);
@@ -101,7 +101,9 @@ export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, actio
             )}
           </div>
 
-          {action && !isLostFound(t) ? (
+          {headerAction ? (
+            <div className="shrink-0">{headerAction}</div>
+          ) : action && !isLostFound(t) ? (
             <div className="shrink-0">{action}</div>
           ) : (t.upvotes || 0) > 1 && (
             <span className="inline-flex items-center gap-1.5 text-xs text-[#2f4e56] dark:text-[#b3cacf] font-bold bg-[#e3ebe9] dark:bg-[#20405c] px-2.5 py-1 rounded-full border border-[#d6ded7] dark:border-[#36365f] shrink-0">
@@ -179,6 +181,13 @@ export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, actio
           {/* Rating Option Button — ONLY shown if work is completed (fixed/resolved) or already rated */}
           {/* Staff action (Start work / Mark as fixed) sits beside Details & chat */}
           {footerAction}
+
+          {/* Read-only rating the reporter gave (e.g. shown to staff) */}
+          {!canRate && Number(t.rating) > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 shrink-0" title={`Rated ${t.rating}/5 by the reporter`}>
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> {t.rating}/5
+            </span>
+          )}
 
           {/* Rating — only after the work is fixed, and only for the reporter or people who joined */}
           {isResolved && canRate && (

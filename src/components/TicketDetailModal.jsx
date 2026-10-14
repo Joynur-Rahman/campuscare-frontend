@@ -37,6 +37,15 @@ function getDayString(ms) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
 }
 
+// One-tap replies for staff (sent as normal chat messages)
+const QUICK_REPLIES = [
+  'On my way 🚶',
+  'Will reach in 15 minutes',
+  'Need a spare part — will come back',
+  'Please be available at the spot',
+  'Fixed ✅ — please check and confirm',
+];
+
 // Shared ticket detail + right-hand-side drawer chat
 export default function TicketDetailModal({ ticket, onClose, action }) {
   useBodyScrollLock();
@@ -122,7 +131,10 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
 
   async function send(e) {
     e.preventDefault();
-    const body = text.trim();
+    await sendBody(text.trim());
+  }
+
+  async function sendBody(body) {
     if (!body || sending) return;
     setSending(true);
     const msg = {
@@ -333,9 +345,25 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
 
         {/* ── Locked Bottom Input Bar ── */}
         {!(role === 'student' && isResolved) && (
+          <>
+          {isStaff && (
+            <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0c1f30] border-t border-[#d9e3e1] dark:border-[#274563]">
+              {QUICK_REPLIES.map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  disabled={sending}
+                  onClick={() => sendBody(q)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white dark:bg-[#17324a] text-[#2f4e56] dark:text-[#b3cacf] border border-[#d3dfdc] dark:border-[#274563] hover:bg-[#e3ebe9] dark:hover:bg-[#1c3c59] disabled:opacity-50 transition"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
           <form
             onSubmit={send}
-            className="p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0c1f30] flex items-center gap-2 shrink-0 border-t border-[#d9e3e1] dark:border-[#274563]"
+            className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0c1f30] flex items-center gap-2 shrink-0 ${isStaff ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#274563]'}`}
           >
             <input
               value={text}
@@ -356,6 +384,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
               )}
             </button>
           </form>
+          </>
         )}
       </aside>
 

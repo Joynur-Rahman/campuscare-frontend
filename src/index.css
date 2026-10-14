@@ -1094,3 +1094,18 @@ html:not([data-theme="dark"]) body {
 @media (min-width: 768px) {
   .tech-scroll-area { max-height: calc(100dvh - var(--tech-list-offset, 428px)); min-height: 260px; }
 }
+
+/* ── One clean chevron for every dropdown (replaces the native arrow that looked out of place) ── */
+select:not([multiple]):not(.assign-select):not(.staff-view-select) {
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232f4e56' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.7rem center !important;
+  background-size: 14px 14px !important;
+  padding-right: 2.1rem !important;
+  cursor: pointer;
+}
+[data-theme="dark"] select:not([multiple]):not(.assign-select):not(.staff-view-select) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b3cacf' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+}
+select::-ms-expand { display: none; }
