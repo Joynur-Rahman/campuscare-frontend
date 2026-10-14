@@ -1086,3 +1086,11 @@ html:not([data-theme="dark"]) body {
 @media (min-width: 768px) {
   .ticket-scroll-area { height: calc(100dvh - var(--ticket-list-offset, 314px)); min-height: 280px; }
 }
+
+/* Full-screen overlays must never inherit spacing from a parent `space-y-*` (it left an un-blurred strip at the top) */
+.fixed.inset-0 { margin: 0 !important; }
+
+/* Staff work desk list: scrolls inside its panel on tablet/desktop */
+@media (min-width: 768px) {
+  .tech-scroll-area { max-height: calc(100dvh - var(--tech-list-offset, 428px)); min-height: 260px; }
+}

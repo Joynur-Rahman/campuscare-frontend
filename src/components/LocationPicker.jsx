@@ -24,7 +24,8 @@ export default function LocationPicker({
   onChange, 
   coords, 
   onCoordsChange,
-  placeholder = 'e.g. Hostel Room 214, Academic Block...' 
+  placeholder = 'e.g. Hostel Room 214, Academic Block...',
+  label = 'Issue Location *'
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [detecting, setDetecting] = useState(false);
@@ -267,7 +268,7 @@ export default function LocationPicker({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold text-slate-700">
-            Issue Location *
+            {label}
           </label>
           <div className="flex items-center gap-2">
             {/* Auto Detect Button */}
@@ -331,7 +332,7 @@ export default function LocationPicker({
       </div>
 
       {/* Preset Campus Landmarks */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px] text-slate-600">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-[11px] text-slate-600">
         <span className="text-slate-400 shrink-0 font-medium text-[10px] uppercase tracking-wider">Quick:</span>
         {CAMPUS_PRESETS.map((spot) => (
           <button

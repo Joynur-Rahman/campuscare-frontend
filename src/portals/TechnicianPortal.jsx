@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Inbox, Wrench, CheckCircle2, Loader2, Coffee, AlertCircle, X, Power, Map } from 'lucide-react';
+import { Inbox, Wrench, CheckCircle2, Loader2, Coffee, AlertCircle, X, Power, Map, Siren, CalendarDays } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
 import TicketCard from '../components/TicketCard.jsx';
@@ -8,11 +8,18 @@ import CampusMapView from '../components/CampusMapView.jsx';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 const TABS = [
-  { key: 'New', label: 'New', status: 'Pending', Icon: Inbox },
-  { key: 'Working', label: 'Working on', status: 'In Progress', Icon: Wrench },
-  { key: 'Done', label: 'Done', status: 'Resolved', Icon: CheckCircle2 },
-  { key: 'Map', label: 'Campus Map', status: 'Map', Icon: Map },
+  { key: 'New', label: 'New jobs', hint: 'Waiting to start', status: 'Pending', Icon: Inbox, tone: 'text-amber-600 bg-amber-50' },
+  { key: 'Working', label: 'Working on', hint: 'In progress', status: 'In Progress', Icon: Wrench, tone: 'text-sky-600 bg-sky-50' },
+  { key: 'Done', label: 'Done', hint: 'Fixed', status: 'Resolved', Icon: CheckCircle2, tone: 'text-emerald-600 bg-emerald-50' },
+  { key: 'Map', label: 'Campus map', hint: 'All my jobs', status: 'Map', Icon: Map, tone: 'text-violet-600 bg-violet-50' },
 ];
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function TechnicianPortal() {
   const { api, user, showToast } = useApp();
@@ -169,7 +176,7 @@ export default function TechnicianPortal() {
         <button
           disabled={busyId === t.id}
           onClick={(e) => { e.stopPropagation(); handleStartWork(t); }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-iiitg-800 hover:bg-iiitg-900 rounded-lg disabled:opacity-60 transition-colors shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-iiitg-800 hover:bg-iiitg-900 rounded-xl disabled:opacity-60 transition-colors shadow-sm shrink-0"
         >
           {busyId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5" />} Start work
         </button>
@@ -180,7 +187,7 @@ export default function TechnicianPortal() {
         <button
           disabled={busyId === t.id}
           onClick={(e) => { e.stopPropagation(); handleOpenResolve(t); }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg disabled:opacity-60 transition-colors shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl disabled:opacity-60 transition-colors shadow-sm shrink-0"
         >
           <CheckCircle2 className="w-3.5 h-3.5" /> Mark as fixed
         </button>
@@ -189,81 +196,125 @@ export default function TechnicianPortal() {
     return null;
   };
 
+  const firstName = String(user?.name || user?.full_name || user?.email?.split('@')[0] || 'there')
+    .replace(/\s*\(.*?\)\s*/g, ' ').trim().split(/\s+/)[0];
+  const roleLine = user?.dept || user?.department || user?.roleTitle || 'Campus maintenance';
+  const urgentCount = mine.filter(t => !isDone(t) && (t.priority === 'High' || t.urgent)).length;
+  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const onDuty = dutyStatus === 'On Duty';
+  const activeTab = TABS.find(t => t.key === tab);
+
   return (
-    <div className="app-container px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Work Desk</h1>
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
-                dutyStatus === 'On Duty'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border-slate-200'
-              }`}
+    <div className="app-container px-4 sm:px-6 lg:px-8 pt-3 pb-1.5 space-y-3 sm:space-y-4">
+      {/* ── Welcome banner ── */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#243b41] via-[#2f4e56] to-[#44646c] text-white shadow-[0_10px_30px_rgba(36,59,65,0.25)]">
+        <div aria-hidden="true" className="absolute -right-16 -top-20 w-64 h-64 rounded-full bg-white/5" />
+        <div aria-hidden="true" className="absolute right-24 -bottom-24 w-56 h-56 rounded-full bg-white/5" />
+        <div className="relative p-5 sm:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5" /> {today}
+            </p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {greeting()}, <span className="text-[#f2c94c]">{firstName}</span>
+            </h1>
+            <p className="mt-1 text-sm text-white/75">
+              {roleLine} · {counts.New > 0
+                ? <>You have <b className="text-white">{counts.New} new job{counts.New > 1 ? 's' : ''}</b>{counts.Working > 0 && <> and <b className="text-white">{counts.Working} in progress</b></>}.</>
+                : counts.Working > 0 ? <>You have <b className="text-white">{counts.Working} job{counts.Working > 1 ? 's' : ''} in progress</b>.</> : 'All caught up — nice work!'}
+            </p>
+            {urgentCount > 0 && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-300/40 px-2.5 py-1 text-[11.5px] font-bold text-rose-100">
+                <Siren className="w-3.5 h-3.5" /> {urgentCount} urgent job{urgentCount > 1 ? 's' : ''} need{urgentCount > 1 ? '' : 's'} attention
+              </p>
+            )}
+          </div>
+
+          {/* Duty switch */}
+          <div className="flex items-center gap-3 rounded-2xl bg-white/10 border border-white/15 px-4 py-3 shrink-0 self-start md:self-auto">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Status</p>
+              <p className="text-sm font-bold flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${onDuty ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300'}`} />
+                {dutyStatus}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={onDuty}
+              aria-label={onDuty ? 'Go off duty' : 'Go on duty'}
+              disabled={togglingDuty}
+              onClick={handleToggleDuty}
+              className={`relative w-12 h-7 rounded-full transition-colors disabled:opacity-60 ${onDuty ? 'bg-emerald-500' : 'bg-white/25'}`}
             >
-              <span className={`w-2 h-2 rounded-full ${dutyStatus === 'On Duty' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-              {dutyStatus}
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {dutyStatus === 'On Duty'
-              ? 'You are active and receiving new complaint assignments.'
-              : 'You are currently off duty. New complaints will not be assigned to you.'}
-          </p>
-        </div>
-
-        <button
-          disabled={togglingDuty}
-          onClick={handleToggleDuty}
-          className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-60 shrink-0 ${
-            dutyStatus === 'On Duty'
-              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
-              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-          }`}
-        >
-          {togglingDuty ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Power className="w-4 h-4" />
-          )}
-          {dutyStatus === 'On Duty' ? 'Go Off Duty' : 'Go On Duty'}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`panel p-4 text-left transition-all ${tab === t.key ? 'ring-2 ring-iiitg-500' : ''}`}>
-            <div className="stat-label text-slate-500 flex items-center gap-1.5"><t.Icon className="w-3.5 h-3.5" />{t.label}</div>
-            <div className="text-2xl font-extrabold text-slate-800 mt-1">{counts[t.key]}</div>
-          </button>
-        ))}
-      </div>
-
-      {tab === 'Map' ? (
-        <CampusMapView tickets={mine} onSelectTicket={setOpen} />
-      ) : loading && (!all || all.length === 0) ? (
-        <div className="text-center py-14">
-          <Loader2 className="w-6 h-6 animate-spin text-iiitg-600 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-slate-500">Retrieving tickets…</p>
-        </div>
-      ) : list.length === 0 ? (
-        <div className="text-center py-14 px-6 bg-white rounded-2xl border border-slate-200 border-dashed">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 flex items-center justify-center mb-3"><Coffee className="w-7 h-7 text-slate-300" /></div>
-          <p className="text-sm font-bold text-slate-700">Nothing in this tab right now</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {tab === 'New' ? 'New tickets assigned to you will appear here.' : tab === 'Working' ? 'Tickets you have started will appear here.' : 'Completed tickets will appear here.'}
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-y-auto max-h-[calc(100vh-280px)] min-h-[420px] pr-2 -mr-1 custom-ticket-scrollbar overscroll-contain">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 pb-4">
-            {list.map(t => (
-              <TicketCard key={t.id} t={t} onOpen={setOpen} action={renderAction(t)} />
-            ))}
+              <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow flex items-center justify-center transition-transform ${onDuty ? 'translate-x-5' : ''}`}>
+                {togglingDuty ? <Loader2 className="w-3 h-3 animate-spin text-slate-500" /> : <Power className="w-3 h-3 text-slate-500" />}
+              </span>
+            </button>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* ── Tabs with counts ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        {TABS.map(t => {
+          const on = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              aria-pressed={on}
+              className={`group flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border text-left transition ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-md' : 'bg-white/80 border-[#d3dfdc] hover:border-[#9fbcbf] hover:bg-white'}`}
+            >
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${on ? 'bg-white/15 text-white' : t.tone}`}>
+                <t.Icon className="w-5 h-5" />
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-xl font-extrabold leading-none ${on ? 'text-white' : 'text-slate-900'}`}>{counts[t.key]}</span>
+                <span className={`block text-[12px] font-bold mt-1 truncate ${on ? 'text-white/90' : 'text-slate-700'}`}>{t.label}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Job list ── */}
+      <div className="rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 bg-[#d3dfdc]/80 backdrop-blur-sm dark:bg-[#112a40]/90 border border-[#c3d2ce] dark:border-[#36365f] space-y-3">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+            {activeTab && <activeTab.Icon className="w-4 h-4 text-[#2f4e56]" />} {activeTab?.label}
+            <span className="text-xs font-semibold text-slate-500">· {activeTab?.hint}</span>
+          </h2>
+          {tab !== 'Map' && list.length > 0 && <span className="text-xs font-bold text-slate-600 bg-white/70 border border-[#c3d2ce] rounded-full px-2.5 py-0.5">{list.length}</span>}
+        </div>
+
+        {tab === 'Map' ? (
+          <CampusMapView tickets={mine} onSelectTicket={setOpen} />
+        ) : loading && (!all || all.length === 0) ? (
+          <div className="text-center py-14">
+            <Loader2 className="w-6 h-6 animate-spin text-iiitg-600 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-500">Retrieving tickets…</p>
+          </div>
+        ) : list.length === 0 ? (
+          <div className="text-center py-14 px-6 bg-white/80 rounded-2xl border border-[#c3d2ce] border-dashed">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eef3f1] flex items-center justify-center mb-3"><Coffee className="w-7 h-7 text-[#7f999f]" /></div>
+            <p className="text-sm font-bold text-slate-700">Nothing here right now</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {tab === 'New' ? 'New jobs assigned to you will appear here.' : tab === 'Working' ? 'Jobs you have started will appear here.' : 'Jobs you fix will appear here.'}
+            </p>
+          </div>
+        ) : (
+          <div className="tech-scroll-area overflow-y-auto -mx-2 px-2 -mt-1 pt-1 custom-ticket-scrollbar overscroll-contain">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-1.5">
+              {list.map(t => (
+                <TicketCard key={t.id} t={t} onOpen={setOpen} footerAction={renderAction(t)} canRate={false} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Ticket Details Modal */}
       {open && (
@@ -276,7 +327,7 @@ export default function TechnicianPortal() {
 
       {/* Resolution Remarks Modal */}
       {resolveTarget && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" onClick={() => setResolveTarget(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md" onClick={() => setResolveTarget(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">

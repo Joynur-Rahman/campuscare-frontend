@@ -40,7 +40,7 @@ function formatTimeAgo(ms) {
   return `${diffDay}d ago`;
 }
 
-export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, action, canRate = true }) {
+export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, action, footerAction, canRate = true }) {
   const t = tProp || ticketProp;
   if (!t) return null;
   const [showLocation, setShowLocation] = useState(false);
@@ -177,6 +177,9 @@ export default function TicketCard({ t: tProp, ticket: ticketProp, onOpen, actio
 
         <div className="flex items-center justify-end gap-1.5 shrink-0 ml-auto">
           {/* Rating Option Button — ONLY shown if work is completed (fixed/resolved) or already rated */}
+          {/* Staff action (Start work / Mark as fixed) sits beside Details & chat */}
+          {footerAction}
+
           {/* Rating — only after the work is fixed, and only for the reporter or people who joined */}
           {isResolved && canRate && (
             <button
