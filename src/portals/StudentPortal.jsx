@@ -95,11 +95,11 @@ export default function StudentPortal() {
   );
   const { data: all, loading } = useSubscription(subscribe, [user?.clerk_id, user?.id, user?.uid, user?.email]);
 
-  const myUid = user?.id || user?.uid;
+  const myUid = user?.clerk_id || user?.id || user?.uid;
   const myEmail = (user?.email || '').toLowerCase();
   const mineIds = useMemo(() => new Set(
     all.filter(t =>
-      (myUid && (t.userId === myUid || t.owner_id === myUid)) ||
+      (myUid && (t.userId === myUid || t.owner_id === myUid || t.clerk_id === myUid)) ||
       (myEmail && (t.userEmail || '').toLowerCase() === myEmail)
     ).map(t => t.id)
   ), [all, myUid, myEmail]);
@@ -692,7 +692,7 @@ export default function StudentPortal() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           {list.map(t => (
             <TicketCard key={t.id} t={t} onOpen={setOpen}
-              action={tab === 'Community' && t.userId !== user?.uid
+              action={tab === 'Community' && !mineIds.has(t.id)
                 ? <button onClick={() => meToo(t)} className="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg">Me too</button>
                 : null} />
           ))}
