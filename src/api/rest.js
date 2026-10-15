@@ -64,14 +64,36 @@ function normalizeTicket(t) {
     longitude = resolved.lng;
   }
 
-  let cleanDesc = t.description;
-  if (typeof cleanDesc === 'string' && cleanDesc.includes('📍 Location:')) {
-    cleanDesc = cleanDesc.replace(/\s*📍\s*Location:[\s\S]*$/, '').trim();
+  let isPublic = Boolean(t.isPublic ?? t.is_public ?? false);
+  if (!isPublic && typeof t.description === 'string') {
+    if (
+      t.description.includes('🌐 Public: true') ||
+      t.description.includes('[SHARED]') ||
+      t.description.includes('[PUBLIC]') ||
+      /lost\s*&?\s*found/i.test(t.title || '') ||
+      /lost\s*&?\s*found/i.test(t.categoryDisplay || '')
+    ) {
+      isPublic = true;
+    }
   }
+
+  let cleanDesc = t.description;
+  if (typeof cleanDesc === 'string') {
+    cleanDesc = cleanDesc
+      .replace(/\s*🌐\s*Public:\s*(true|false)/gi, '')
+      .replace(/\s*📍\s*Location:[\s\S]*$/, '')
+      .trim();
+  }
+
+  const upvotes = t.upvotes ?? (isPublic ? 1 : 0);
 
   return {
     ...t,
     description: cleanDesc,
+    isPublic,
+    is_public: isPublic,
+    upvotes,
+    upvotedBy: t.upvoted_by || t.upvotedBy || [],
     location: location || null,
     latitude: latitude || null,
     longitude: longitude || null,
@@ -173,6 +195,9 @@ export function createRestApi() {
       }
 
       let desc = p.description || '';
+      if (p.isPublic) {
+        desc = `${desc}\n\n🌐 Public: true`;
+      }
       if (p.location && !desc.includes('📍 Location:')) {
         const coordsStr = (p.latitude && p.longitude) ? ` (${Number(p.latitude).toFixed(5)}, ${Number(p.longitude).toFixed(5)})` : '';
         desc = `${desc}\n\n📍 Location: ${p.location}${coordsStr}`;
