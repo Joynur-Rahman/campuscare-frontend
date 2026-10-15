@@ -105,7 +105,7 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
 
                 {/* Thin, Sleek Circle Icon */}
                 {st.done ? (
-                  <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0 ring-2 ring-white/80 dark:ring-[#112a40]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0 ring-2 ring-white/80 dark:ring-[#101214]">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
                 ) : st.current ? (
@@ -113,7 +113,7 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
                     <Wrench className="w-2 h-2" />
                   </div>
                 ) : (
-                  <div className="w-4 h-4 rounded-full bg-white dark:bg-slate-800 border-[1.5px] border-[#bccbc9] dark:border-slate-600 text-[#6f8a8f] dark:text-slate-500 flex items-center justify-center shrink-0 ring-2 ring-white/80 dark:ring-[#112a40] text-[8px] font-bold">
+                  <div className="w-4 h-4 rounded-full bg-white dark:bg-slate-800 border-[1.5px] border-[#bccbc9] dark:border-slate-600 text-[#6f8a8f] dark:text-slate-500 flex items-center justify-center shrink-0 ring-2 ring-white/80 dark:ring-[#101214] text-[8px] font-bold">
                     ○
                   </div>
                 )}

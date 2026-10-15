@@ -4,9 +4,8 @@ A React (Vite) frontend for CampusCare, built to talk to the **FastAPI backend**
 described in `FASTAPI_API_LIST`. Icons use **lucide-react**, styling uses
 **Tailwind CSS** (with the original CampusCare design tokens).
 
-Built so you can **integrate the backend later**: the whole UI talks to one `api`
-object. That object is either an in-memory **mock** (runs standalone, no backend)
-or the live **REST client** that hits your FastAPI server. Flip one env flag.
+The whole UI talks to one `api` object: the **REST client** that calls your
+FastAPI server.
 
 ## Environment Configuration
 
@@ -19,9 +18,6 @@ cp .env.example .env
 Set your configuration values:
 
 ```env
-# Toggle mock vs live FastAPI backend
-VITE_USE_MOCK=false
-
 # FastAPI backend API URL
 VITE_API_BASE_URL=http://localhost:8000
 
@@ -60,11 +56,10 @@ docker compose up -d frontend
 ```
 src/
   api/
-    config.js     # reads VITE_USE_MOCK / VITE_API_BASE_URL
+    config.js     # reads VITE_API_BASE_URL
     client.js     # fetch wrapper (base URL, bearer token, JSON, upload)
     rest.js       # REST client — ONE method per gateway op, mapped to FastAPI routes
-    mock.js       # in-memory implementation with seed data (standalone dev)
-    index.js      # exports `api` = mock OR rest
+    index.js      # exports `api` (the REST client)
   context/AppContext.jsx   # auth session, theme, toasts
   hooks/useSubscription.js # live feed hook — each dashboard loads only its data
   components/     # LoginView, TopNav, TicketCard, TicketDetailModal, ReportModal, EmergencyModal, Toast
@@ -107,11 +102,10 @@ Live feeds poll (`POLL_INTERVAL` in `config.js`). When the backend's `/stream`
 
 ## Status
 
-Built in this pass: full API layer (mock + REST), login/landing, and the
-Student, Technician and Admin dashboards (list, report, chat, assign,
-acknowledge/resolve) running live on mock data.
+Built: REST API layer, login/landing, and the Student, Technician and Admin
+dashboards (list, report, chat, assign, acknowledge/resolve, maps, reports).
 
 Still to port from the original app: the full report wizard (map pin, photo,
 duplicate detection), admin Reports/analytics & Excel export, notices manager,
 staff management screens, and the messages drawer. These all have API methods
-ready in `rest.js`/`mock.js` — they just need their screens built.
+ready in `rest.js` — they just need their screens built.

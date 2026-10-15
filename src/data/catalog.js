@@ -17,6 +17,11 @@
 //   handledBy  who usually deals with it (shown as a hint only)
 //   onSite     true  → a campus location is needed to fix it
 //   confidential true → private complaint: never public, location optional
+//   remote     problems in an onSite category that are paperwork / office matters —
+//              no location and no campus check (can be reported from anywhere)
+//   optionalMap  (category) location + map offered but not required (fixed places like the mess)
+//   optional   problems that may be tied to a place — location + map offered, not required
+//   emergency  location is needed, but the campus check only warns — never blocks help
 //   issues     sub-categories
 
 export const GROUPS = [
@@ -31,6 +36,8 @@ export const CATEGORIES = [
   // ───────────── Maintenance & Facilities ─────────────
   {
     key: 'IT', label: 'IT & Network', group: 'Maintenance & Facilities', team: 'IT & Network Cell', onSite: true,
+    remote: ['Wi-Fi login / captive portal issue', 'Campus email / account access issue', 'ERP / student portal not working', 'Software licence or installation request'],
+    optional: ['Wi-Fi login / captive portal issue'],
     issues: [
       'Wi-Fi not working', 'Internet very slow', 'Wi-Fi login / captive portal issue', 'LAN port not working',
       'Network cable damaged', 'Campus email / account access issue', 'ERP / student portal not working',
@@ -39,6 +46,7 @@ export const CATEGORIES = [
   },
   {
     key: 'Electrical', label: 'Electrical', group: 'Maintenance & Facilities', team: 'Electrical Cell', onSite: true,
+    emergency: ['Switchboard damaged / sparking'],
     issues: [
       'Fan not working', 'Tube light / bulb not working', 'Power socket not working', 'No power in room',
       'Switchboard damaged / sparking', 'MCB keeps tripping', 'Exposed or loose wiring', 'Inverter / power backup issue',
@@ -48,6 +56,7 @@ export const CATEGORIES = [
   {
     key: 'Appliances', label: 'AC, Geyser & Appliances', group: 'Maintenance & Facilities', team: null, submitAs: 'Electrical',
     handledBy: 'Electrical Cell', onSite: true,
+    emergency: ['Lift stuck (people inside)'],
     issues: [
       'AC not cooling', 'AC leaking water', 'AC remote missing / not working', 'Geyser not working',
       'Water cooler not working', 'Water purifier (RO) not working', 'Washing machine not working',
@@ -108,6 +117,8 @@ export const CATEGORIES = [
   // ───────────── Hostel, Mess & Campus Life ─────────────
   {
     key: 'Hostel', label: 'Hostel Office', group: 'Hostel, Mess & Campus Life', team: 'Hostel Office', onSite: true,
+    remote: ['Laundry service issue', 'Room allotment / change request', 'Roommate issue', 'Guest / visitor permission', 'Hostel gate timing issue', 'Hostel warden not available', 'Hostel ID / entry card issue'],
+    optional: ['Laundry service issue', 'Hostel gate timing issue'],
     issues: [
       'Room allotment / change request', 'Roommate issue', 'Noise complaint', 'Laundry service issue',
       'Hostel gate timing issue', 'Guest / visitor permission', 'Common room / TV room issue',
@@ -115,7 +126,8 @@ export const CATEGORIES = [
     ],
   },
   {
-    key: 'Mess', label: 'Mess & Canteen', group: 'Hostel, Mess & Campus Life', team: 'Mess & Food Services', onSite: true,
+    key: 'Mess', label: 'Mess & Canteen', group: 'Hostel, Mess & Campus Life', team: 'Mess & Food Services', onSite: false, optionalMap: true,
+    remote: ['Mess timing issue', 'Mess rebate / bill issue', 'Menu not followed'],
     issues: [
       'Food quality poor', 'Food undercooked / stale', 'Insect / foreign object in food', 'Hygiene issue',
       'Menu not followed', 'Quantity not enough', 'Drinking water not available', 'Overcharging at canteen',
@@ -125,6 +137,8 @@ export const CATEGORIES = [
   {
     key: 'Library', label: 'Library', group: 'Hostel, Mess & Campus Life', team: null, submitAs: 'Other',
     handledBy: 'Central Library', onSite: true,
+    remote: ['Reading room seating', 'Book not available', 'Book issue / return problem', 'Library fine dispute', 'E-resources / journal access', 'Library timing issue'],
+    optional: ['Reading room seating'],
     issues: [
       'Book not available', 'Book issue / return problem', 'Library fine dispute', 'E-resources / journal access',
       'Reading room seating', 'Library timing issue', 'Library AC / lights / Wi-Fi',
@@ -133,6 +147,8 @@ export const CATEGORIES = [
   {
     key: 'Sports', label: 'Sports & Gym', group: 'Hostel, Mess & Campus Life', team: null, submitAs: 'Other',
     handledBy: 'Sports Office', onSite: true,
+    remote: ['Sports equipment not available', 'Facility booking issue', 'Sports room / gym timing issue'],
+    optional: ['Sports equipment not available'],
     issues: [
       'Gym equipment broken', 'Sports equipment not available', 'Ground / court not maintained',
       'Court lights not working', 'Facility booking issue', 'Sports room / gym timing issue',
@@ -140,7 +156,7 @@ export const CATEGORIES = [
   },
   {
     key: 'Transport', label: 'Transport & Bus', group: 'Hostel, Mess & Campus Life', team: null, submitAs: 'Other',
-    handledBy: 'Transport / Admin Office', onSite: false,
+    handledBy: 'Transport / Admin Office', onSite: false, optionalMap: true,
     issues: [
       'Bus late / missed', 'Bus timing change request', 'Overcrowded bus', 'Rash driving', 'Bus breakdown',
       'Bus pass issue', 'Vehicle / parking permit',
@@ -149,6 +165,7 @@ export const CATEGORIES = [
   {
     key: 'Clubs', label: 'Clubs, Fests & Events', group: 'Hostel, Mess & Campus Life', team: null, submitAs: 'Other',
     handledBy: 'Student Activity Centre', onSite: false,
+    optional: ['Venue booking issue', 'Noise from event after hours'],
     issues: [
       'Venue booking issue', 'Event permission delay', 'Club funds / reimbursement', 'Equipment for event',
       'Noise from event after hours',
@@ -225,6 +242,8 @@ export const CATEGORIES = [
   },
   {
     key: 'Security', label: 'Security & Safety', group: 'Safety, Conduct & Wellbeing', team: 'Security Office', onSite: true,
+    remote: ['Theft / item stolen', 'Lost & found', 'Alcohol / drugs on campus'],
+    optional: ['Theft / item stolen', 'Lost & found', 'Alcohol / drugs on campus'],
     issues: [
       'Theft / item stolen', 'Lost & found', 'Suspicious person on campus', 'Gate / entry problem',
       'Fight / violence', 'Fire hazard / extinguisher missing', 'Unsafe area at night', 'Alcohol / drugs on campus',
@@ -233,6 +252,9 @@ export const CATEGORIES = [
   },
   {
     key: 'Medical', label: 'Medical', group: 'Safety, Conduct & Wellbeing', team: 'Medical Centre', onSite: true,
+    remote: ['Medical centre closed / doctor absent', 'Medicine not available', 'Medical certificate / leave', 'Health insurance claim'],
+    emergency: ['Need doctor / first aid', 'Ambulance needed'],
+    optional: ['Medical centre closed / doctor absent', 'Medicine not available'],
     issues: [
       'Need doctor / first aid', 'Ambulance needed', 'Medicine not available', 'Medical centre closed / doctor absent',
       'Medical certificate / leave', 'Health insurance claim',
@@ -262,3 +284,22 @@ export const categoryLabel = (k) => BY_KEY[k]?.label || k;
 export const submitKey = (k) => BY_KEY[k]?.submitAs || k;
 export const isConfidentialCategory = (k) => Boolean(BY_KEY[k]?.confidential);
 export const needsLocation = (k) => BY_KEY[k] ? BY_KEY[k].onSite !== false : true;
+
+/**
+ * How a problem uses location:
+ *   'required' → a spot inside the campus is needed (live location checked on submit)
+ *   'optional' → a place / map can be added if it helps, but it isn't needed
+ *   'none'     → no location at all (ragging, faculty, office & paperwork matters…)
+ */
+export const locationMode = (k, issue) => {
+  const c = BY_KEY[k];
+  if (!c) return 'none';                                    // custom category
+  if ((c.optional || []).includes(issue)) return 'optional';
+  if (c.onSite === false) return c.optionalMap ? 'optional' : 'none';
+  if ((c.remote || []).includes(issue)) return 'none';
+  return 'required';
+};
+/** Does this exact problem need a campus location (and the live-location campus check)? */
+export const issueNeedsLocation = (k, issue) => locationMode(k, issue) === 'required';
+/** Emergencies: location needed, but never blocked by the campus check. */
+export const isEmergencyIssue = (k, issue) => Boolean((BY_KEY[k]?.emergency || []).includes(issue));

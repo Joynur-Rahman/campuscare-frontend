@@ -50,7 +50,9 @@ export default function RatingModal({ ticket: ticketProp, t: tProp, onClose, onR
         comment.trim()
       ].filter(Boolean).join(' — ');
 
-      if (api?.tickets?.submitFeedback) {
+      if (api?.submitFeedback) {
+        await api.submitFeedback(ticket.id, rating, fullFeedback);
+      } else if (api?.tickets?.submitFeedback) {
         await api.tickets.submitFeedback(ticket.id, rating, fullFeedback);
       }
       ticket.rating = rating;
@@ -72,11 +74,11 @@ export default function RatingModal({ ticket: ticketProp, t: tProp, onClose, onR
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-[#152d43] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-white dark:bg-[#121417] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-[#1a334d] dark:to-[#17283c] border-b border-amber-200/60 dark:border-slate-700/80 flex items-center justify-between">
+        <div className="px-5 py-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-[#17191c] dark:to-[#111215] border-b border-amber-200/60 dark:border-slate-700/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="p-2 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400">
               <Sparkles className="w-5 h-5" />

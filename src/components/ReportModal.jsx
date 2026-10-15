@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Send, Loader2, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, Users } from 'lucide-react';
+import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
-import { CATEGORIES, GROUPS, categoryLabel, getCategory, submitKey } from '../data/catalog.js';
+import { CATEGORIES, GROUPS, categoryLabel, getCategory, submitKey, locationMode, isEmergencyIssue } from '../data/catalog.js';
 import LocationPicker from './LocationPicker.jsx';
+import { readDeviceGps, distanceToCampusM, CAMPUS_TOLERANCE_M, MAX_GPS_ACCURACY_M, fmtDistance } from '../lib/campus.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 // Short names for the group tabs (full names live in the catalogue)
@@ -44,7 +45,6 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
 
   const [location, setLocation] = useState(initialLocation);
   const [coords, setCoords] = useState(initialCoords);
-  const [showLocation, setShowLocation] = useState(false);
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -56,7 +56,18 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const catInfo = isCustomCat ? null : getCategory(cat);
   const issues = catInfo?.issues || [];
   const confidential = Boolean(catInfo?.confidential);
-  const onSite = isCustomCat ? false : (catInfo ? catInfo.onSite !== false : true);
+  // Location rules come from the catalogue: physical problems need a spot inside the campus
+  // (checked against the reporter's live location); office / conduct / confidential matters
+  // such as ragging or faculty complaints need no location and can be filed from anywhere.
+  const locMode = isCustomCat ? 'none' : locationMode(cat, issue);
+  const onSite = locMode === 'required';
+  const optionalLoc = locMode === 'optional';
+  const [showLocation, setShowLocation] = useState(false);
+  const emergency = !isCustomCat && isEmergencyIssue(cat, issue);
+  const [fenceAlert, setFenceAlert] = useState(null);
+  const formRef = useRef(null);
+  useEffect(() => { setFenceAlert(null); setShowLocation(false); }, [cat]);
+  useEffect(() => { setFenceAlert(null); }, [issue]);
 
   // Free preview URLs when the modal closes
   const filesRef = useRef(files);
@@ -120,6 +131,36 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
 
     setBusy(true);
     try {
+      // Strict geofence: on-site problems need the reporter's live GPS inside the campus
+      if (onSite) {
+        let fix = null;
+        try { fix = await readDeviceGps(); }
+        catch (gpsErr) {
+          if (!emergency) {
+            setBusy(false);
+            setFenceAlert({ title: 'Live location needed', body: `${gpsErr.message} This problem can only be reported from inside the campus, so we need to confirm where you are.` });
+            return;
+          }
+        }
+        if (fix) {
+          const away = distanceToCampusM(fix.lat, fix.lng);
+          const tooVague = fix.accuracy > MAX_GPS_ACCURACY_M;
+          if (away > CAMPUS_TOLERANCE_M || tooVague) {
+            const alert = tooVague
+              ? { title: 'GPS signal too weak', body: `Your location is only accurate to ±${Math.round(fix.accuracy)} m, so we can't confirm you are on campus. Step outside or near a window and try again.` }
+              : { title: "You're outside the campus", body: `You are ${fmtDistance(away)} outside the IIIT Guwahati campus. Problems like this can only be reported from inside the campus.` };
+            if (emergency) {
+              showToast('Emergency sent even though you seem to be off campus.', 'warning');
+            } else {
+              // Strict: blocked for everyone
+              setBusy(false);
+              setFenceAlert(alert);
+              return;
+            }
+          }
+        }
+      }
+
       const pub = isPublic && !confidential;
       const t = await api.createTicket({
         // Filed under a backend-known category; the full label travels in the title
@@ -127,7 +168,8 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         subCategory: problem,
         categoryDisplay: `${catName} — ${problem}`,
         confidential,
-        location: location.trim(), latitude: coords?.lat, longitude: coords?.lng,
+        // Location is only sent for on-site problems (never for confidential / office complaints)
+        location: (onSite || optionalLoc) ? location.trim() : '', latitude: (onSite || optionalLoc) ? coords?.lat : undefined, longitude: (onSite || optionalLoc) ? coords?.lng : undefined,
         description: description.trim(), phone: phone.trim(),
         priority: urgent ? 'High' : 'Normal', urgent, isPublic: pub, upvotes: pub ? 1 : 0,
       });
@@ -164,7 +206,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
           <button type="button" onClick={onClose} aria-label="Close" className="modal-x shrink-0"><X className="w-5 h-5" /></button>
         </div>
 
-        <form onSubmit={submit} className="flex-1 min-h-0 flex flex-col">
+        <form ref={formRef} onSubmit={submit} className="flex-1 min-h-0 flex flex-col">
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-6">
           {/* ── 1. What is the problem? ── */}
           {!cat ? (
@@ -244,13 +286,13 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
             <div className="space-y-3">
               <Step n={1} title="What's the problem?" />
               {/* Selected category summary */}
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-[#c9d7d4] bg-[#eef3f1] px-3.5 py-2.5">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-[#c9d7d4] bg-[#eef3f1] dark:bg-[#15171a] dark:border-[#2a2e35] px-3.5 py-2.5">
                 <div className="min-w-0">
                   <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">Category</p>
                   <p className="text-sm font-bold text-slate-900 truncate">{isCustomCat ? 'Not listed (custom)' : catInfo?.label}</p>
                   {catInfo?.handledBy && <p className="text-[11px] text-slate-500 truncate">Handled by {catInfo.handledBy}</p>}
                 </div>
-                <button type="button" onClick={() => pickCategory('')} className="text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] px-3 py-1.5 rounded-lg shrink-0 transition">
+                <button type="button" onClick={() => pickCategory('')} className="text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] dark:bg-[#23262c] dark:text-slate-100 dark:border-[#3a3f48] dark:hover:bg-[#2c3038] dark:hover:border-[#818cf8] px-3 py-1.5 rounded-lg shrink-0 transition">
                   Change
                 </button>
               </div>
@@ -295,28 +337,45 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
             </div>
           )}
 
-          {/* ── 2. Where? ── */}
-          <div className="space-y-3">
-          <Step n={2} title="Where is it?" hint={onSite ? 'Needed so staff can reach the spot' : 'Optional for this type of complaint'} />
-          {(onSite || showLocation) ? (
-            <LocationPicker
-              value={location}
-              onChange={setLocation}
-              coords={coords}
-              onCoordsChange={setCoords}
-              label={onSite ? 'Building / room *' : 'Building / room'}
-              placeholder="e.g. Hostel Room 214, Library 2nd floor, Academic Block…"
-            />
-          ) : (
-            <button type="button" onClick={() => setShowLocation(true)} className="text-xs font-semibold text-[#2f4e56] hover:underline">
-              + Add a location (optional)
-            </button>
-          )}
-          </div>
+          {/* ── 2. Where? — required for on-site faults, optional for fixed places, hidden otherwise ── */}
+          {(onSite || optionalLoc) ? (
+            <div className="space-y-3">
+              <Step
+                n={2}
+                title="Where is it?"
+                hint={onSite
+                  ? (emergency ? 'Where help is needed — your live location is attached' : 'Must be inside the campus — your live location is checked when you submit')
+                  : 'Optional — add the place if it helps the team find it'}
+              />
+              {(onSite || showLocation) ? (
+                <LocationPicker
+                  value={location}
+                  onChange={setLocation}
+                  coords={coords}
+                  onCoordsChange={setCoords}
+                  geofence={!emergency}
+                  label={onSite ? 'Building / room *' : 'Place (optional)'}
+                  placeholder="e.g. Hostel Room 214, Hostel Mess, Library 2nd floor…"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowLocation(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] dark:bg-[#23262c] dark:text-slate-100 dark:border-[#3a3f48] dark:hover:bg-[#2c3038] dark:hover:border-[#818cf8] transition"
+                >
+                  <MapPin className="w-3.5 h-3.5" /> Add place or pick on map (optional)
+                </button>
+              )}
+            </div>
+          ) : (cat && (isCustomCat || issue || customIssue) ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] leading-snug text-emerald-900">
+              <span className="font-bold">No location needed.</span> You can send this from anywhere — your room, home or outside the campus.
+            </div>
+          ) : null)}
 
           {/* ── 3. Details ── */}
           <div className="space-y-4">
-          <Step n={3} title="Tell us more" hint="Details, photos and how to reach you" />
+          <Step n={(onSite || optionalLoc) ? 3 : 2} title="Tell us more" hint="Details, photos and how to reach you" />
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">Describe the problem *</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="What's wrong?" className={`${inputCls} resize-none`} />
@@ -380,7 +439,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
               </span>
             </label>
             {!confidential && (
-              <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-[#9fbcbf] bg-[#eef3f1]' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+              <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-[#9fbcbf] bg-[#eef3f1] dark:bg-[rgba(99,102,241,0.12)] dark:border-[#6366f1]' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
                 <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} className="mt-0.5 w-4 h-4 accent-iiitg-800 shrink-0" />
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-800"><Users className="w-3.5 h-3.5 text-[#2f4e56]" /> Shared issue</span>
@@ -390,6 +449,18 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
             )}
           </div>
         </div>
+
+        {fenceAlert && (
+          <div role="alert" className="shrink-0 mx-5 mb-2 mt-1 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-3 text-rose-900 shadow-sm">
+            <ShieldAlert className="w-5 h-5 mt-0.5 shrink-0 text-rose-600" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold">{fenceAlert.title} — ticket not submitted</p>
+              <p className="text-[12.5px] leading-snug mt-0.5">{fenceAlert.body}</p>
+              <p className="text-[11.5px] mt-1 text-rose-700">Ragging, faculty, harassment, academic and office complaints don't need a location and can be sent from anywhere.</p>
+            </div>
+            <button type="button" onClick={() => setFenceAlert(null)} className="p-1 rounded-lg hover:bg-rose-100" aria-label="Dismiss"><X className="w-4 h-4" /></button>
+          </div>
+        )}
 
         {/* Footer (always visible) */}
         <div className="shrink-0 px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center gap-3">

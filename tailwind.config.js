@@ -19,11 +19,11 @@ export default {
           navy: '#2f4e56',
         },
         darkPalette: {
-          midnight: '#112a40',
-          slateViolet: '#36365f',
-          iris: '#5252a2',
-          dusk: '#20405c',
-          steel: '#466188',
+          midnight: '#101214',
+          slateViolet: '#2a2e35',
+          iris: '#6366f1',
+          dusk: '#1d2024',
+          steel: '#40444c',
         },
         iiitg: {
           50: '#f9f1de', 100: '#e8e7da', 200: '#d6ded7', 300: '#c5d4d3',

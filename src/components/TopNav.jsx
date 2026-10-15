@@ -269,7 +269,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#262262] text-white shadow-md">
+    <header className="sticky top-0 z-[80] bg-[#262262] text-white shadow-md">
       <div className="app-container px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
         {/* Brand (Left) */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -329,24 +329,25 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         </div>
 
         {/* Right action controls */}
-        <div className="ml-auto md:ml-0 flex items-center gap-0.5 sm:gap-1.5 shrink-0">
+        <div className="ml-auto md:ml-0 flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Theme switcher (in the account menu on phones) */}
-          <span className="hidden sm:inline-flex">
-            <button onClick={cycleTheme} className="nav-icon-btn p-2 rounded-xl hover:bg-white/10 transition" title={`Theme: ${theme}`} aria-label={`Theme: ${theme}`}>
-              <ThemeIcon className="w-5 h-5" />
+          <span className="hidden sm:flex">
+            <button onClick={cycleTheme} className="cc-round-btn cc-theme-btn" title={`Theme: ${theme}`} aria-label={`Theme: ${theme}`}>
+              <ThemeIcon className="w-[18px] h-[18px]" fill={theme === 'auto' ? 'none' : 'currentColor'} strokeWidth={2.2} />
+              {theme === 'auto' && <span className="cc-theme-auto">A</span>}
             </button>
           </span>
 
           {/* ── Messages Box ── */}
-          <div className="relative" ref={msgRef}>
+          <div className="relative flex" ref={msgRef}>
             <button
               onClick={() => { setMsgOpen(o => !o); setNotifOpen(false); setMenu(false); }}
-              className="relative p-2 rounded-xl hover:bg-white/10 transition text-slate-200 hover:text-white"
+              className="relative cc-round-btn cc-msg-btn"
               title="Messages & Chats"
             >
               <MessageSquare className="w-5 h-5" />
               {unreadMsgsCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white font-black text-[9px] flex items-center justify-center ring-2 ring-[#262262]">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ff3b30] text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white">
                   {unreadMsgsCount}
                 </span>
               )}
@@ -496,7 +497,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                       <div className="py-8 px-4 text-center">
                         <MessageSquare className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
                         <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No Ticket Chats</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Live messages exchanged with technicians will appear here.</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Messages about your tickets will appear here.</p>
                       </div>
                     )}
                   </div>
@@ -514,15 +515,15 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           </div>
 
           {/* ── Notifications Box ── */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative flex" ref={notifRef}>
             <button
               onClick={() => { setNotifOpen(o => !o); setMsgOpen(false); setMenu(false); }}
-              className="relative p-2 rounded-xl hover:bg-white/10 transition text-slate-200 hover:text-white"
+              className="relative cc-round-btn cc-bell-btn"
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center ring-2 ring-[#262262]">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ff3b30] text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white">
                   {unreadNotifsCount}
                 </span>
               )}
@@ -576,7 +577,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     <div className="py-8 px-4 text-center">
                       <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2 opacity-50" />
                       <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">No notifications yet</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Real-time alerts will appear when tickets are updated.</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">You'll be notified when a ticket is updated.</p>
                     </div>
                   )}
                 </div>
@@ -591,7 +592,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           {/* Emergency SOS Red Box Button */}
           <button
             onClick={() => setEmergency(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs rounded-xl shadow-md shadow-rose-950/40 border border-rose-500 hover:border-rose-400 transition-all cursor-pointer active:scale-95 group ml-0.5 sm:ml-1"
+            className="h-[38px] min-w-[38px] px-0 sm:px-3.5 flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs rounded-full shadow-md shadow-rose-950/40 border border-rose-500 hover:border-rose-400 transition-all cursor-pointer active:scale-95 group"
             aria-label="SOS emergency"
             title="Emergency — campus help numbers & immediate assistance"
           >
@@ -600,8 +601,8 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           </button>
 
           {/* User Profile Avatar */}
-          <div className="relative ml-1" ref={menuRef}>
-            <button onClick={() => setMenu(m => !m)} aria-label="Account menu" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-iiitg-gold to-amber-300 text-iiitg-900 font-extrabold text-xs flex items-center justify-center ring-2 ring-white/20">
+          <div className="relative flex" ref={menuRef}>
+            <button onClick={() => setMenu(m => !m)} aria-label="Account menu" className="w-[38px] h-[38px] rounded-full bg-gradient-to-tr from-iiitg-gold to-amber-300 text-iiitg-900 font-extrabold text-xs flex items-center justify-center ring-2 ring-white/20">
               {initials}
             </button>
             {menu && (
@@ -634,6 +635,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
       </div>
 
       {/* Mobile tabs */}
+      {tabs.length > 0 && (
       <nav className="md:hidden flex items-center gap-1 px-3 pb-2 overflow-x-auto no-scrollbar">
         {tabs.map(t => (
           <button key={t.key} onClick={() => onTab(t.key)} className={`nav-link text-xs ${activeTab === t.key ? 'active' : ''}`}>
@@ -641,6 +643,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           </button>
         ))}
       </nav>
+      )}
 
       {emergency && <EmergencyModal onClose={() => setEmergency(false)} />}
     </header>

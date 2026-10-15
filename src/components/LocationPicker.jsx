@@ -12,12 +12,13 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { 
-  loadMapplsSdk, 
   reverseGeocode, 
   DEFAULT_CAMPUS_LOCATION, 
   CAMPUS_PRESETS,
-  getMapplsKey
+  getMapplsKey,
+  buildingLabelHtml, BUILDING_NAME_MIN_ZOOM, loadMapplsSdk, createMapplsMap, addCampusOverlay, centeredHtml, useSatelliteStyle
 } from '../lib/mappls.js';
+import { distanceToCampusM, CAMPUS_TOLERANCE_M, MAX_GPS_ACCURACY_M, fmtDistance, IIITG_CAMPUS_POLYGON, CAMPUS_LANDMARKS } from '../lib/campus.js';
 
 export default function LocationPicker({ 
   value = '', 
@@ -25,20 +26,52 @@ export default function LocationPicker({
   coords, 
   onCoordsChange,
   placeholder = 'e.g. Hostel Room 214, Academic Block...',
-  label = 'Issue Location *'
+  label = 'Issue Location *',
+  geofence = false, // true → only spots inside the IIIT Guwahati boundary are accepted
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [fenceMsg, setFenceMsg] = useState(null);
   const [detecting, setDetecting] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [detectionStatus, setDetectionStatus] = useState(null); // 'gps' | 'manual' | 'preset' | null
   const [currentCoords, setCurrentCoords] = useState(coords || DEFAULT_CAMPUS_LOCATION);
-  const [mapEngine, setMapEngine] = useState('loading'); // 'mappls' | 'fallback' | 'loading'
+  const [mapEngine, setMapEngine] = useState('loading'); // 'mappls' | 'loading' | 'error'
   const [errorMsg, setErrorMsg] = useState(null);
 
   const mapContainerRef = useRef(null);
   const mapplsMapRef = useRef(null);
   const markerRef = useRef(null);
-  const fallbackMapRef = useRef(null);
+  const stopLiveRef = useRef(null);
+  const userPickedRef = useRef(false);
+  // Strict geofence: until the reporter's own live location is confirmed inside the campus,
+  // no spot can be pinned (stops people outside campus pinning a place inside it).
+  const lockRef = useRef(geofence ? 'Checking your live location…' : null);
+  const [lockMsg, setLockMsg] = useState(lockRef.current);
+  const setLock = (m) => { lockRef.current = m; setLockMsg(m); };
+
+  // Read the reporter's live GPS once and lock / unlock pinning
+  function applyPresence(fix) {
+    if (!geofence) return;
+    const d = distanceToCampusM(fix.lat, fix.lng);
+    if (fix.accuracy > MAX_GPS_ACCURACY_M) {
+      setLock(`Your GPS is too weak (±${Math.round(fix.accuracy)} m) to confirm you are on campus. Move to an open area and tap Auto Detect.`);
+    } else if (d > CAMPUS_TOLERANCE_M) {
+      setLock(`You are ${fmtDistance(d)} outside the IIIT Guwahati campus — on-campus problems can only be pinned from inside the campus.`);
+    } else {
+      setLock(null);
+    }
+  }
+  useEffect(() => {
+    if (!geofence) { setLock(null); return; }
+    if (!navigator.geolocation) { setLock('This device cannot share its location, so a spot cannot be pinned.'); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => applyPresence({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+      (err) => setLock(err.code === 1
+        ? 'Location permission is off. Allow location access to pin where the problem is.'
+        : 'Could not get your live location. Move to an open area and tap Auto Detect.'),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  }, [geofence]);
 
   const mapplsKey = getMapplsKey();
 
@@ -49,136 +82,111 @@ export default function LocationPicker({
     }
   }, [coords]);
 
-  // Initialize MapmyIndia or Fallback Map
+  // Satellite map (Leaflet + Esri imagery — the same engine as the dashboard map).
+  // MapmyIndia's web SDK often fails to load (domain whitelisting), so it is not used here.
   useEffect(() => {
     if (!isOpen) return;
-
     let isMounted = true;
+    let watchId = null;
 
     async function initMap() {
       if (!mapContainerRef.current) return;
-
-      // Clear previous map instances if any
-      if (fallbackMapRef.current) {
-        try { fallbackMapRef.current.remove(); } catch {}
-        fallbackMapRef.current = null;
-      }
       if (mapplsMapRef.current) {
         try { mapplsMapRef.current.remove(); } catch {}
         mapplsMapRef.current = null;
       }
+      setMapEngine('loading');
+      try {
+        const mappls = await loadMapplsSdk();
+        if (!isMounted || !mapContainerRef.current) return;
+        const el = mapContainerRef.current;
+        const map = createMapplsMap(mappls, el, { center: [currentCoords.lat, currentCoords.lng], zoom: 17, zoomControl: true, location: false });
+        useSatelliteStyle(mappls, map);
+        addCampusOverlay(mappls, map, { showLabels: false });
 
-      if (mapplsKey) {
-        try {
-          const mappls = await loadMapplsSdk(mapplsKey);
-          if (!isMounted || !mapContainerRef.current) return;
+        const onReady = () => {
+          if (!isMounted) return;
+          // Building dots (names appear once zoomed in)
+          CAMPUS_LANDMARKS.forEach((lm) => {
+            try { new mappls.Marker({ map, position: { lat: lm.lat, lng: lm.lng }, html: centeredHtml(buildingLabelHtml(lm)), width: 2, height: 2, fitbounds: false }); } catch { /* skip */ }
+          });
+          const syncNames = () => { try { el.classList.toggle('cc-names-on', map.getZoom() >= BUILDING_NAME_MIN_ZOOM); } catch { /* ignore */ } };
+          syncNames();
+          try { map.on('zoomend', syncNames); } catch { /* ignore */ }
 
-          // Initialize Mappls Map
-          const map = new mappls.Map(mapContainerRef.current, {
-            center: [currentCoords.lat, currentCoords.lng],
-            zoom: 16,
-            zoomControl: true,
-            location: true,
+          // Draggable pin for the issue spot
+          const pin = new mappls.Marker({ map, position: { lat: currentCoords.lat, lng: currentCoords.lng }, html: centeredHtml('<div style="width:30px;height:30px;transform:translate(-15px,-30px)"><svg viewBox="0 0 24 24" width="30" height="30"><path fill="#e11d48" stroke="#fff" stroke-width="1.6" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg></div>'), width: 2, height: 2, draggable: true, fitbounds: false });
+          pin.addListener?.('dragend', () => {
+            const p = pin.getPosition?.();
+            if (!p) return;
+            userPickedRef.current = true;
+            handleLocationSelect({ lat: p.lat, lng: p.lng }, 'manual');
+          });
+          map.addListener?.('click', (e) => {
+            const lat = e?.lngLat?.lat ?? e?.latlng?.lat;
+            const lng = e?.lngLat?.lng ?? e?.latlng?.lng;
+            if (lat == null || lng == null) return;
+            try { pin.setPosition({ lat, lng }); } catch { /* ignore */ }
+            userPickedRef.current = true;
+            handleLocationSelect({ lat, lng }, 'manual');
           });
 
-          mapplsMapRef.current = map;
-
-          // Add draggable marker
-          const marker = new mappls.Marker({
-            map: map,
-            position: { lat: currentCoords.lat, lng: currentCoords.lng },
-            draggable: true,
-          });
-          markerRef.current = marker;
-
-          // Listen to marker dragend
-          marker.addListener('dragend', async () => {
-            const pos = marker.getPosition();
-            if (pos) {
-              const newPos = { lat: pos.lat, lng: pos.lng };
-              handleLocationSelect(newPos, 'manual');
-            }
-          });
-
-          // Listen to map click
-          map.addListener('click', async (e) => {
-            const lat = e.lngLat ? e.lngLat.lat : e.latlng?.lat;
-            const lng = e.lngLat ? e.lngLat.lng : e.latlng?.lng;
-            if (lat && lng) {
-              const newPos = { lat, lng };
-              if (markerRef.current) {
-                markerRef.current.setPosition(newPos);
-              }
-              handleLocationSelect(newPos, 'manual');
-            }
-          });
-
+          mapplsMapRef.current = {
+            setCenter: ([lat, lng]) => { try { map.setCenter({ lat, lng }); if ((map.getZoom?.() ?? 17) < 17) map.setZoom(17); } catch { /* ignore */ } },
+            remove: () => { try { map.remove(); } catch { /* ignore */ } },
+          };
+          markerRef.current = { setPosition: (pos) => { try { pin.setPosition(pos); } catch { /* ignore */ } } };
           setMapEngine('mappls');
           setErrorMsg(null);
-          return;
-        } catch (err) {
-          console.warn('Mappls SDK failed to initialize, falling back to OSM map:', err.message);
-          if (!isMounted) return;
-          setErrorMsg(err.message);
-        }
-      } else {
-        setErrorMsg('MapmyIndia Static Key is not set in .env. Using interactive OpenStreetMap fallback.');
-      }
 
-      // Fallback: Dynamically load Leaflet for an interactive backup map
-      try {
-        if (!window.L) {
-          await loadLeafletLibrary();
-        }
-        if (!isMounted || !mapContainerRef.current) return;
-
-        if (fallbackMapRef.current) {
-          try { fallbackMapRef.current.remove(); } catch {}
-          fallbackMapRef.current = null;
-        }
-        const L = window.L;
-        const map = L.map(mapContainerRef.current).setView([currentCoords.lat, currentCoords.lng], 16);
-        fallbackMapRef.current = map;
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '© OpenStreetMap contributors',
-        }).addTo(map);
-
-        const marker = L.marker([currentCoords.lat, currentCoords.lng], { draggable: true }).addTo(map);
-        markerRef.current = marker;
-
-        marker.on('dragend', () => {
-          const pos = marker.getLatLng();
-          handleLocationSelect({ lat: pos.lat, lng: pos.lng }, 'manual');
-        });
-
-        map.on('click', (e) => {
-          marker.setLatLng(e.latlng);
-          handleLocationSelect({ lat: e.latlng.lat, lng: e.latlng.lng }, 'manual');
-        });
-
-        setMapEngine('fallback');
-      } catch (fErr) {
-        console.error('Fallback map could not be loaded', fErr);
+          // Live location (blue dot); first fix auto-picks the spot if on campus
+          userPickedRef.current = false;
+          if (navigator.geolocation) {
+            let dot = null;
+            let first = true;
+            watchId = navigator.geolocation.watchPosition((pos) => {
+              if (!isMounted) return;
+              const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              applyPresence({ ...here, accuracy: pos.coords.accuracy });
+              try {
+                if (!dot) dot = new mappls.Marker({ map, position: here, html: centeredHtml('<div style="width:16px;height:16px;transform:translate(-8px,-8px);border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 4px rgba(59,130,246,.3)"></div>'), width: 2, height: 2, fitbounds: false });
+                else dot.setPosition(here);
+              } catch { /* ignore */ }
+              if (!first) return;
+              first = false;
+              if (userPickedRef.current) return;
+              if (distanceToCampusM(here.lat, here.lng) <= CAMPUS_TOLERANCE_M) {
+                try { map.setCenter({ lat: here.lat, lng: here.lng }); map.setZoom(18); pin.setPosition(here); } catch { /* ignore */ }
+                handleLocationSelect(here, 'gps');
+              } else if (geofence) {
+                setFenceMsg(`You appear to be ${fmtDistance(distanceToCampusM(here.lat, here.lng))} outside campus — the blue dot is you.`);
+              }
+            }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+          }
+        };
+        let ready = false;
+        const once = () => { if (!ready) { ready = true; onReady(); } };
+        if (map.isStyleLoaded?.()) once(); else { map.addListener?.('load', once); setTimeout(() => { if (map.isStyleLoaded?.()) once(); }, 2500); }
+        mapplsMapRef.current = { setCenter: () => {}, remove: () => { try { map.remove(); } catch { /* ignore */ } } };
+      } catch (err) {
+        console.warn('MapmyIndia map failed to load:', err?.message);
+        if (!isMounted) return;
+        setErrorMsg('MapmyIndia map could not be loaded — check your internet connection.');
         setMapEngine('error');
       }
     }
 
-    const timer = setTimeout(initMap, 100);
+    const timer = setTimeout(initMap, 80);
     return () => {
       isMounted = false;
       clearTimeout(timer);
-      if (fallbackMapRef.current) {
-        try { fallbackMapRef.current.remove(); } catch {}
-        fallbackMapRef.current = null;
-      }
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
       if (mapplsMapRef.current) {
         try { mapplsMapRef.current.remove(); } catch {}
         mapplsMapRef.current = null;
       }
     };
-  }, [isOpen, mapplsKey]);
+  }, [isOpen]);
 
   // Update map pin when currentCoords change
   function updateMapPosition(pos) {
@@ -189,18 +197,28 @@ export default function LocationPicker({
           markerRef.current.setPosition({ lat: pos.lat, lng: pos.lng });
         }
       } catch {}
-    } else if (mapEngine === 'fallback' && fallbackMapRef.current) {
-      try {
-        fallbackMapRef.current.setView([pos.lat, pos.lng], 16);
-        if (markerRef.current && markerRef.current.setLatLng) {
-          markerRef.current.setLatLng([pos.lat, pos.lng]);
-        }
-      } catch {}
     }
   }
 
   // Handle selected location & reverse geocode
   async function handleLocationSelect(pos, source = 'manual', customLabel = null) {
+    if (geofence && source !== 'gps' && lockRef.current) {
+      setFenceMsg(lockRef.current);
+      try { markerRef.current?.setPosition?.({ lat: currentCoords.lat, lng: currentCoords.lng }); } catch {}
+      return;
+    }
+    if (geofence) {
+      const d = distanceToCampusM(pos.lat, pos.lng);
+      if (d > CAMPUS_TOLERANCE_M) {
+        setFenceMsg(source === 'gps'
+          ? `You are ${fmtDistance(d)} outside the IIIT Guwahati campus. This problem can only be reported from inside the campus.`
+          : 'That spot is outside the campus boundary. Pick a place inside the yellow outline.');
+        try { markerRef.current?.setPosition?.({ lat: currentCoords.lat, lng: currentCoords.lng }); } catch {}
+        return;
+      }
+      setFenceMsg(null);
+      if (source === 'gps') setLock(null);
+    }
     setCurrentCoords(pos);
     onCoordsChange?.(pos);
     setDetectionStatus(source);
@@ -230,7 +248,7 @@ export default function LocationPicker({
   // Automatic Location Detection via Browser GPS
   function detectCurrentLocation() {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
+      setFenceMsg('This device cannot share its location.');
       return;
     }
 
@@ -256,7 +274,7 @@ export default function LocationPicker({
         } else if (err.code === err.TIMEOUT) {
           msg = 'Location request timed out. Please try again.';
         }
-        alert(msg);
+        setFenceMsg(msg);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
@@ -296,7 +314,7 @@ export default function LocationPicker({
             <button
               type="button"
               onClick={() => setIsOpen(!isOpen)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors active:scale-95 ${isOpen ? 'bg-[#2f4e56] text-white border-[#2f4e56]' : 'bg-white text-[#2f4e56] border-[#9fbcbf] hover:bg-[#eef3f1] dark:bg-[#17324a] dark:text-[#b3cacf] dark:border-[#36365f]'}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors active:scale-95 ${isOpen ? 'bg-[#2f4e56] text-white border-[#2f4e56]' : 'bg-white text-[#2f4e56] border-[#9fbcbf] hover:bg-[#eef3f1] dark:bg-[#15171a] dark:text-[#b9bec9] dark:border-[#2a2e35]'}`}
             >
               <Navigation className="w-3.5 h-3.5" />
               <span>{isOpen ? 'Hide Map' : 'Pick on Map'}</span>
@@ -353,18 +371,30 @@ export default function LocationPicker({
         ))}
       </div>
 
+      {geofence && lockMsg && !fenceMsg && (
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-900">
+          <AlertCircle className="w-4 h-4 mt-px shrink-0 text-amber-600" />
+          <span>{lockMsg}</span>
+        </div>
+      )}
+      {fenceMsg && (
+        <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] font-semibold text-rose-700">
+          {fenceMsg}
+        </div>
+      )}
+
       {/* Interactive Map Accordion */}
       {isOpen && (
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shadow-inner transition-all animate-fadeIn">
           {/* Map Status Bar */}
-          <div className="px-3 py-2 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between text-xs">
+          <div className="px-3 py-2 bg-slate-100/90 dark:bg-[#15171a] border-b border-slate-200 dark:border-[#2a2e35] flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 font-medium text-slate-700">
               <Compass className="w-3.5 h-3.5 text-indigo-600" />
               <span>
                 {mapEngine === 'mappls' ? (
-                  <span className="text-emerald-700 font-semibold">MapmyIndia (Mappls) Active</span>
+                  <span className="text-emerald-700 font-semibold">Satellite · tap to set the spot</span>
                 ) : (
-                  <span>Interactive Campus Map (Drag marker or click to place)</span>
+                  <span>{mapEngine === 'error' ? 'Map unavailable — type the place or use a quick spot' : 'Loading MapmyIndia…'}</span>
                 )}
               </span>
             </div>
@@ -389,10 +419,17 @@ export default function LocationPicker({
             style={{ minHeight: '220px' }}
           >
             <div ref={mapContainerRef} className="w-full h-full" />
+            {mapEngine === 'error' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 z-10 gap-1 text-center p-4">
+                <MapPin className="w-6 h-6 text-rose-500" />
+                <span className="text-xs font-bold text-slate-700">Map unavailable</span>
+                <span className="text-[11px] text-slate-600">{errorMsg || 'The map could not be loaded.'} You can still use GPS or type the place.</span>
+              </div>
+            )}
             {mapEngine === 'loading' && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100/80 backdrop-blur-xs z-10 gap-2 pointer-events-none">
                 <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                <span className="text-xs text-slate-600 font-medium">Loading MapmyIndia tiles…</span>
+                <span className="text-xs text-slate-600 font-medium">Loading MapmyIndia…</span>
               </div>
             )}
           </div>
@@ -413,30 +450,4 @@ export default function LocationPicker({
       )}
     </div>
   );
-}
-
-/**
- * Dynamic Leaflet Loader for fallback maps
- */
-function loadLeafletLibrary() {
-  return new Promise((resolve, reject) => {
-    if (window.L) return resolve(window.L);
-
-    // CSS
-    if (!document.querySelector('link[data-leaflet-css]')) {
-      const link = document.createElement('link');
-      link.setAttribute('data-leaflet-css', 'true');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    // JS
-    const script = document.createElement('script');
-    script.setAttribute('data-leaflet-js', 'true');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => resolve(window.L);
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
 }

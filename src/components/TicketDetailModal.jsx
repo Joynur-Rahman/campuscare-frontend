@@ -54,12 +54,18 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const [sending, setSending] = useState(false);
   // Own copy so outside updates to the ticket object can't double-append messages
   const [local, setLocal] = useState(() => (ticket ? { ...ticket, messages: [...(ticket.messages || [])] } : ticket));
+  useEffect(() => {
+    if (ticket) {
+      setLocal(prev => prev ? { ...prev, ...ticket, messages: prev.messages?.length ? prev.messages : [...(ticket.messages || [])] } : { ...ticket, messages: [...(ticket.messages || [])] });
+    }
+  }, [ticket?.id, ticket?.status, ticket?.assignedToName, ticket?.rating, ticket?.upvotes]);
+
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showRateModal, setShowRateModal] = useState(false);
   const endRef = useRef(null);
 
   const coords = getTicketCoords(local);
-  const hasLocation = Boolean(local?.location || coords);
+  const hasLocation = !local?.confidential && Boolean(local?.location || coords);
 
   const role = user?.role;
   const isAdmin = role === 'admin' || role === 'administrator';
@@ -179,15 +185,15 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
 
       {/* ── 2. Full-Length Right-Hand Drawer ── */}
       <aside
-        className="fixed top-16 right-0 bottom-0 z-[100] w-full sm:w-[470px] md:w-[500px] lg:w-[530px] max-w-full flex flex-col bg-[#e4ecea] dark:bg-[#112a40] text-slate-800 dark:text-slate-100 shadow-[-12px_0_36px_rgba(0,0,0,0.18)] border-l border-[#d9e3e1] dark:border-[#274563] chat-drawer-panel"
+        className="fixed top-16 right-0 bottom-0 z-[100] w-full sm:w-[470px] md:w-[500px] lg:w-[530px] max-w-full flex flex-col bg-[#e4ecea] dark:bg-[#101214] text-slate-800 dark:text-slate-100 shadow-[-12px_0_36px_rgba(0,0,0,0.18)] border-l border-[#d9e3e1] dark:border-[#25282e] chat-drawer-panel"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header Strip ── */}
-        <div className="px-4 sm:px-5 py-3.5 bg-[#edf2f1]/95 dark:bg-[#0e2133]/95 border-b border-[#d9e3e1] dark:border-[#274563] shrink-0 flex items-center justify-between gap-2.5">
+        <div className="px-4 sm:px-5 py-3.5 bg-[#edf2f1]/95 dark:bg-[#0e0f12]/95 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0 flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b3cacf] px-2.5 py-1 rounded-lg bg-[#e1e9e7] dark:bg-[#1e3c59] border border-[#d6ded7] dark:border-[#335678] tracking-tight shrink-0">
+            <span className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b9bec9] px-2.5 py-1 rounded-lg bg-[#e1e9e7] dark:bg-[#1b1e22] border border-[#d6ded7] dark:border-[#335678] tracking-tight shrink-0">
               #{local.id}
             </span>
             <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border shrink-0 ${statusStyle(local)}`}>
@@ -231,7 +237,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
         </div>
 
         {/* ── Context & Metadata Info Box ── */}
-        <div className="px-4 sm:px-5 py-3 bg-white/70 dark:bg-[#152e46]/70 border-b border-[#d9e3e1] dark:border-[#274563] shrink-0">
+        <div className="px-4 sm:px-5 py-3 bg-white/70 dark:bg-[#131518]/70 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0">
           <h3 className="text-sm sm:text-[15px] font-extrabold text-slate-900 dark:text-white leading-snug">
             {ticketLabel(local)}
           </h3>
@@ -248,11 +254,11 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
                 type="button"
                 onClick={() => setShowLocationModal(true)}
                 title={coords ? `GPS: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} — Click to view Map` : 'Click to view on Map'}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f4f7f6] hover:bg-[#eaf0ef] dark:bg-[#17324a] dark:hover:bg-[#1c3c59] border border-[#d9e3e1] text-slate-800 dark:text-slate-100 font-semibold cursor-pointer group shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f4f7f6] hover:bg-[#eaf0ef] dark:bg-[#15171a] dark:hover:bg-[#1b1d21] border border-[#d9e3e1] dark:border-[#2c3037] text-slate-800 dark:text-slate-100 font-semibold cursor-pointer group shadow-2xs"
               >
                 <MapPin className="w-3.5 h-3.5 text-rose-500 group-hover:scale-110 transition-transform" />
                 <span className="truncate max-w-[170px]">{local.location || 'Campus Location'}</span>
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider ml-0.5">
+                <span className="cc-map-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ml-1">
                   <Compass className="w-2.5 h-2.5" />
                   <span>Map</span>
                 </span>
@@ -260,7 +266,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
             )}
 
             {local.assignedToName && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#e1e9e7] dark:bg-[#1e3c59] border border-[#d6ded7] dark:border-[#335678] font-bold text-[#2f4e56] dark:text-[#b3cacf]">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#e1e9e7] dark:bg-[#1b1e22] border border-[#d6ded7] dark:border-[#335678] font-bold text-[#2f4e56] dark:text-[#b9bec9]">
                 <Wrench className="w-3 h-3" />
                 <span className="truncate max-w-[140px]">{local.assignedToName}</span>
               </span>
@@ -273,19 +279,41 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
           </div>
         </div>
 
+        {/* ── People (staff & admin only) ── */}
+        {(isAdmin || isStaff) && (
+          <div className="px-4 sm:px-5 py-2.5 grid grid-cols-2 gap-2 bg-white/60 dark:bg-[#111215]/70 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0 text-xs">
+            <div className="min-w-0 rounded-lg bg-[#f4f7f6] dark:bg-[#15171a] border border-[#d9e3e1] dark:border-[#25282e] px-2.5 py-1.5">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Reported by</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{local.userName || 'Student'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                {local.userPhone || local.phone
+                  ? <a href={`tel:${String(local.userPhone || local.phone).replace(/[^\d+]/g, '')}`} className="text-emerald-700 dark:text-emerald-300 font-semibold hover:underline">{local.userPhone || local.phone}</a>
+                  : (local.userEmail || 'No contact shared')}
+              </p>
+            </div>
+            <div className={`min-w-0 rounded-lg border px-2.5 py-1.5 ${local.assignedToName || local.assignedTo || local.assigned_to ? 'bg-[#f4f7f6] dark:bg-[#15171a] border-[#d9e3e1] dark:border-[#25282e]' : 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-400/30'}`}>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Assigned to</p>
+              <p className={`font-bold truncate ${local.assignedToName || local.assignedTo || local.assigned_to ? 'text-slate-800 dark:text-slate-100' : 'text-rose-700 dark:text-rose-300'}`}>
+                {local.assignedToName || (local.assignedTo || local.assigned_to ? 'Assigned' : 'Not assigned yet')}
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{local.priority === 'High' ? 'Urgent priority' : 'Normal priority'}</p>
+            </div>
+          </div>
+        )}
+
         {/* ── Lifecycle Stepper Strip ── */}
-        <div className="px-4 py-2 bg-[#edf2f1]/85 dark:bg-[#0d2235]/85 border-b border-[#d9e3e1] dark:border-[#274563] shrink-0 text-slate-900 dark:text-white">
+        <div className="px-4 py-2 bg-[#edf2f1]/85 dark:bg-[#0e1012]/85 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0 text-slate-900 dark:text-white">
           <TicketTimelineStepper ticket={local} />
         </div>
 
         {/* ── Chat Messages Scroll Feed ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#e4ecea]/70 dark:bg-[#0d1e2e]/90">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#e4ecea]/70 dark:bg-[#0d0f11]/90">
           {rawMessages.map((m, i, arr) => {
             const mine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
             if (m.isSystem) {
               return (
                 <div key={i} className="text-center py-1 select-none">
-                  <span className="inline-block text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-[#e1e9e7]/80 dark:bg-[#19354d] px-3 py-0.5 rounded-full border border-[#d2dddb] dark:border-[#274563] shadow-2xs">
+                  <span className="inline-block text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-[#e1e9e7]/80 dark:bg-[#16181c] px-3 py-0.5 rounded-full border border-[#d2dddb] dark:border-[#25282e] shadow-2xs">
                     {m.text}
                   </span>
                 </div>
@@ -300,7 +328,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
               <div key={i} className="space-y-1">
                 {showDaySeparator && (
                   <div className="flex justify-center my-2 select-none">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-[#e1e9e7] dark:bg-[#19354d] text-slate-600 dark:text-slate-300 shadow-2xs border border-[#d2dddb] dark:border-[#274563]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-[#e1e9e7] dark:bg-[#16181c] text-slate-600 dark:text-slate-300 shadow-2xs border border-[#d2dddb] dark:border-[#25282e]">
                       {currentDay}
                     </span>
                   </div>
@@ -311,7 +339,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
                     className={`max-w-[85%] sm:max-w-[80%] px-3.5 pt-2 pb-1.5 rounded-2xl text-[13px] sm:text-sm leading-relaxed relative shadow-xs ${
                       mine
                         ? 'bg-[#262262] text-white rounded-tr-xs'
-                        : 'bg-white dark:bg-[#1a3854] text-slate-800 dark:text-slate-100 rounded-tl-xs border border-[#d9e3e1] dark:border-[#274563]'
+                        : 'bg-white dark:bg-[#191b1f] text-slate-800 dark:text-slate-100 rounded-tl-xs border border-[#d9e3e1] dark:border-[#25282e]'
                     }`}
                   >
                     {!mine && (
@@ -334,7 +362,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
 
           {rawMessages.filter(m => !m.isSystem).length === 0 && (
             <div className="text-center py-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-[#18324a]/80 border border-[#d9e3e1] dark:border-[#274563] text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-[#15171a]/80 border border-[#d9e3e1] dark:border-[#25282e] text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
                 <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
                 <span>No messages yet. Send a message to start the thread.</span>
               </div>
@@ -347,14 +375,14 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
         {!(role === 'student' && isResolved) && (
           <>
           {isStaff && (
-            <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0c1f30] border-t border-[#d9e3e1] dark:border-[#274563]">
+            <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0e0f11] border-t border-[#d9e3e1] dark:border-[#25282e]">
               {QUICK_REPLIES.map(q => (
                 <button
                   key={q}
                   type="button"
                   disabled={sending}
                   onClick={() => sendBody(q)}
-                  className="shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white dark:bg-[#17324a] text-[#2f4e56] dark:text-[#b3cacf] border border-[#d3dfdc] dark:border-[#274563] hover:bg-[#e3ebe9] dark:hover:bg-[#1c3c59] disabled:opacity-50 transition"
+                  className="shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white dark:bg-[#15171a] text-[#2f4e56] dark:text-[#b9bec9] border border-[#d3dfdc] dark:border-[#25282e] hover:bg-[#e3ebe9] dark:hover:bg-[#1b1d21] disabled:opacity-50 transition"
                 >
                   {q}
                 </button>
@@ -363,13 +391,13 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
           )}
           <form
             onSubmit={send}
-            className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0c1f30] flex items-center gap-2 shrink-0 ${isStaff ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#274563]'}`}
+            className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0e0f11] flex items-center gap-2 shrink-0 ${isStaff ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#25282e]'}`}
           >
             <input
               value={text}
               onChange={e => setText(e.target.value)}
               placeholder="Type a message…"
-              className="flex-1 px-4 py-2 sm:py-2.5 rounded-full bg-white dark:bg-[#17324a] text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#262262] border border-[#d9e3e1] dark:border-[#274563] shadow-2xs transition-all"
+              className="flex-1 px-4 py-2 sm:py-2.5 rounded-full bg-white dark:bg-[#15171a] text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#262262] border border-[#d9e3e1] dark:border-[#25282e] shadow-2xs transition-all"
             />
             <button
               type="submit"

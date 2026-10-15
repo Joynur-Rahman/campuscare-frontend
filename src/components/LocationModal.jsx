@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, MapPin, ExternalLink, Navigation, Compass } from 'lucide-react';
-import { loadMapplsSdk, getMapplsKey } from '../lib/mappls.js';
+import { buildingLabelHtml, BUILDING_NAME_MIN_ZOOM, loadMapplsSdk, createMapplsMap, addCampusOverlay, centeredHtml, useSatelliteStyle } from '../lib/mappls.js';
+import { CAMPUS_LANDMARKS } from '../lib/campus.js';
 import { getTicketCoords } from '../lib/ticketUtils.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
@@ -9,84 +10,57 @@ export default function LocationModal({ ticket, onClose }) {
   useBodyScrollLock();
   const mapContainerRef = useRef(null);
   const mapplsMapRef = useRef(null);
-  const leafletMapRef = useRef(null);
+  const [mapError, setMapError] = useState('');
 
   const coords = getTicketCoords(ticket);
   const lat = coords?.lat ?? (ticket?.latitude ? Number(ticket.latitude) : null);
   const lng = coords?.lng ?? (ticket?.longitude ? Number(ticket.longitude) : null);
   const address = ticket?.location || 'Campus Location';
-  const apiKey = getMapplsKey();
 
   useEffect(() => {
     if (!lat || !lng || !mapContainerRef.current) return;
     let isMounted = true;
+    let stopLive = null;
 
+    let watchId = null;
+    // MapmyIndia map with the ticket's pin, campus boundary and building markers
     async function init() {
-      // 1. Try MapmyIndia (Mappls)
-      if (apiKey) {
-        try {
-          const mappls = await loadMapplsSdk(apiKey);
-          if (!isMounted || !mapContainerRef.current) return;
-
-          const map = new mappls.Map(mapContainerRef.current, {
-            center: [lat, lng],
-            zoom: 17,
-            zoomControl: true,
-            location: true,
-          });
-          mapplsMapRef.current = map;
-
-          new mappls.Marker({
-            map,
-            position: { lat, lng },
-          });
-          return;
-        } catch (err) {
-          console.warn('Mappls SDK failed in LocationModal, using fallback', err);
-        }
-      }
-
-      // 2. High-reliability fallback (Leaflet / OSM)
       try {
-        if (!window.L) {
-          await loadLeafletLibrary();
-        }
+        const mappls = await loadMapplsSdk();
         if (!isMounted || !mapContainerRef.current) return;
-
-        const L = window.L;
-        if (L.Icon?.Default) {
-          delete L.Icon.Default.prototype._getIconUrl;
-          L.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        const el = mapContainerRef.current;
+        const map = createMapplsMap(mappls, el, { center: [lat, lng], zoom: 18, zoomControl: true, location: false });
+        mapplsMapRef.current = map;
+        useSatelliteStyle(mappls, map);
+        addCampusOverlay(mappls, map, { showLabels: false });
+        const onReady = () => {
+          if (!isMounted) return;
+          CAMPUS_LANDMARKS.forEach((lm) => {
+            try { new mappls.Marker({ map, position: { lat: lm.lat, lng: lm.lng }, html: centeredHtml(buildingLabelHtml(lm)), width: 2, height: 2, fitbounds: false }); } catch { /* skip */ }
           });
-        }
-
-        const map = L.map(mapContainerRef.current).setView([lat, lng], 17);
-        leafletMapRef.current = map;
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '© OpenStreetMap contributors | MapmyIndia Compatible',
-        }).addTo(map);
-
-        const customPinIcon = L.divIcon({
-          className: 'modal-ticket-pin',
-          html: `
-            <div style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));">
-              <div style="background-color: #ef4444; width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff;">
-                <span style="transform: rotate(45deg); font-size: 14px;">📍</span>
-              </div>
-            </div>
-          `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 32],
-        });
-
-        L.marker([lat, lng], { icon: customPinIcon }).addTo(map);
-      } catch (fErr) {
-        console.error('Leaflet fallback error in LocationModal', fErr);
+          const syncNames = () => { try { el.classList.toggle('cc-names-on', map.getZoom() >= BUILDING_NAME_MIN_ZOOM); } catch { /* ignore */ } };
+          syncNames();
+          try { map.on('zoomend', syncNames); } catch { /* ignore */ }
+          try { new mappls.Marker({ map, position: { lat, lng }, html: centeredHtml('<div style="width:30px;height:30px;transform:translate(-15px,-30px)"><svg viewBox="0 0 24 24" width="30" height="30"><path fill="#e11d48" stroke="#fff" stroke-width="1.6" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg></div>'), width: 2, height: 2, fitbounds: false }); } catch { /* ignore */ }
+          if (navigator.geolocation) {
+            let dot = null;
+            watchId = navigator.geolocation.watchPosition((p) => {
+              if (!isMounted) return;
+              const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+              try {
+                if (!dot) dot = new mappls.Marker({ map, position: here, html: centeredHtml('<div style="width:16px;height:16px;transform:translate(-8px,-8px);border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 4px rgba(59,130,246,.3)"></div>'), width: 2, height: 2, fitbounds: false });
+                else dot.setPosition(here);
+              } catch { /* ignore */ }
+            }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+          }
+          stopLive = () => { if (watchId != null) navigator.geolocation.clearWatch(watchId); };
+        };
+        let ready = false;
+        const once = () => { if (!ready) { ready = true; onReady(); } };
+        if (map.isStyleLoaded?.()) once(); else { map.addListener?.('load', once); setTimeout(() => { if (map.isStyleLoaded?.()) once(); }, 2500); }
+      } catch (err) {
+        console.warn('MapmyIndia map failed to load', err);
+        if (isMounted) setMapError('MapmyIndia map could not be loaded — check your internet connection.');
       }
     }
 
@@ -95,16 +69,13 @@ export default function LocationModal({ ticket, onClose }) {
     return () => {
       isMounted = false;
       clearTimeout(timer);
-      if (leafletMapRef.current) {
-        try { leafletMapRef.current.remove(); } catch {}
-        leafletMapRef.current = null;
-      }
+      stopLive?.();
       if (mapplsMapRef.current) {
         try { mapplsMapRef.current.remove(); } catch {}
         mapplsMapRef.current = null;
       }
     };
-  }, [lat, lng, apiKey]);
+  }, [lat, lng]);
 
   if (!ticket) return null;
 
@@ -129,7 +100,16 @@ export default function LocationModal({ ticket, onClose }) {
         {/* Map View */}
         <div className="relative w-full h-64 bg-slate-100 dark:bg-slate-800">
           {lat && lng ? (
-            <div ref={mapContainerRef} className="w-full h-full" />
+            <>
+              <div ref={mapContainerRef} className="w-full h-full" />
+              {mapError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center p-6 bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300">
+                  <MapPin className="w-7 h-7 text-rose-500" />
+                  <span className="font-bold">Map unavailable</span>
+                  <span>{mapError}</span>
+                </div>
+              )}
+            </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs p-6 text-center">
               <Compass className="w-8 h-8 text-slate-300 mb-2" />
@@ -182,25 +162,4 @@ export default function LocationModal({ ticket, onClose }) {
   return typeof document !== 'undefined'
     ? createPortal(modalNode, document.body)
     : modalNode;
-}
-
-function loadLeafletLibrary() {
-  return new Promise((resolve, reject) => {
-    if (window.L) return resolve(window.L);
-
-    if (!document.querySelector('link[data-leaflet-css]')) {
-      const link = document.createElement('link');
-      link.setAttribute('data-leaflet-css', 'true');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    const script = document.createElement('script');
-    script.setAttribute('data-leaflet-js', 'true');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => resolve(window.L);
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
 }
