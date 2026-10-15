@@ -117,7 +117,11 @@ export default function LoginView() {
           <div className="lg:col-span-6 max-w-md mx-auto w-full">
             <div className="glass-login-card rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
               <div className="p-6 sm:p-7 flex justify-center items-center min-h-[400px]">
-                <SignIn routing="hash" />
+                <SignIn
+                  routing="hash"
+                  fallbackRedirectUrl="/"
+                  forceRedirectUrl="/"
+                />
               </div>
             </div>
           </div>
