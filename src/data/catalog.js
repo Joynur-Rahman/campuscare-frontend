@@ -271,7 +271,7 @@ export const CATEGORIES = [
 
   // ───────────── Other ─────────────
   {
-    key: 'Other', label: 'Something else', group: 'Other', team: null, onSite: false,
+    key: 'Other', label: 'Something else', group: 'Other', team: 'Other', onSite: false,
     issues: ['Suggestion / feedback', 'General complaint', 'Something else (describe it in the details)'],
   },
 ];

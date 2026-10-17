@@ -179,20 +179,26 @@ export function createRestApi() {
       let deptId = p.department_id ?? p.department;
       
       // Resolve string IDs to UUIDs by fetching from the backend
-      if (catId && !catId.includes('-')) {
+      if (!catId || !catId.includes('-') || !deptId || !deptId.includes('-')) {
         try {
           const depts = await http.get('/api/departments');
           const { CATEGORIES } = await import('../data/catalog.js');
           const catObj = CATEGORIES.find(c => c.key === catId);
-          if (catObj) {
-            const team = catObj.team;
-            const dept = depts.find(d => d.name === team);
-            if (dept) {
-              deptId = dept.id;
-              const cats = await http.get(`/api/departments/${encodeURIComponent(dept.id)}/categories`);
-              const catRow = cats.find(c => c.name === catId);
-              if (catRow) catId = catRow.id;
-            }
+          const targetKey = catObj?.submitAs || catId || 'Other';
+          const resolvedObj = CATEGORIES.find(c => c.key === targetKey) || catObj;
+          const team = resolvedObj?.team || 'Other';
+
+          const dept = (Array.isArray(depts) ? depts : []).find(d => d.name === team)
+            || (Array.isArray(depts) ? depts : []).find(d => d.name === 'Other')
+            || (Array.isArray(depts) && depts.length ? depts[0] : null);
+
+          if (dept) {
+            deptId = dept.id;
+            const cats = await http.get(`/api/departments/${encodeURIComponent(dept.id)}/categories`);
+            const catList = Array.isArray(cats) ? cats : [];
+            const catRow = catList.find(c => c.name === catId || c.name === targetKey || c.name === 'Other')
+              || catList[0];
+            if (catRow) catId = catRow.id;
           }
         } catch (e) {
           console.error('Failed to resolve category/department UUIDs', e);
