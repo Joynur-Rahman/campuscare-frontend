@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Power, KeyRound, Trash2, Star, Search, X, MoreVertical, Users, Wrench, Building2, GraduationCap, HeartHandshake, Phone, CheckCircle2 } from 'lucide-react';
+import { Power, KeyRound, Trash2, Star, Search, X, MoreVertical, Users, Wrench, Building2, GraduationCap, HeartHandshake, Phone, CheckCircle2, Copy } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
 import { techStats } from '../../lib/adminMetrics.js';
 import { DEPT_GROUPS, deptInfo } from '../../lib/departments.js';
@@ -19,6 +19,7 @@ export default function AdminTechnicians({ tickets = [], techs = [] }) {
   const [q, setQ] = useState('');
   const [menu, setMenu] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [resetModal, setResetModal] = useState(null);
 
   const idOf = t => t.clerk_id || t.id || t.firebaseId;
 
@@ -63,9 +64,22 @@ export default function AdminTechnicians({ tickets = [], techs = [] }) {
     finally { setBusy(null); }
   }
   async function reset(tech) {
-    setMenu(null); setBusy(idOf(tech));
-    try { const r = await api.resetTechnicianPassword(tech.firebaseId || idOf(tech)); showToast(`Temp password for ${tech.name}: ${r?.tempPassword || 'sent'}`, 'success'); }
-    catch (e) { showToast(e.message, 'error'); } finally { setBusy(null); }
+    setMenu(null);
+    const tid = tech.clerk_id || tech.firebaseId || idOf(tech);
+    setBusy(tid);
+    try {
+      const r = await api.resetTechnicianPassword(tid);
+      setResetModal({
+        tech,
+        tempPassword: r?.temp_password || r?.tempPassword || 'CampusCare@2026',
+        signInUrl: r?.sign_in_url || r?.signInUrl,
+      });
+      showToast(`Temporary password generated for ${tech.name}`, 'success');
+    } catch (e) {
+      showToast(e.message || 'Failed to reset password', 'error');
+    } finally {
+      setBusy(null);
+    }
   }
   async function remove(tech) {
     setConfirmDel(null); setBusy(idOf(tech));
@@ -232,6 +246,54 @@ export default function AdminTechnicians({ tickets = [], techs = [] }) {
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setConfirmDel(null)} className="px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-[#2a2e35] text-slate-700 dark:text-slate-200">Cancel</button>
               <button type="button" onClick={() => remove(confirmDel)} className="px-3.5 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white">Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" onClick={() => setResetModal(null)}>
+          <div className="bg-white dark:bg-[#121417] rounded-3xl max-w-md w-full p-6 space-y-4 border border-slate-200 dark:border-[#2a2e35] shadow-2xl text-slate-900 dark:text-white" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold">Staff Password Reset</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{resetModal.tech.name} ({resetModal.tech.email})</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setResetModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Temporary Password</span>
+              <div className="flex items-center justify-between gap-2 bg-white dark:bg-[#1b1d21] p-2.5 rounded-xl border border-slate-200 dark:border-[#2a2e35]">
+                <code className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 select-all">{resetModal.tempPassword}</code>
+                <button type="button" onClick={() => { navigator.clipboard.writeText(resetModal.tempPassword); showToast('Password copied!', 'success'); }} className="px-2.5 py-1 text-xs font-bold bg-[#2f4e56] hover:bg-[#253e45] text-white rounded-lg flex items-center gap-1 cursor-pointer">
+                  <Copy className="w-3.5 h-3.5" /> Copy
+                </button>
+              </div>
+              <p className="text-[11.5px] text-slate-500 dark:text-slate-400">
+                Share this password with the technician. They can sign in immediately on the Staff Desk.
+              </p>
+            </div>
+
+            {resetModal.signInUrl && (
+              <div className="p-3.5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">Direct 1-Click Login Link</span>
+                <div className="flex items-center justify-between gap-2 bg-white dark:bg-[#1b1d21] p-2.5 rounded-xl border border-slate-200 dark:border-[#2a2e35]">
+                  <input readOnly value={resetModal.signInUrl} className="text-xs text-slate-600 dark:text-slate-300 bg-transparent flex-1 truncate outline-none select-all" />
+                  <button type="button" onClick={() => { navigator.clipboard.writeText(resetModal.signInUrl); showToast('Sign-in link copied!', 'success'); }} className="px-2.5 py-1 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-lg flex items-center gap-1 cursor-pointer">
+                    <Copy className="w-3.5 h-3.5" /> Copy Link
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button type="button" onClick={() => setResetModal(null)} className="px-4 py-2 text-xs font-bold rounded-xl bg-[#2f4e56] hover:bg-[#253e45] text-white cursor-pointer">Done</button>
             </div>
           </div>
         </div>

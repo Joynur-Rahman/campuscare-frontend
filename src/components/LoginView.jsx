@@ -310,7 +310,7 @@ function LoginCard() {
         res = factorRes;
       }
 
-      if (res.status === 'needs_second_factor') {
+      if (res.status === 'needs_second_factor' || res.status === 'needs_client_trust') {
         setClerkFallback(true);
         return;
       }
