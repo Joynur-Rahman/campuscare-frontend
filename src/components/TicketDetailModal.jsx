@@ -84,20 +84,32 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const isResolved = s === 'resolved' || s === 'fixed' || s === 'done';
 
   const mapMsg = (m) => {
-    if (m.sender && m.text && !m.sender_id) return m;
+    if (!m) return m;
     const isMine = Boolean(currentUserId && (m.sender_id === currentUserId || m.senderId === currentUserId));
-    const isSys = m.is_system || m.isSystem || false;
-    const tag = (m.sender_role === 'administrator' || m.sender_role === 'admin')
+    const isSys = Boolean(m.is_system || m.isSystem);
+
+    const role = String(m.sender_role || m.senderRole || m.role || '').toLowerCase();
+    const isSenderAdmin = role === 'administrator' || role === 'admin' || m.sender === 'Admin' || m.sender === 'Administrator';
+    const isSenderStaff = role === 'staff' || role === 'technician' || m.sender === 'Technician';
+
+    const tag = isSenderAdmin
       ? 'Admin'
-      : (m.sender_role === 'staff' || m.sender_role === 'technician')
+      : isSenderStaff
         ? 'Technician'
         : 'Student';
+
+    const resolvedName = isSenderAdmin
+      ? 'Administrator'
+      : (m.sender_name || m.senderName || (isSenderStaff ? 'Technician' : 'Student'));
+
     return {
       id: m.id,
       text: m.text,
-      sender_id: m.sender_id,
+      sender_id: m.sender_id || m.senderId,
+      sender_role: role || (isSenderAdmin ? 'administrator' : isSenderStaff ? 'staff' : 'student'),
+      sender_name: m.sender_name || m.senderName || resolvedName,
       sender: tag,
-      senderName: m.sender_name || (isMine ? 'You' : tag),
+      senderName: isMine ? 'You' : resolvedName,
       at: m.created_at ? new Date(m.created_at).getTime() : (m.at || Date.now()),
       isSystem: isSys,
       isMine,
@@ -146,6 +158,8 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     const msg = {
       sender: senderTag,
       senderName,
+      sender_role: isAdmin ? 'administrator' : isStaff ? 'staff' : 'student',
+      sender_name: senderName,
       sender_id: currentUserId,
       isMine: true,
       text: body,
