@@ -1,20 +1,22 @@
 /**
- * MapmyIndia (Mappls) Web Maps Integration Helper
- * Handles dynamic SDK script loading, reverse geocoding, and fallbacks.
+ * Mappls (MapmyIndia) Web Map JS SDK v3 loader + helpers.
+ * Supports both direct Mappls vector/satellite maps and clean Leaflet satellite fallback.
  */
 
-const MAPPLS_SDK_URL = 'https://apis.mappls.com/advancedmaps/api';
+import { IIITG_CAMPUS_POLYGON, CAMPUS_LANDMARKS, IIITG_CENTER as CAMPUS_CENTER } from './campus.js';
 
-// Default campus location (IIIT Guwahati Center)
+export const IIITG_CENTER = CAMPUS_CENTER || { lat: 26.08135, lng: 91.56025 };
 export const DEFAULT_CAMPUS_LOCATION = {
   lat: 26.0815,
   lng: 91.5608,
   label: 'IIIT Guwahati Campus',
 };
+export const IIITG_ZOOM = 16.5;
 
 // Official campus spots with exact coordinates and search aliases
 export const CAMPUS_PRESETS = [
   { 
+    id: 'academic',
     name: 'Academic Building', 
     lat: 26.081306, 
     lng: 91.561917, 
@@ -25,6 +27,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['academic', 'class', 'classroom', 'lab', 'lecture', 'a-110', 'admin', 'office', 'acad', 'department', 'academic block'] 
   },
   { 
+    id: 'library',
     name: 'Library', 
     lat: 26.081127, 
     lng: 91.562130, 
@@ -35,6 +38,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['library', 'lib', 'reading room', 'study hall', 'central library', 'books', 'libr'] 
   },
   { 
+    id: 'canteen',
     name: 'Canteen', 
     lat: 26.082251, 
     lng: 91.562126, 
@@ -45,6 +49,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['canteen', 'mess', 'cafe', 'cafeteria', 'dining', 'food', 'snacks', 'cant', 'eating'] 
   },
   { 
+    id: 'boys-hostel',
     name: 'Boys Hostel', 
     lat: 26.080111, 
     lng: 91.558444, 
@@ -55,6 +60,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['boys hostel', 'boy hostel', 'bh', 'men hostel', 'boys', 'bh1', 'bh2', 'b-block'] 
   },
   { 
+    id: 'girls-hostel',
     name: 'Girls Hostel', 
     lat: 26.082111, 
     lng: 91.559444, 
@@ -65,6 +71,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['girls hostel', 'girl hostel', 'gh', 'women hostel', 'girls', 'gh1', 'gh2', 'g-block'] 
   },
   { 
+    id: 'town-hall',
     name: 'Town Hall', 
     lat: 26.081444, 
     lng: 91.559778, 
@@ -75,6 +82,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['town hall', 'hall', 'auditorium', 'audi', 'seminar hall', 'stage', 'th'] 
   },
   { 
+    id: 'badminton',
     name: 'Indoor Badminton Court', 
     lat: 26.081500, 
     lng: 91.559389, 
@@ -85,6 +93,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['indoor badminton court', 'badminton', 'indoor court', 'court', 'shuttle', 'badminton court', 'bad', 'indoor'] 
   },
   { 
+    id: 'ground',
     name: 'Playground', 
     lat: 26.080722, 
     lng: 91.559139, 
@@ -95,6 +104,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['playground', 'ground', 'cricket', 'football', 'play ground', 'sports field', 'field', 'sports'] 
   },
   { 
+    id: 'lake',
     name: 'IIITG Lake', 
     lat: 26.081667, 
     lng: 91.561000, 
@@ -105,6 +115,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['iiitg lake', 'lake', 'pond', 'water', 'water body'] 
   },
   { 
+    id: 'power',
     name: 'Power House', 
     lat: 26.082278, 
     lng: 91.561444, 
@@ -115,6 +126,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['power house', 'power', 'substation', 'transformer', 'generator', 'electric room', 'ph'] 
   },
   { 
+    id: 'quarters',
     name: 'Faculty Residence', 
     lat: 26.082889, 
     lng: 91.559639, 
@@ -125,6 +137,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['faculty residence', 'faculty', 'quarters', 'residence', 'staff', 'prof quarters', 'housing'] 
   },
   { 
+    id: 'bridge',
     name: 'Iron Bridge', 
     lat: 26.080003, 
     lng: 91.560003, 
@@ -135,6 +148,7 @@ export const CAMPUS_PRESETS = [
     aliases: ['iron bridge', 'bridge', 'culvert', 'iron'] 
   },
   { 
+    id: 'main-gate',
     name: 'Main Gate', 
     lat: 26.081753, 
     lng: 91.563255, 
@@ -155,29 +169,23 @@ export function findMatchingLandmark(query) {
   const q = query.trim().toLowerCase();
   if (!q) return null;
 
-  // 1. Direct exact name match
   for (const spot of CAMPUS_PRESETS) {
     if (spot.name.toLowerCase() === q) return spot;
   }
 
-  // 2. Direct exact alias match (e.g. "gh" -> Girls Hostel, "bh" -> Boys Hostel)
   for (const spot of CAMPUS_PRESETS) {
     if (spot.aliases && spot.aliases.some(a => a.toLowerCase() === q)) return spot;
   }
 
-  // 3. Query contains the full official name of the spot (e.g. "Girls Hostel, IIIT Guwahati Campus")
-  // Check longer names first so specific landmarks take precedence
   const spotsByLength = [...CAMPUS_PRESETS].sort((a, b) => b.name.length - a.name.length);
   for (const spot of spotsByLength) {
     if (q.includes(spot.name.toLowerCase())) return spot;
   }
 
-  // 4. Query starts with the spot name
   for (const spot of CAMPUS_PRESETS) {
     if (spot.name.toLowerCase().startsWith(q)) return spot;
   }
 
-  // 5. Query contains alias with exact word boundaries
   for (const spot of CAMPUS_PRESETS) {
     if (spot.aliases) {
       for (const a of spot.aliases) {
@@ -190,7 +198,6 @@ export function findMatchingLandmark(query) {
     }
   }
 
-  // 6. Plus code match
   for (const spot of CAMPUS_PRESETS) {
     if (spot.plusCode && (spot.plusCode.toLowerCase() === q || q.includes(spot.plusCode.toLowerCase()))) {
       return spot;
@@ -223,169 +230,541 @@ export function getLandmarkSuggestions(query) {
   });
 }
 
-let scriptLoadPromise = null;
+export function getMapplsKey() {
+  return (
+    import.meta.env.VITE_MAPPLS_SDK_KEY ||
+    import.meta.env.VITE_MAPPLS_KEY ||
+    ''
+  ).trim();
+}
 
-/**
- * Loads the Mappls Web Map JS SDK with the provided static key.
- */
-export function loadMapplsSdk(apiKey) {
-  if (typeof window === 'undefined') return Promise.reject(new Error('Window not available'));
+export function mapErrorMessage(err, hasKey = Boolean(getMapplsKey())) {
+  if (!hasKey) {
+    return 'MapmyIndia key not configured (VITE_MAPPLS_KEY).';
+  }
+  return err?.message || 'MapmyIndia map could not be loaded — please try again.';
+}
 
+let loadPromise = null;
+
+export function loadMapplsSdk(explicitKey) {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('No window'));
+  }
   if (window.mappls && window.mappls.Map) {
     return Promise.resolve(window.mappls);
   }
+  if (loadPromise) return loadPromise;
 
-  if (scriptLoadPromise) {
-    return scriptLoadPromise;
+  const key = (explicitKey || getMapplsKey() || '').trim();
+  if (!key) {
+    return Promise.reject(new Error('Missing VITE_MAPPLS_SDK_KEY in .env'));
   }
 
-  scriptLoadPromise = new Promise((resolve, reject) => {
-    if (!apiKey) {
-      return reject(new Error('MapmyIndia Static Key is missing. Add VITE_MAPPLS_KEY to .env'));
-    }
+  loadPromise = new Promise((resolve, reject) => {
+    const callbackName = '__mapplsReady_' + Math.random().toString(36).slice(2, 8);
+    let settled = false;
 
-    // Check if script already exists in document
-    const existing = document.querySelector('script[data-mappls-sdk]');
-    if (existing) {
-      const checkInterval = setInterval(() => {
-        if (window.mappls && window.mappls.Map) {
-          clearInterval(checkInterval);
-          resolve(window.mappls);
-        }
-      }, 100);
-      return;
-    }
+    const finish = (ok, val) => {
+      if (settled) return;
+      settled = true;
+      try {
+        delete window[callbackName];
+      } catch {
+        window[callbackName] = undefined;
+      }
+      if (ok) resolve(val);
+      else {
+        loadPromise = null;
+        reject(val);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (window.mappls && window.mappls.Map) {
+        finish(true, window.mappls);
+      } else {
+        finish(false, new Error('MapmyIndia took too long to load — please try again.'));
+      }
+    }, 12000);
+
+    window[callbackName] = () => {
+      clearTimeout(timer);
+      if (window.mappls && window.mappls.Map) {
+        finish(true, window.mappls);
+      } else {
+        finish(false, new Error('Mappls SDK loaded but window.mappls.Map missing'));
+      }
+    };
 
     const script = document.createElement('script');
-    script.setAttribute('data-mappls-sdk', 'true');
-    script.src = `${MAPPLS_SDK_URL}/${encodeURIComponent(apiKey)}/map_sdk?layer=vector&v=3.0`;
+    // Web SDK v3 (access_token). The old /advancedmaps/api/<key>/map_sdk URL is rejected for this key.
+    script.src =
+      `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${encodeURIComponent(key)}` +
+      `&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
-
-    script.onload = () => {
-      // Small timeout for mappls object initialization
-      const timer = setInterval(() => {
-        if (window.mappls && window.mappls.Map) {
-          clearInterval(timer);
-          resolve(window.mappls);
-        }
-      }, 50);
-
-      // Timeout after 5s if mappls doesn't appear
-      setTimeout(() => {
-        clearInterval(timer);
-        if (window.mappls && window.mappls.Map) {
-          resolve(window.mappls);
-        } else {
-          reject(new Error('Mappls SDK loaded but window.mappls is unavailable. Check domain whitelisting in Mappls console.'));
-        }
-      }, 5000);
-    };
-
     script.onerror = () => {
-      scriptLoadPromise = null;
-      reject(new Error('Failed to load MapmyIndia SDK. Please check your internet connection or Static Key.'));
+      clearTimeout(timer);
+      finish(false, new Error('Could not reach MapmyIndia — check your internet connection.'));
     };
-
+    // Some SDK builds ignore the callback: poll for window.mappls as well
+    const poll = setInterval(() => {
+      if (window.mappls && window.mappls.Map) { clearInterval(poll); clearTimeout(timer); finish(true, window.mappls); }
+    }, 100);
+    setTimeout(() => clearInterval(poll), 12000);
     document.head.appendChild(script);
   });
 
-  return scriptLoadPromise;
+  return loadPromise;
+}
+
+// Alias for callers using loadMappls()
+export const loadMappls = loadMapplsSdk;
+
+/**
+ * Supports both calling conventions:
+ * 1) createMapplsMap(mappls, targetEl, opts) -> returns `map` directly (used by LocationPicker / LocationModal)
+ * 2) await createMapplsMap(targetEl, opts) -> returns `{ mappls, map, id, createdId }`
+ */
+export function createMapplsMap(arg1, arg2, arg3) {
+  // Convention 1: createMapplsMap(mapplsInstance, targetElement, opts)
+  if (arg1 && typeof arg1.Map === 'function') {
+    const mappls = arg1;
+    const target = arg2;
+    const opts = arg3 || {};
+    let id;
+    if (typeof target === 'string') {
+      id = target;
+    } else if (target && target instanceof HTMLElement) {
+      if (!target.id) {
+        target.id = 'mappls-map-' + Math.random().toString(36).slice(2, 9);
+      }
+      id = target.id;
+    } else {
+      throw new Error('createMapplsMap: invalid target');
+    }
+
+    const rawCenter = opts.center || IIITG_CENTER;
+    const centerArr = Array.isArray(rawCenter)
+      ? rawCenter
+      : [rawCenter.lat ?? IIITG_CENTER.lat, rawCenter.lng ?? IIITG_CENTER.lng];
+
+    const m1 = new mappls.Map(id, {
+      center: centerArr,
+      zoom: opts.zoom ?? IIITG_ZOOM,
+      zoomControl: opts.zoomControl ?? true,
+      location: opts.location ?? false,
+      clickableIcons: false,
+      search: false,
+    });
+    makeScrollFriendly(m1);
+    return m1;
+  }
+
+  // Convention 2: async createMapplsMap(targetElement, opts)
+  const target = arg1;
+  const opts = arg2 || {};
+  return loadMapplsSdk().then((mappls) => {
+    let id;
+    let createdId = false;
+    if (typeof target === 'string') {
+      id = target;
+    } else if (target && target instanceof HTMLElement) {
+      if (!target.id) {
+        target.id = 'mappls-map-' + Math.random().toString(36).slice(2, 9);
+        createdId = true;
+      }
+      id = target.id;
+    } else {
+      throw new Error('createMapplsMap: invalid target');
+    }
+
+    const rawCenter = opts.center || IIITG_CENTER;
+    const centerArr = Array.isArray(rawCenter)
+      ? rawCenter
+      : [rawCenter.lat ?? IIITG_CENTER.lat, rawCenter.lng ?? IIITG_CENTER.lng];
+
+    const map = new mappls.Map(id, {
+      center: centerArr,
+      zoom: opts.zoom ?? IIITG_ZOOM,
+      zoomControl: opts.zoomControl ?? true,
+      location: opts.location ?? false,
+      clickableIcons: false,
+      search: false,
+    });
+    makeScrollFriendly(map);
+
+    return { mappls, map, id, createdId };
+  });
+}
+
+
+/** Page-scroll friendly maps: wheel scrolls the page until the map is clicked (Ctrl/⌘+wheel always zooms);
+ *  on touch screens one finger scrolls the page and two fingers move / zoom the map. */
+export function makeScrollFriendly(map) {
+  const apply = () => {
+    try {
+      const box = map.getContainer?.();
+      map.scrollZoom?.disable?.();
+      map.on?.('click', () => map.scrollZoom?.enable?.());
+      box?.addEventListener('mouseleave', () => map.scrollZoom?.disable?.());
+      // Trackpad pinch (ctrl+wheel) and Ctrl/⌘+wheel zoom smoothly and proportionally,
+      // instead of jumping a whole zoom level for every tiny wheel event.
+      box?.addEventListener('wheel', (e) => {
+        if ((e.ctrlKey || e.metaKey) && !map.scrollZoom?.isEnabled?.()) {
+          e.preventDefault();
+          const step = Math.max(-0.5, Math.min(0.5, -e.deltaY * 0.01));
+          const z = Math.max(14, Math.min(20, map.getZoom() + step));
+          map.setZoom(z);
+        }
+      }, { passive: false });
+      // When wheel zoom is enabled, keep trackpad scrolling gentle
+      try { map.scrollZoom?.setWheelZoomRate?.(1 / 600); map.scrollZoom?.setZoomRate?.(1 / 200); } catch { /* ignore */ }
+      try { map.setMinZoom?.(14); map.setMaxZoom?.(20); } catch { /* ignore */ }
+      if (window.matchMedia?.('(pointer: coarse)').matches) map.dragPan?.disable?.();
+    } catch { /* ignore */ }
+  };
+  apply();
+  try { map.on?.('load', apply); } catch { /* ignore */ }
+}
+
+// Satellite view on the MapmyIndia map. This key only has the "standard-day" style, so satellite
+// imagery is laid under MapmyIndia's own roads & labels and the flat land fills are hidden.
+const SAT_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+export function useSatelliteStyle(mappls, map) {
+  if (!map) return;
+  const apply = () => {
+    try {
+      if (!map.getStyle || !map.addSource || map.getSource?.('cc-satellite')) return;
+      const layers = map.getStyle()?.layers || [];
+      const firstSymbol = layers.find((l) => l.type === 'symbol')?.id;
+      map.addSource('cc-satellite', { type: 'raster', tiles: [SAT_TILES], tileSize: 256, maxzoom: 19, attribution: 'Imagery © Esri' });
+      map.addLayer({ id: 'cc-satellite', type: 'raster', source: 'cc-satellite' }, firstSymbol);
+      layers.forEach((l) => {
+        if (['fill', 'fill-extrusion', 'background'].includes(l.type) && !String(l.id).startsWith('cc-')) {
+          try { map.setLayoutProperty(l.id, 'visibility', 'none'); } catch { /* ignore */ }
+        }
+      });
+      // keep the campus boundary above the imagery
+      ['cc-campus-fill', 'cc-campus-line'].forEach((id) => { try { if (map.getLayer(id)) map.moveLayer(id); } catch { /* ignore */ } });
+    } catch { /* ignore */ }
+  };
+  let done = false;
+  const once = () => { if (!done) { done = true; apply(); } };
+  try {
+    if (map.isStyleLoaded?.()) once();
+    else { map.on?.('load', once); setTimeout(() => { try { if (map.isStyleLoaded?.()) once(); } catch { /* ignore */ } }, 2500); }
+  } catch { /* ignore */ }
 }
 
 /**
- * Reverse Geocode coordinates to a readable address.
- * Tries MapmyIndia first, falls back to OpenStreetMap Nominatim.
+ * Clean building dot + permanent name label (`• Academic Building`)
+ * used by both Mappls and Leaflet satellite fallback so building names
+ * are always clearly marked on the campus map.
  */
-export async function reverseGeocode(lat, lng, apiKey) {
-  // 1. Try MapmyIndia reverse geocoding API if key is present
-  if (apiKey) {
-    try {
-      const url = `https://apis.mappls.com/advancedmaps/v1/${encodeURIComponent(apiKey)}/rev_geocode?lat=${lat}&lng=${lng}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.results && data.results.length > 0) {
-          const item = data.results[0];
-          const address = item.formatted_address || [
-            item.poi,
-            item.houseName,
-            item.street,
-            item.subSubLocality,
-            item.subLocality,
-            item.locality,
-            item.city,
-            item.pincode,
-          ].filter(Boolean).join(', ');
+export function buildingLabelHtml(landmark) {
+  const dotColor = landmark.color || '#38bdf8';
+  const safeName = String(landmark.name || '')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  // Zero-size anchor: the dot's centre is exactly the building's coordinate.
+  // The name sits beside it and only shows once zoomed in (see .cc-names-on in index.css).
+  return `<div style="position:relative;width:0;height:0;pointer-events:none;user-select:none">
+    <span style="
+      position:absolute;left:-4.5px;top:-4.5px;
+      width:9px;height:9px;border-radius:999px;
+      background:${dotColor};
+      box-shadow:0 0 0 1.5px #0f172a, 0 0 0 3px rgba(255,255,255,0.9), 0 1px 5px rgba(0,0,0,0.6);
+    "></span>
+    <span class="cc-bname" style="
+      position:absolute;${landmark.labelLeft ? 'right:8px' : 'left:8px'};top:-9px;
+      align-items:center;
+      padding:1.5px 6px;
+      border-radius:999px;
+      background:rgba(15, 23, 42, 0.84);
+      border:1px solid rgba(255, 255, 255, 0.28);
+      box-shadow:0 2px 5px rgba(0, 0, 0, 0.5);
+      white-space:nowrap;
+      color:#f8fafc;
+      font-size:10px;
+      font-weight:700;
+      line-height:1.25;
+      font-family:Inter,system-ui,-apple-system,sans-serif;
+    ">${safeName}</span>
+  </div>`;
+}
 
-          if (address) {
-            return {
-              address,
-              poi: item.poi || null,
-              locality: item.locality || item.subLocality || null,
-              raw: item,
-              source: 'mapmyindia',
-            };
-          }
+/** Building names appear from this zoom level onwards (dots are always shown). */
+export const BUILDING_NAME_MIN_ZOOM = 16;
+
+/**
+ * Clean dot marker HTML for active tickets/issues (no bulky emoji pin).
+ * Renders a crisp colored dot with white ring, subtle pulse halo, and optional count badge.
+ */
+export function ticketDotHtml(opts = {}) {
+  const color = opts.color || '#ef4444';
+  const size = opts.size || 15;
+  const selected = Boolean(opts.selected);
+  const badge = opts.badge || '';
+  const dotSize = selected ? size + 4 : size;
+  const ring = selected
+    ? `0 0 0 5px ${color}66, 0 3px 10px rgba(0,0,0,0.6)`
+    : `0 0 0 3px ${color}3d, 0 2px 6px rgba(0,0,0,0.45)`;
+
+  return `<div style="
+    position:relative;
+    width:${dotSize}px;height:${dotSize}px;border-radius:999px;
+    background:${color};
+    border:2.25px solid #ffffff;
+    box-shadow:${ring};
+    cursor:pointer;
+    transform:translate(-50%, -50%);
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  ">${
+    badge
+      ? `<span style="
+          position:absolute;top:-7px;right:-9px;
+          min-width:15px;height:15px;padding:0 3.5px;
+          border-radius:999px;background:#0f172a;color:#fff;
+          font-size:9px;font-weight:800;
+          display:inline-flex;align-items:center;justify-content:center;
+          border:1.5px solid #fff;line-height:1;
+        ">${badge}</span>`
+      : ''
+  }</div>`;
+}
+
+/**
+ * Draw the IIIT Guwahati yellow campus boundary + building dot labels on a Mappls map.
+ */
+export function addCampusOverlay(mappls, map, opts = {}) {
+  const showLabels = opts.showLabels !== false;
+  const cleanupFns = [];
+
+  const draw = () => {
+    try {
+      if (map.addSource && !map.getSource?.('cc-campus')) {
+        const ring = IIITG_CAMPUS_POLYGON.map(([lat, lng]) => [lng, lat]);
+        ring.push(ring[0]);
+        map.addSource('cc-campus', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] } } });
+        map.addLayer({ id: 'cc-campus-fill', type: 'fill', source: 'cc-campus', paint: { 'fill-color': '#facc15', 'fill-opacity': 0.06 } });
+        map.addLayer({ id: 'cc-campus-line', type: 'line', source: 'cc-campus', paint: { 'line-color': '#eab308', 'line-width': 2.5 } });
+        cleanupFns.push(() => { try { map.removeLayer('cc-campus-line'); map.removeLayer('cc-campus-fill'); map.removeSource('cc-campus'); } catch { /* map gone */ } });
+      }
+    } catch {
+      // ignore polygon errors
+    }
+
+    if (showLabels) {
+      for (const lm of CAMPUS_LANDMARKS) {
+        try {
+          const m = new mappls.Marker({
+            map,
+            position: { lat: lm.lat, lng: lm.lng },
+            html: centeredHtml(buildingLabelHtml(lm)),
+            width: 2,
+            height: 2,
+            fitbounds: false,
+          });
+          cleanupFns.push(() => removeMarker(m));
+        } catch {
+          // ignore individual label error
         }
       }
-    } catch (e) {
-      console.warn('MapmyIndia reverse geocode network error, falling back...', e);
     }
-  }
+  };
 
-  // 2. High-reliability fallback using OpenStreetMap Nominatim
+  let drawn = false;
+  const once = () => { if (drawn) return; drawn = true; draw(); };
   try {
-    const fallbackUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
-    const res = await fetch(fallbackUrl, {
-      headers: {
-        'Accept': 'application/json',
-      },
+    if (map?.isStyleLoaded?.() || map?.loaded?.()) once();
+    else if (map && typeof map.on === 'function') map.on('load', once);
+    else if (map && typeof map.addListener === 'function') map.addListener('load', once);
+  } catch { /* ignore */ }
+  setTimeout(() => { try { if (map?.isStyleLoaded?.()) once(); } catch { /* ignore */ } }, 1500);
+
+  return () => {
+    cleanupFns.forEach((fn) => {
+      try {
+        fn();
+      } catch {
+        /* ignore */
+      }
     });
-    if (res.ok) {
-      const data = await res.json();
-      const addr = data.address || {};
-      const parts = [
-        addr.building || addr.amenity || addr.office || addr.university || addr.college,
-        addr.road,
-        addr.suburb || addr.neighbourhood || addr.residential,
-        addr.city || addr.town || addr.village || addr.county,
-        addr.postcode,
-      ].filter(Boolean);
-
-      return {
-        address: parts.length > 0 ? parts.join(', ') : data.display_name || `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`,
-        raw: data,
-        source: 'nominatim',
-      };
-    }
-  } catch (err) {
-    console.warn('Fallback reverse geocoding failed', err);
-  }
-
-  return {
-    address: `Location (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-    source: 'coordinates',
   };
 }
 
 /**
- * Returns the configured MapmyIndia key from localStorage or .env
+ * Supports both calling conventions:
+ * 1) addMapplsPin(mappls, map, { lat, lng }, opts)
+ * 2) addMapplsPin(mappls, map, { lat, lng, color, size, ... })
  */
-export function getMapplsKey() {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('cc_mappls_static_key') || import.meta.env.VITE_MAPPLS_KEY || '';
+/** Mappls centres its marker box on the point; put our zero-size anchor in the box centre. */
+export function centeredHtml(inner, nudge = [0, 0]) {
+  const [dx, dy] = nudge;
+  return `<div style="position:relative;width:100%;height:100%;pointer-events:none"><div style="position:absolute;left:calc(50% + ${dx}px);top:calc(50% + ${dy}px);width:0;height:0;pointer-events:auto">${inner}</div></div>`;
 }
 
-/**
- * Saves or clears the MapmyIndia key in localStorage
- */
-export function setMapplsKey(key) {
-  if (typeof window === 'undefined') return;
-  if (key && key.trim()) {
-    localStorage.setItem('cc_mappls_static_key', key.trim());
-  } else {
-    localStorage.removeItem('cc_mappls_static_key');
+export function addMapplsPin(mappls, map, posOrOpts = {}, maybeOpts = {}) {
+  const merged =
+    posOrOpts && typeof posOrOpts === 'object' && maybeOpts && typeof maybeOpts === 'object'
+      ? { ...posOrOpts, ...maybeOpts }
+      : posOrOpts || {};
+
+  const {
+    lat,
+    lng,
+    color = '#ef4444',
+    title = '',
+    popupHtml = '',
+    draggable = false,
+    onClick,
+    onDragEnd,
+    size = 16,
+    badge = '',
+    selected = false,
+    nudge = [0, 0],
+  } = merged;
+
+  const html = centeredHtml(ticketDotHtml({ color, size, badge, selected }), nudge);
+
+  const markerOpts = {
+    map,
+    position: { lat: Number(lat), lng: Number(lng) },
+    html,
+    width: size + 16,
+    height: size + 16,
+    draggable,
+    fitbounds: false,
+  };
+  if (popupHtml) markerOpts.popupHtml = popupHtml;
+  if (title) markerOpts.title = title;
+
+  const marker = new mappls.Marker(markerOpts);
+
+  if (onClick && marker.addListener) {
+    marker.addListener('click', (e) => onClick(e, marker));
+  }
+  if (draggable && onDragEnd && marker.addListener) {
+    marker.addListener('dragend', (e) => {
+      const pos = extractLatLng(e, marker);
+      if (pos) onDragEnd(pos);
+    });
+  }
+
+  return marker;
+}
+
+export function showLiveLocation(mappls, map, opts = {}) {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return () => {};
+  let watchId = null;
+  let marker = null;
+  let first = true;
+
+  try {
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const fix = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+        try {
+          if (marker) removeMarker(marker);
+          if (mappls && map) {
+            marker = addMapplsPin(mappls, map, fix, {
+              color: '#3b82f6',
+              size: 14,
+              title: 'Your GPS Location',
+            });
+          }
+        } catch {
+          // ignore
+        }
+        if (opts.onFix) opts.onFix(fix, first);
+        first = false;
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+    );
+  } catch {
+    // ignore
+  }
+
+  return () => {
+    if (watchId != null && navigator.geolocation) {
+      try {
+        navigator.geolocation.clearWatch(watchId);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (marker) removeMarker(marker);
+  };
+}
+
+export async function reverseGeocode(lat, lng) {
+  // Match closest IIIT Guwahati building landmark within ~95m first
+  let closest = null;
+  let bestDist = Infinity;
+  for (const lm of CAMPUS_LANDMARKS) {
+    const dLat = (lat - lm.lat) * 110574;
+    const dLng = (lng - lm.lng) * 99800;
+    const d = Math.hypot(dLat, dLng);
+    if (d < bestDist) {
+      bestDist = d;
+      closest = lm;
+    }
+  }
+  if (closest && bestDist <= 95) {
+    return {
+      address: `${closest.name}, IIIT Guwahati`,
+      landmark: closest.name,
+    };
+  }
+  return {
+    address: `IIIT Guwahati Campus (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`,
+  };
+}
+
+export function removeMarker(marker) {
+  if (!marker) return;
+  try {
+    if (typeof marker.remove === 'function') marker.remove();
+    else if (typeof marker.setMap === 'function') marker.setMap(null);
+  } catch {
+    // ignore
   }
 }
 
+export function extractLatLng(evt, fallbackMarker) {
+  if (!evt) return null;
+  if (evt.lngLat && typeof evt.lngLat.lat === 'number') {
+    return { lat: evt.lngLat.lat, lng: evt.lngLat.lng };
+  }
+  if (evt.latlng && typeof evt.latlng.lat === 'number') {
+    return { lat: evt.latlng.lat, lng: evt.latlng.lng };
+  }
+  if (evt.detail && typeof evt.detail.lat === 'number') {
+    return { lat: evt.detail.lat, lng: evt.detail.lng };
+  }
+  if (typeof evt.lat === 'number' && typeof evt.lng === 'number') {
+    return { lat: evt.lat, lng: evt.lng };
+  }
+  if (fallbackMarker && typeof fallbackMarker.getPosition === 'function') {
+    const p = fallbackMarker.getPosition();
+    if (p && typeof p.lat === 'number') return { lat: p.lat, lng: p.lng };
+  }
+  return null;
+}
+
+export function openDirections(lat, lng, label = 'Ticket Location') {
+  if (lat == null || lng == null) return;
+  const q = encodeURIComponent(`${lat},${lng} (${label})`);
+  window.open(
+    `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&query=${q}`,
+    '_blank',
+    'noopener'
+  );
+}

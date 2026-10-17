@@ -1,959 +1,1009 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  MapPin, 
-  Crosshair, 
-  Loader2, 
-  Plus, 
-  ExternalLink, 
-  Compass, 
-  KeyRound, 
-  Check, 
-  Info,
-  X,
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Compass,
+  Crosshair,
+  Flame,
+  Filter,
+  MapPin,
   Search,
   ChevronRight,
   Navigation,
-  ListFilter
+  X,
+  Move,
+  Copy,
+  RotateCcw,
 } from 'lucide-react';
-import { 
-  loadMapplsSdk, 
-  reverseGeocode, 
-  DEFAULT_CAMPUS_LOCATION, 
-  CAMPUS_PRESETS,
-  getMapplsKey, 
-  setMapplsKey 
+import {
+  createMapplsMap,
+  addMapplsPin,
+  addCampusOverlay,
+  buildingLabelHtml,
+  ticketDotHtml,
+  centeredHtml,
+  useSatelliteStyle,
+  removeMarker,
+  openDirections,
+  IIITG_CENTER,
+  IIITG_ZOOM,
+  BUILDING_NAME_MIN_ZOOM,
 } from '../lib/mappls.js';
-import { ticketLabel, statusStyle, statusLabel, getTicketCoords, cleanDescription } from '../lib/ticketUtils.js';
-import { applyLeafletTileLayer } from '../lib/mapLayers.js';
+import {
+  IIITG_CAMPUS_POLYGON,
+  CAMPUS_LANDMARKS,
+  readDeviceGps,
+} from '../lib/campus.js';
+import { loadLeaflet, enableWheelOnFocus } from '../lib/leafletFallback.js';
+import {
+  getTicketCoords,
+  statusLabel,
+  statusStyle,
+  ticketLabel,
+} from '../lib/ticketUtils.js';
+import AssignMenu from './admin/AssignMenu.jsx';
 
-// Category color and icon configuration
-const CATEGORY_META = {
-  it: { label: 'IT & Network', color: '#2563eb', bg: 'bg-blue-50 text-blue-700 border-blue-200', emoji: '💻' },
-  electrical: { label: 'Electrical', color: '#d97706', bg: 'bg-amber-50 text-amber-700 border-amber-200', emoji: '⚡' },
-  water: { label: 'Water & Plumbing', color: '#0284c7', bg: 'bg-sky-50 text-sky-700 border-sky-200', emoji: '💧' },
-  security: { label: 'Security', color: '#dc2626', bg: 'bg-rose-50 text-rose-700 border-rose-200', emoji: '🛡️' },
-  lost: { label: 'Lost & Found', color: '#7c3aed', bg: 'bg-purple-50 text-purple-700 border-purple-200', emoji: '🔍' },
-  default: { label: 'General Issue', color: '#e11d48', bg: 'bg-rose-50 text-rose-700 border-rose-200', emoji: '📍' },
-};
+const LANDMARK_STORAGE_KEY = 'cc_iiitg_landmarks_v2';
 
-function getTicketCategoryMeta(t) {
-  const str = `${t?.category || ''} ${t?.categoryDisplay || ''} ${t?.title || ''}`.toLowerCase();
-  if (str.includes('it') || str.includes('wi-fi') || str.includes('wifi') || str.includes('network') || str.includes('internet')) return CATEGORY_META.it;
-  if (str.includes('elec') || str.includes('fan') || str.includes('light') || str.includes('power')) return CATEGORY_META.electrical;
-  if (str.includes('water') || str.includes('plumb') || str.includes('leak') || str.includes('tap') || str.includes('washroom')) return CATEGORY_META.water;
-  if (str.includes('lost') || str.includes('found')) return CATEGORY_META.lost;
-  if (str.includes('secur') || str.includes('gate') || str.includes('guard')) return CATEGORY_META.security;
-  return CATEGORY_META.default;
-}
-
-// Resolve ticket location to coordinates if not explicitly set
-function resolveTicketCoords(ticket) {
-  const extracted = getTicketCoords(ticket);
-  if (extracted) return extracted;
-  // Slight jitter around default campus center for uncategorized tickets
-  const hash = (ticket?.id || 't').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const offsetLat = ((hash % 10) - 5) * 0.0003;
-  const offsetLng = (((hash >> 2) % 10) - 5) * 0.0003;
-  return { 
-    lat: DEFAULT_CAMPUS_LOCATION.lat + offsetLat, 
-    lng: DEFAULT_CAMPUS_LOCATION.lng + offsetLng 
-  };
-}
-
-export default function CampusMapView({ 
-  tickets = [], 
-  onSelectTicket, 
-  onRequestReport 
-}) {
-  const [mapEngine, setMapEngine] = useState('loading'); // 'mappls' | 'fallback'
-  const [activeKey, setActiveKey] = useState(getMapplsKey());
-  const [showKeyDialog, setShowKeyDialog] = useState(false);
-  const [keyInput, setKeyInput] = useState(activeKey);
-  const [keySaved, setKeySaved] = useState(false);
-
-  const [selectedPin, setSelectedPin] = useState(null); // ticket or custom pinned spot
-  const [detectingGps, setDetectingGps] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTicketId, setActiveTicketId] = useState(null);
-
-  const mapContainerRef = useRef(null);
-  const mapplsMapRef = useRef(null);
-  const leafletMapRef = useRef(null);
-  const markersRef = useRef([]);
-  const tileLayersRef = useRef(null);
-  const [mapViewMode, setMapViewMode] = useState('satellite'); // 'satellite' | 'street'
-  const [showLandmarks, setShowLandmarks] = useState(true);
-
-  // Filter tickets matching category and optional search text
-  const filteredTickets = useMemo(() => {
-    return tickets.filter(t => {
-      if (categoryFilter !== 'all') {
-        const str = `${t.category || ''} ${t.categoryDisplay || ''} ${t.title || ''} ${t.subCategory || ''}`.toLowerCase();
-        if (!str.includes(categoryFilter.toLowerCase())) return false;
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const text = `${t.id || ''} ${t.title || ''} ${t.categoryDisplay || ''} ${t.location || ''} ${t.description || ''}`.toLowerCase();
-        if (!text.includes(q)) return false;
-      }
-      return true;
+function loadSavedLandmarks() {
+  try {
+    const raw = localStorage.getItem(LANDMARK_STORAGE_KEY);
+    if (!raw) return CAMPUS_LANDMARKS;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return CAMPUS_LANDMARKS;
+    return CAMPUS_LANDMARKS.map((def) => {
+      const hit = parsed.find((p) => p.id === def.id);
+      return hit && Number.isFinite(hit.lat) && Number.isFinite(hit.lng)
+        ? { ...def, lat: Number(hit.lat), lng: Number(hit.lng) }
+        : def;
     });
-  }, [tickets, categoryFilter, searchQuery]);
+  } catch {
+    return CAMPUS_LANDMARKS;
+  }
+}
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // 1. Initialize Map ONCE (only when activeKey changes or on first mount)
-  //    This prevents the map from refreshing every 8-10 seconds on ticket polls.
-  // ──────────────────────────────────────────────────────────────────────────
+/**
+ * Determine category color, key & label for a ticket dot marker.
+ * Uses strict word-boundary matching for 'IT' so words like "Security" or "Found item"
+ * never falsely match "it".
+ */
+export function getTicketCategoryMeta(t) {
+  const str = `${t?.category || ''} ${t?.subCategory || ''} ${t?.categoryDisplay || ''} ${t?.category_name || ''} ${t?.department_name || ''} ${t?.title || ''}`.toLowerCase();
+  if (str.includes('lost') || str.includes('found')) {
+    return { key: 'lostfound', label: 'Lost & Found', short: 'Lost & Found', icon: '🔍', color: '#a855f7' };
+  }
+  if (str.includes('secur') || str.includes('guard') || str.includes('safety')) {
+    return { key: 'security', label: 'Security', short: 'Security', icon: '🛡️', color: '#ef4444' };
+  }
+  if (str.includes('water') || str.includes('plumb') || str.includes('leak') || str.includes('pipe') || str.includes('washroom') || str.includes('dispenser')) {
+    return { key: 'water', label: 'Water & Plumbing', short: 'Water', icon: '💧', color: '#06b6d4' };
+  }
+  if (str.includes('electr') || str.includes('power') || str.includes('light') || str.includes('fan') || str.includes('ac') || str.includes('socket')) {
+    return { key: 'electrical', label: 'Electrical', short: 'Electrical', icon: '⚡', color: '#f59e0b' };
+  }
+  if (/\bit\b/.test(str) || str.includes('wifi') || str.includes('wi-fi') || str.includes('network') || str.includes('internet') || str.includes('lan') || str.includes('projector')) {
+    return { key: 'it', label: 'IT & Network', short: 'IT', icon: '💻', color: '#3b82f6' };
+  }
+  if (str.includes('clean') || str.includes('housekeep') || str.includes('garbage') || str.includes('sanit') || str.includes('mess')) {
+    return { key: 'housekeeping', label: 'Housekeeping', short: 'Cleaning', icon: '🧹', color: '#10b981' };
+  }
+  if (str.includes('carpentr') || str.includes('civil') || str.includes('door') || str.includes('window') || str.includes('furniture')) {
+    return { key: 'civil', label: 'Civil & Carpentry', short: 'Civil', icon: '🪚', color: '#f97316' };
+  }
+  return { key: 'general', label: 'General Maintenance', short: 'Other', icon: '🔧', color: '#ec4899' };
+}
+
+const isResolved = (t) =>
+  ['resolved', 'done', 'fixed', 'closed'].includes(String(t?.status || '').toLowerCase().trim());
+const isUnassigned = (t) => !t?.assignedTo && !t?.assigned_to && !isResolved(t);
+const isUrgent = (t) =>
+  !isResolved(t) &&
+  (String(t?.priority || t?.urgency || '').toLowerCase() === 'high' ||
+    String(t?.priority || t?.urgency || '').toLowerCase() === 'critical' ||
+    Boolean(t?.urgent) ||
+    String(t?.status || '').toLowerCase() === 'escalated');
+
+const CATEGORY_TABS = [
+  { key: 'all', label: 'All', dot: null },
+  { key: 'it', label: 'IT', dot: '#3b82f6' },
+  { key: 'electrical', label: 'Electrical', dot: '#f59e0b' },
+  { key: 'water', label: 'Water', dot: '#06b6d4' },
+  { key: 'security', label: 'Security', dot: '#ef4444' },
+  { key: 'lostfound', label: 'Lost & Found', dot: '#a855f7' },
+];
+
+/**
+ * Interactive IIIT Guwahati Campus Map + Split-View Triage Command Center.
+ * - Uses modern Esri World Imagery Satellite by default (where all IIITG buildings are completed).
+ * - Marks all 12 IIIT Guwahati campus buildings with permanent dot+name labels (`• Building Name`) on roofs.
+ * - Includes an interactive "Calibrate Dots" drag mode for Admins to fine-tune any building dot directly on the roof.
+ * - Strictly isolates map z-index (`isolate relative z-0`) so map buttons (`My GPS`, zoom, badges)
+ *   NEVER collide with top navbar Notifications / Messages popovers or modals.
+ */
+export default function CampusMapView({
+  tickets = [],
+  techs = [],
+  onSelectTicket,
+  fill = false,
+  height = 480,
+}) {
+  const isAdminView = Boolean(techs && techs.length > 0);
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const mapplsRef = useRef(null);
+  const leafletRef = useRef(null);
+  const markersRef = useRef([]);
+  const buildingMarkersRef = useRef([]);
+  const gpsMarkerRef = useRef(null);
+
+  // MapmyIndia only
+  const engine = 'mappls';
+  const [mapError, setMapError] = useState('');
+  const [landmarks, setLandmarks] = useState(loadSavedLandmarks);
+  const [calibrateMode, setCalibrateMode] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [catFilter, setCatFilter] = useState('all');
+  const [queueFilter, setQueueFilter] = useState('all'); // 'all' | 'unassigned' | 'active' | 'urgent'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showBuildingNames, setShowBuildingNames] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [gpsToast, setGpsToast] = useState('');
+
+  // Enrich tickets with category metadata & snapped building roof coordinates
+  const enrichedTickets = useMemo(() => {
+    const raw = (tickets || []).map((t) => {
+      const baseCoords = getTicketCoords(t);
+      // If ticket matched a landmark ID/name, use the latest calibrated landmark position
+      let coords = baseCoords;
+      if (baseCoords?.buildingName) {
+        const cal = landmarks.find((lm) => lm.name === baseCoords.buildingName);
+        if (cal) coords = { lat: cal.lat, lng: cal.lng, buildingName: cal.name };
+      }
+      const cat = getTicketCategoryMeta(t);
+      return {
+        ...t,
+        _coords: coords,
+        _cat: cat,
+      };
+    });
+
+    const bySpot = new Map();
+    raw.forEach((t) => {
+      if (!t._coords) return;
+      const key = `${t._coords.lat.toFixed(4)},${t._coords.lng.toFixed(4)}`;
+      if (!bySpot.has(key)) bySpot.set(key, []);
+      bySpot.get(key).push(t);
+    });
+
+    return raw.map((t) => {
+      if (!t._coords) return t;
+      const key = `${t._coords.lat.toFixed(4)},${t._coords.lng.toFixed(4)}`;
+      const group = bySpot.get(key) || [t];
+      const idx = group.indexOf(t);
+      // First issue at a spot sits as a small badge just above-left of the building dot
+      // (its name stays readable); further issues there fan out in a tight ring.
+      if (group.length === 1 || idx === 0) {
+        return { ...t, _displayCoords: { lat: t._coords.lat, lng: t._coords.lng }, _badge: Boolean(t._coords.buildingName) };
+      }
+      const others = group.length - 1;
+      const angle = (2 * Math.PI * (idx - 1)) / others - Math.PI / 2;
+      const radius = 0.0001 + Math.floor((idx - 1) / 6) * 0.00005;
+      return {
+        ...t,
+        _displayCoords: {
+          lat: t._coords.lat + Math.sin(angle) * radius,
+          lng: t._coords.lng + Math.cos(angle) * radius,
+        },
+      };
+    });
+  }, [tickets, landmarks]);
+
+  // Filter by top Category bar
+  const catFiltered = useMemo(() => {
+    if (catFilter === 'all') return enrichedTickets;
+    return enrichedTickets.filter((t) => t._cat.key === catFilter);
+  }, [enrichedTickets, catFilter]);
+
+  // Filter for right-hand queue + map pins
+  const visibleTickets = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return catFiltered.filter((t) => {
+      if (queueFilter === 'unassigned' && !isUnassigned(t)) return false;
+      if (queueFilter === 'active' && isResolved(t)) return false;
+      if (queueFilter === 'urgent' && !isUrgent(t)) return false;
+      if (!q) return true;
+      const hay = `${t.id || ''} ${t.title || ''} ${t.category || ''} ${t.subCategory || ''} ${t.location || ''} ${t.assignedToName || ''} ${t.description || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [catFiltered, queueFilter, searchQuery]);
+
+  const pinnedTickets = useMemo(
+    () => visibleTickets.filter((t) => Boolean(t._displayCoords)),
+    [visibleTickets]
+  );
+
+  const unassignedCount = useMemo(
+    () => catFiltered.filter(isUnassigned).length,
+    [catFiltered]
+  );
+  const activeCount = useMemo(
+    () => catFiltered.filter((t) => !isResolved(t)).length,
+    [catFiltered]
+  );
+  const urgentCount = useMemo(
+    () => catFiltered.filter(isUrgent).length,
+    [catFiltered]
+  );
+
+  const selectedTicket = useMemo(
+    () => visibleTickets.find((t) => t.id === selectedId) || null,
+    [visibleTickets, selectedId]
+  );
+
+  // Initialize Esri Satellite, Google Hybrid, or Mappls map
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
+    let cleanupOverlay = null;
+    setMapReady(false);
 
-    async function initMap() {
-      if (!mapContainerRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-      // Clean up previous map instances if any
-      if (leafletMapRef.current) {
-        try { leafletMapRef.current.remove(); } catch {}
-        leafletMapRef.current = null;
-      }
-      if (mapplsMapRef.current) {
-        try { mapplsMapRef.current.remove(); } catch {}
-        mapplsMapRef.current = null;
-      }
-      markersRef.current = [];
-
-      // Try MapmyIndia (Mappls) if key is configured
-      if (activeKey) {
-        try {
-          const mappls = await loadMapplsSdk(activeKey);
-          if (!isMounted || !mapContainerRef.current) return;
-
-          const map = new mappls.Map(mapContainerRef.current, {
-            center: [DEFAULT_CAMPUS_LOCATION.lat, DEFAULT_CAMPUS_LOCATION.lng],
-            zoom: 16,
-            zoomControl: true,
-            location: true,
-          });
-          mapplsMapRef.current = map;
-
-          map.addListener('click', async (e) => {
-            const lat = e.lngLat ? e.lngLat.lat : e.latlng?.lat;
-            const lng = e.lngLat ? e.lngLat.lng : e.latlng?.lng;
-            if (lat && lng) {
-              const geo = await reverseGeocode(lat, lng, activeKey);
-              setSelectedPin({
-                type: 'custom',
-                lat,
-                lng,
-                address: geo?.address || `Campus Spot (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-              });
-            }
-          });
-
-          if (isMounted) setMapEngine('mappls');
-          return;
-        } catch (err) {
-          console.warn('Mappls SDK failed, using OpenStreetMap fallback', err);
-        }
-      }
-
-      // Fallback: Leaflet + OpenStreetMap with custom SVG markers
-      try {
-        if (!window.L) {
-          await loadLeafletLibrary();
-        }
-        if (!isMounted || !mapContainerRef.current) return;
-
-        const L = window.L;
-
-        // Configure standard Leaflet icon paths
-        if (L.Icon?.Default) {
-          delete L.Icon.Default.prototype._getIconUrl;
-          L.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          });
-        }
-
-        const map = L.map(mapContainerRef.current, {
-          center: [DEFAULT_CAMPUS_LOCATION.lat, DEFAULT_CAMPUS_LOCATION.lng],
-          zoom: 16,
-          zoomControl: true,
-        });
-        leafletMapRef.current = map;
-
-        // Apply high-resolution Hybrid Satellite layer by default
-        applyLeafletTileLayer(L, map, tileLayersRef, 'satellite');
-
-        map.on('click', async (e) => {
-          const lat = e.latlng.lat;
-          const lng = e.latlng.lng;
-          const geo = await reverseGeocode(lat, lng, activeKey);
-          setSelectedPin({
-            type: 'custom',
-            lat,
-            lng,
-            address: geo?.address || `Campus Spot (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-          });
-        });
-
-        if (isMounted) setMapEngine('fallback');
-      } catch (fErr) {
-        console.error('Leaflet map loading error', fErr);
-      }
+    markersRef.current.forEach(removeMarker);
+    markersRef.current = [];
+    buildingMarkersRef.current.forEach(removeMarker);
+    buildingMarkersRef.current = [];
+    if (gpsMarkerRef.current) {
+      removeMarker(gpsMarkerRef.current);
+      gpsMarkerRef.current = null;
     }
 
-    const timer = setTimeout(initMap, 50);
+    if (mapRef.current) {
+      try {
+        if (typeof mapRef.current.remove === 'function') mapRef.current.remove();
+      } catch {
+        // ignore
+      }
+      mapRef.current = null;
+    }
+    mapplsRef.current = null;
+    leafletRef.current = null;
+    el.innerHTML = '';
+
+    const initLeafletSatellite = async (mode) => {
+      try {
+        const L = await loadLeaflet();
+        if (cancelled || !containerRef.current) return;
+
+        const map = L.map(containerRef.current, {
+          scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: !L.Browser.mobile,
+          center: [IIITG_CENTER.lat, IIITG_CENTER.lng],
+          zoom: 17,
+          zoomControl: false,
+          attributionControl: false,
+        });
+        enableWheelOnFocus(L, map);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        if (mode === 'google-hybrid') {
+          L.tileLayer('https://mt1.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+          }).addTo(map);
+        } else {
+          L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19 }
+          ).addTo(map);
+        }
+
+        L.polygon(IIITG_CAMPUS_POLYGON, {
+          color: '#facc15',
+          weight: 2.5,
+          opacity: 0.92,
+          fillColor: '#facc15',
+          fillOpacity: 0.04,
+          interactive: false,
+        }).addTo(map);
+
+        leafletRef.current = L;
+        mapRef.current = map;
+        setMapReady(true);
+        setTimeout(() => {
+          try {
+            map.invalidateSize();
+          } catch {
+            /* ignore */
+          }
+        }, 180);
+      } catch {
+        // ignore
+      }
+    };
+
+    const initMappls = async () => {
+      try {
+        const { mappls, map } = await createMapplsMap(el, {
+          center: IIITG_CENTER,
+          zoom: IIITG_ZOOM,
+        });
+        if (cancelled) return;
+        mapplsRef.current = mappls;
+        mapRef.current = map;
+        useSatelliteStyle(mappls, map);
+        cleanupOverlay = addCampusOverlay(mappls, map, { showLabels: false });
+        const markReady = () => {
+          if (!cancelled) setMapReady(true);
+        };
+        if (map && typeof map.on === 'function') {
+          map.on('load', markReady);
+          setTimeout(markReady, 700);
+        } else {
+          markReady();
+        }
+      } catch {
+        if (!cancelled) setMapError('MapmyIndia map could not be loaded — check your internet connection and refresh.');
+      }
+    };
+
+    setMapError('');
+    initMappls();
 
     return () => {
-      isMounted = false;
-      clearTimeout(timer);
-      if (leafletMapRef.current) {
-        try { leafletMapRef.current.remove(); } catch {}
-        leafletMapRef.current = null;
-      }
-      if (mapplsMapRef.current) {
-        try { mapplsMapRef.current.remove(); } catch {}
-        mapplsMapRef.current = null;
-      }
+      cancelled = true;
+      if (cleanupOverlay) cleanupOverlay();
+      markersRef.current.forEach(removeMarker);
       markersRef.current = [];
-    };
-  }, [activeKey]);
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // ──────────────────────────────────────────────────────────────────────────
-  // 2. Sync Markers when filteredTickets, mapEngine, or showLandmarks change.
-  //    This updates markers WITHOUT resetting or reloading the map instance!
-  // ──────────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    // Clear previous markers
-    markersRef.current.forEach(m => {
-      try {
-        if (m.remove) m.remove();
-        else if (m.removeFrom && leafletMapRef.current) m.removeFrom(leafletMapRef.current);
-      } catch {}
-    });
-    markersRef.current = [];
-
-    // Group tickets to disperse duplicate / overlapping coordinates
-    const coordGroups = {};
-    filteredTickets.forEach((t) => {
-      const c = resolveTicketCoords(t);
-      const key = `${c.lat.toFixed(4)},${c.lng.toFixed(4)}`;
-      if (!coordGroups[key]) coordGroups[key] = [];
-      coordGroups[key].push({ ticket: t, baseCoords: c });
-    });
-
-    const dispersedCoords = new Map();
-    Object.values(coordGroups).forEach((group) => {
-      if (group.length === 1) {
-        dispersedCoords.set(group[0].ticket.id, group[0].baseCoords);
-      } else {
-        const radius = 0.00018; // ~18m radius spread around building
-        group.forEach((item, idx) => {
-          const angle = (idx / group.length) * 2 * Math.PI;
-          dispersedCoords.set(item.ticket.id, {
-            lat: item.baseCoords.lat + radius * Math.sin(angle),
-            lng: item.baseCoords.lng + radius * Math.cos(angle),
-            baseCoords: item.baseCoords,
-          });
-        });
+      buildingMarkersRef.current.forEach(removeMarker);
+      buildingMarkersRef.current = [];
+      if (gpsMarkerRef.current) {
+        removeMarker(gpsMarkerRef.current);
+        gpsMarkerRef.current = null;
       }
-    });
-
-    // ── Leaflet Engine Markers ──
-    if (mapEngine === 'fallback' && leafletMapRef.current && window.L) {
-      const L = window.L;
-      const map = leafletMapRef.current;
-
-      // 1. Official Campus Landmarks (if enabled)
-      if (showLandmarks) {
-        CAMPUS_PRESETS.forEach((spot) => {
-          const isSelected = selectedPin?.type === 'landmark' && selectedPin?.landmark?.name === spot.name;
-          const openCount = tickets.filter(t => {
-            const c = resolveTicketCoords(t);
-            return Math.abs(c.lat - spot.lat) < 0.0004 && Math.abs(c.lng - spot.lng) < 0.0004;
-          }).length;
-
-          const badgeHtml = `
-            <div class="campus-landmark-badge cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${isSelected ? 'bg-indigo-600 ring-4 ring-indigo-300' : 'bg-slate-900/90 hover:bg-slate-900'} text-white border border-white/40 shadow-lg backdrop-blur transition-all duration-200 hover:scale-110 select-none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));">
-              <span style="font-size: 13px; line-height: 1;">${spot.icon}</span>
-              <span style="font-size: 11px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap;">${spot.name}</span>
-              ${openCount > 0 ? `<span style="font-size: 9px; font-weight: 800; background: #ef4444; color: white; padding: 1px 5px; border-radius: 9999px; margin-left: 2px;">${openCount}</span>` : ''}
-            </div>
-          `;
-
-          const landmarkIcon = L.divIcon({
-            className: 'landmark-marker-badge',
-            html: badgeHtml,
-            iconSize: [110, 26],
-            iconAnchor: [55, 13],
-          });
-
-          const marker = L.marker([spot.lat, spot.lng], { icon: landmarkIcon, zIndexOffset: -50 }).addTo(map);
-
-          marker.on('click', () => {
-            setSelectedPin({
-              type: 'landmark',
-              landmark: spot,
-              lat: spot.lat,
-              lng: spot.lng,
-              address: `${spot.name}, IIIT Guwahati`,
-            });
-            map.panTo([spot.lat, spot.lng], { animate: true, duration: 0.4 });
-          });
-
-          markersRef.current.push(marker);
-        });
-      }
-
-      // 2. Issue Ticket Pins
-      filteredTickets.forEach((t) => {
-        const coords = dispersedCoords.get(t.id) || resolveTicketCoords(t);
-        const meta = getTicketCategoryMeta(t);
-        const isSelected = activeTicketId === t.id;
-
-        // Custom rich SVG DivIcon with category styling
-        const iconHtml = `
-          <div class="custom-ticket-pin relative cursor-pointer transform -translate-x-1/2 -translate-y-full transition-transform hover:scale-125" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35));">
-            <div style="background-color: ${meta.color}; width: 34px; height: 34px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; ${isSelected ? 'box-shadow: 0 0 0 4px #6366f1;' : ''}">
-              <span style="transform: rotate(45deg); font-size: 15px; line-height: 1;">${meta.emoji}</span>
-            </div>
-            ${t.priority === 'High' ? '<span style="position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; border: 2px solid #ffffff;"></span>' : ''}
-          </div>
-        `;
-
-        const customIcon = L.divIcon({
-          className: 'ticket-marker-icon',
-          html: iconHtml,
-          iconSize: [34, 34],
-          iconAnchor: [17, 34],
-        });
-
-        const marker = L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(map);
-
-        marker.bindTooltip(
-          `<div style="font-family: inherit; font-size: 11px; padding: 2px 4px;">
-            <div style="font-weight: 700; color: #0f172a;">${ticketLabel(t)}</div>
-            <div style="color: #64748b; margin-top: 2px;">📍 ${t.location || 'Campus'}</div>
-          </div>`,
-          { direction: 'top', offset: [0, -32], opacity: 0.95 }
-        );
-
-        marker.on('click', () => {
-          setActiveTicketId(t.id);
-          setSelectedPin({ type: 'ticket', ticket: t, ...coords });
-          map.panTo([coords.lat, coords.lng], { animate: true, duration: 0.5 });
-        });
-
-        markersRef.current.push(marker);
-      });
-    }
-
-    // ── MapmyIndia (Mappls) Engine Markers ──
-    if (mapEngine === 'mappls' && mapplsMapRef.current && window.mappls) {
-      const mappls = window.mappls;
-      const map = mapplsMapRef.current;
-
-      // 1. Campus Landmarks
-      if (showLandmarks) {
-        CAMPUS_PRESETS.forEach((spot) => {
-          try {
-            const m = new mappls.Marker({
-              map,
-              position: { lat: spot.lat, lng: spot.lng },
-              label: spot.name,
-            });
-            m.addListener('click', () => {
-              setSelectedPin({
-                type: 'landmark',
-                landmark: spot,
-                lat: spot.lat,
-                lng: spot.lng,
-                address: `${spot.name}, IIIT Guwahati`,
-              });
-              if (map.setCenter) map.setCenter([spot.lat, spot.lng]);
-            });
-            markersRef.current.push(m);
-          } catch (e) {
-            console.warn('Failed to place Mappls landmark marker', e);
-          }
-        });
-      }
-
-      // 2. Issue Pins
-      filteredTickets.forEach((t) => {
-        const coords = dispersedCoords.get(t.id) || resolveTicketCoords(t);
+      if (mapRef.current) {
         try {
+          if (typeof mapRef.current.remove === 'function') mapRef.current.remove();
+        } catch {
+          // ignore
+        }
+        mapRef.current = null;
+      }
+    };
+  }, [engine]);
+
+  // Render IIIT Guwahati building dot + name labels (`• Academic Building`, `• Boys' Hostel`, etc.)
+  // When `calibrateMode` is ON, building dots become draggable so Admin can fine-tune any roof label!
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+
+    buildingMarkersRef.current.forEach(removeMarker);
+    buildingMarkersRef.current = [];
+
+    if (!showBuildingNames) return;
+
+    const map = mapRef.current;
+    const L = leafletRef.current;
+    const mappls = mapplsRef.current;
+
+    for (const lm of landmarks) {
+      try {
+        if (engine !== 'mappls' && L) {
+          const pillHtml = calibrateMode
+            ? buildingLabelHtml(lm).replace(
+                'pointer-events:none;',
+                'pointer-events:auto;cursor:grab;outline:1.5px dashed #facc15;'
+              )
+            : buildingLabelHtml(lm);
+
+          const icon = L.divIcon({
+            className: 'iiitg-building-dot-label',
+            html: pillHtml,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0],
+          });
+          const m = L.marker([lm.lat, lm.lng], {
+            icon,
+            interactive: calibrateMode,
+            draggable: calibrateMode,
+            keyboard: false,
+            zIndexOffset: calibrateMode ? 1200 : 100,
+          }).addTo(map);
+
+          if (calibrateMode) {
+            m.on('dragend', () => {
+              const pos = m.getLatLng();
+              if (!pos) return;
+              setLandmarks((prev) => {
+                const next = prev.map((item) =>
+                  item.id === lm.id
+                    ? {
+                        ...item,
+                        lat: Number(pos.lat.toFixed(5)),
+                        lng: Number(pos.lng.toFixed(5)),
+                      }
+                    : item
+                );
+                try {
+                  localStorage.setItem(LANDMARK_STORAGE_KEY, JSON.stringify(next));
+                } catch {}
+                return next;
+              });
+            });
+          }
+
+          buildingMarkersRef.current.push(m);
+        } else if (engine === 'mappls' && mappls) {
           const m = new mappls.Marker({
             map,
-            position: coords,
+            position: { lat: lm.lat, lng: lm.lng },
+            html: centeredHtml(buildingLabelHtml(lm)),
+            width: 2,
+            height: 2,
+            draggable: calibrateMode,
+            fitbounds: false,
           });
-          m.addListener('click', () => {
-            setActiveTicketId(t.id);
-            setSelectedPin({ type: 'ticket', ticket: t, ...coords });
-            if (map.setCenter) map.setCenter([coords.lat, coords.lng]);
-          });
-          markersRef.current.push(m);
-        } catch (e) {
-          console.warn('Failed to place Mappls marker', e);
+          if (calibrateMode) {
+            m.addListener?.('dragend', () => {
+              const pos = m.getPosition?.();
+              if (!pos) return;
+              setLandmarks((prev) => {
+                const next = prev.map((item) =>
+                  item.id === lm.id ? { ...item, lat: Number(Number(pos.lat).toFixed(6)), lng: Number(Number(pos.lng).toFixed(6)) } : item
+                );
+                try { localStorage.setItem(LANDMARK_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+                return next;
+              });
+            });
+          }
+          buildingMarkersRef.current.push(m);
         }
-      });
+      } catch {
+        // ignore
+      }
     }
-  }, [filteredTickets, mapEngine, activeTicketId, showLandmarks, selectedPin?.landmark?.name]);
 
-  // Jump to and highlight a ticket on the map
-  function focusTicket(t) {
-    const coords = resolveTicketCoords(t);
-    setActiveTicketId(t.id);
-    setSelectedPin({ type: 'ticket', ticket: t, ...coords });
+    // Building names appear once zoomed in (dots are always shown); always on while adjusting
+    const box = containerRef.current;
+    const syncNames = () => {
+      try {
+        box?.classList.toggle('cc-names-on', calibrateMode || (map.getZoom?.() ?? 0) >= BUILDING_NAME_MIN_ZOOM);
+      } catch { /* ignore */ }
+    };
+    syncNames();
+    try { map.on?.('zoomend', syncNames); map.on?.('zoom', syncNames); } catch { /* ignore */ }
+    return () => {
+      try { map.off?.('zoomend', syncNames); map.off?.('zoom', syncNames); } catch { /* ignore */ }
+    };
+  }, [mapReady, engine, showBuildingNames, landmarks, calibrateMode]);
 
-    if (mapEngine === 'fallback' && leafletMapRef.current) {
-      leafletMapRef.current.flyTo([coords.lat, coords.lng], 18, { duration: 0.8 });
-    } else if (mapEngine === 'mappls' && mapplsMapRef.current) {
-      mapplsMapRef.current.setCenter([coords.lat, coords.lng]);
-      mapplsMapRef.current.setZoom(18);
-    }
-  }
+  // Render clean colored issue dots (`•`) on the map
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
 
-  // Jump to and highlight a campus landmark
-  function focusLandmark(spot) {
-    setSelectedPin({
-      type: 'landmark',
-      landmark: spot,
-      lat: spot.lat,
-      lng: spot.lng,
-      address: `${spot.name}, IIIT Guwahati`,
+    markersRef.current.forEach(removeMarker);
+    markersRef.current = [];
+
+    const map = mapRef.current;
+    const L = leafletRef.current;
+    const mappls = mapplsRef.current;
+
+    pinnedTickets.forEach((t) => {
+      const { lat, lng } = t._displayCoords;
+      const isSelected = t.id === selectedId;
+      const dotColor = t._cat.color;
+
+      try {
+        if (engine !== 'mappls' && L) {
+          const html = ticketDotHtml({
+            color: dotColor,
+            size: isUrgent(t) ? 17 : 15,
+            selected: isSelected,
+          });
+
+          const icon = L.divIcon({
+            className: 'iiitg-ticket-dot-pin',
+            html,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          });
+
+          const marker = L.marker([lat, lng], {
+            icon,
+            title: `${ticketLabel(t)} (${t.location || 'Campus'})`,
+            zIndexOffset: isSelected ? 900 : 400,
+          }).addTo(map);
+
+          marker.bindTooltip(
+            `<div style="font-family:Inter,system-ui,sans-serif;font-size:11.5px;line-height:1.35;padding:2px 4px;">
+              <div style="font-weight:700;color:#0f172a;">${String(ticketLabel(t)).replace(/</g, '&lt;')}</div>
+              <div style="color:#475569;font-size:10.5px;">📍 ${String(t.location || t._coords?.buildingName || 'Campus').replace(/</g, '&lt;')} · <span style="color:${dotColor};font-weight:700;">${t._cat.short}</span></div>
+            </div>`,
+            { direction: 'top', offset: [0, -8], opacity: 0.96 }
+          );
+
+          marker.on('click', () => setSelectedId(t.id));
+          markersRef.current.push(marker);
+        } else if (engine === 'mappls' && mappls) {
+          const marker = addMapplsPin(mappls, map, {
+            lat,
+            lng,
+            color: dotColor,
+            size: isUrgent(t) ? 17 : 15,
+            selected: isSelected,
+            // On a named building: sit just above-left of the building dot so its name stays readable
+            nudge: t._badge ? [-11, -13] : [0, 0],
+            title: `${ticketLabel(t)} (${t.location || 'Campus'})`,
+            onClick: () => setSelectedId(t.id),
+          });
+          markersRef.current.push(marker);
+        }
+      } catch {
+        // ignore single marker failure
+      }
     });
+  }, [pinnedTickets, mapReady, engine, selectedId]);
 
-    if (mapEngine === 'fallback' && leafletMapRef.current) {
-      leafletMapRef.current.flyTo([spot.lat, spot.lng], 18, { duration: 0.8 });
-    } else if (mapEngine === 'mappls' && mapplsMapRef.current) {
-      mapplsMapRef.current.setCenter([spot.lat, spot.lng]);
-      mapplsMapRef.current.setZoom(18);
+  const focusTicketOnMap = (t) => {
+    setSelectedId(t.id);
+    const c = t._displayCoords || t._coords;
+    if (!c || !mapRef.current) return;
+    try {
+      if (engine !== 'mappls' && typeof mapRef.current.flyTo === 'function') {
+        mapRef.current.flyTo([c.lat, c.lng], 18, { duration: 0.5 });
+      } else if (typeof mapRef.current.setCenter === 'function') {
+        mapRef.current.setCenter({ lat: c.lat, lng: c.lng }); mapRef.current.setZoom?.(18);
+      }
+    } catch {
+      // ignore
     }
-  }
+  };
 
-  // Switch between Satellite and Street views
-  function switchLayer(mode) {
-    setMapViewMode(mode);
-    if (mapEngine === 'fallback' && leafletMapRef.current && window.L) {
-      applyLeafletTileLayer(window.L, leafletMapRef.current, tileLayersRef, mode);
-    }
-  }
-
-  // GPS Locate User
-  function locateUser() {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
-    setDetectingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setDetectingGps(false);
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
-        if (mapEngine === 'mappls' && mapplsMapRef.current) {
-          mapplsMapRef.current.setCenter([lat, lng]);
-          mapplsMapRef.current.setZoom(17);
-        } else if (leafletMapRef.current && window.L) {
-          leafletMapRef.current.flyTo([lat, lng], 17, { duration: 0.8 });
-          const L = window.L;
-          L.circleMarker([lat, lng], { radius: 8, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.8 }).addTo(leafletMapRef.current);
-        }
-
-        const geo = await reverseGeocode(lat, lng, activeKey);
-        setSelectedPin({
-          type: 'custom',
-          lat,
-          lng,
-          address: geo?.address || `Your Current Location (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-          isUserGps: true,
+  const handleMyGps = async () => {
+    if (gpsBusy) return;
+    setGpsBusy(true);
+    setGpsToast('');
+    try {
+      const fix = await readDeviceGps(8000);
+      const map = mapRef.current;
+      const L = leafletRef.current;
+      if (gpsMarkerRef.current) {
+        removeMarker(gpsMarkerRef.current);
+        gpsMarkerRef.current = null;
+      }
+      if (engine !== 'mappls' && L && map) {
+        const icon = L.divIcon({
+          className: 'iiitg-user-gps-dot',
+          html: ticketDotHtml({ color: '#2563eb', size: 16, selected: true }),
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
         });
-      },
-      (err) => {
-        setDetectingGps(false);
-        alert(err.message || 'Unable to access location');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
+        gpsMarkerRef.current = L.marker([fix.lat, fix.lng], {
+          icon,
+          title: 'Your GPS Location',
+          zIndexOffset: 950,
+        }).addTo(map);
+        map.flyTo([fix.lat, fix.lng], 17, { duration: 0.6 });
+      } else if (map?.setCenter) {
+        map.setCenter({ lat: fix.lat, lng: fix.lng });
+      }
+      setGpsToast('Centered on your GPS');
+      setTimeout(() => setGpsToast(''), 2500);
+    } catch {
+      const map = mapRef.current;
+      if (engine !== 'mappls' && map?.setView) {
+        map.setView([IIITG_CENTER.lat, IIITG_CENTER.lng], 17, { animate: true });
+      } else if (map?.setCenter) {
+        map.setCenter({ lat: IIITG_CENTER.lat, lng: IIITG_CENTER.lng });
+      }
+      setGpsToast('Centered on IIITG Campus');
+      setTimeout(() => setGpsToast(''), 2500);
+    } finally {
+      setGpsBusy(false);
+    }
+  };
 
-  // Save MapmyIndia Key
-  function saveKey(e) {
-    e.preventDefault();
-    setMapplsKey(keyInput);
-    setActiveKey(keyInput.trim());
-    setKeySaved(true);
-    setTimeout(() => {
-      setKeySaved(false);
-      setShowKeyDialog(false);
-    }, 1200);
-  }
+  const copyLandmarksCode = () => {
+    const code =
+      'export const CAMPUS_LANDMARKS = [\n' +
+      landmarks
+        .map(
+          (l) =>
+            `  { id: '${l.id}', name: ${JSON.stringify(l.name)}, lat: ${l.lat}, lng: ${l.lng}, color: '${l.color}' },`
+        )
+        .join('\n') +
+      '\n];';
+    navigator.clipboard?.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const resetLandmarks = () => {
+    try {
+      localStorage.removeItem(LANDMARK_STORAGE_KEY);
+    } catch {}
+    setLandmarks(CAMPUS_LANDMARKS);
+  };
+
+  const queueTabs = isAdminView
+    ? [
+        { key: 'all', label: `All (${catFiltered.length})` },
+        { key: 'unassigned', label: `Unassigned (${unassignedCount})` },
+        { key: 'urgent', label: `Urgent (${urgentCount})` },
+      ]
+    : [
+        { key: 'all', label: `All (${catFiltered.length})` },
+        { key: 'active', label: `Open (${activeCount})` },
+        { key: 'urgent', label: `Urgent (${urgentCount})` },
+      ];
 
   return (
-    <div className="space-y-4">
-      {/* ── Top Toolbar ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
-          <span className="text-slate-400 dark:text-slate-500 font-bold px-1 text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1">
-            <ListFilter className="w-3.5 h-3.5" /> Filter:
+    <div
+      className={`rounded-2xl bg-white dark:bg-[#121417] border border-[#d6ded7] dark:border-[#2a2e35] shadow-xs overflow-hidden flex flex-col ${
+        fill ? 'lg:h-full lg:min-h-0' : ''
+      }`}
+    >
+      {/* ── Top Category Filter Strip ── */}
+      <div className="shrink-0 px-3.5 py-2 border-b border-slate-100 dark:border-[#212429] flex flex-wrap items-center justify-between gap-2 bg-slate-50/60 dark:bg-[#101113]">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full">
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mr-1 shrink-0">
+            <Filter className="w-3 h-3" /> Category:
           </span>
-          {[
-            { id: 'all', label: `All (${tickets.length})` },
-            { id: 'it', label: '💻 IT' },
-            { id: 'electrical', label: '⚡ Electrical' },
-            { id: 'water', label: '💧 Water' },
-            { id: 'security', label: '🛡️ Security' },
-            { id: 'lost', label: '🔍 Lost & Found' },
-          ].map(c => (
-            <button
-              key={c.id}
-              onClick={() => setCategoryFilter(c.id)}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs cursor-pointer ${
-                categoryFilter === c.id 
-                  ? 'bg-iiitg-800 text-white shadow-sm' 
-                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Quick Search & Actions */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="relative min-w-[160px] sm:min-w-[200px]">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search place or issue…"
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <X className="w-3 h-3" />
+          {CATEGORY_TABS.map((tab) => {
+            const active = catFilter === tab.key;
+            const count =
+              tab.key === 'all'
+                ? enrichedTickets.length
+                : enrichedTickets.filter((t) => t._cat.key === tab.key).length;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setCatFilter(tab.key)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition shrink-0 cursor-pointer ${
+                  active
+                    ? 'bg-[#2f4e56] text-white border-[#2f4e56] dark:bg-indigo-600 dark:border-indigo-500 shadow-2xs'
+                    : 'bg-white dark:bg-[#17191d] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-[#2b2f36] hover:bg-slate-100'
+                }`}
+              >
+                {tab.dot && (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/80"
+                    style={{ backgroundColor: tab.dot }}
+                  />
+                )}
+                <span>
+                  {tab.label}
+                  {tab.key === 'all' ? ` (${count})` : count > 0 ? ` (${count})` : ''}
+                </span>
               </button>
-            )}
-          </div>
+            );
+          })}
+        </div>
 
-          {/* GPS Auto-Detect */}
+        {/* Map Controls: Layer Switcher + Building Dots Toggle + Admin Drag-to-Calibrate */}
+        <div className="flex items-center gap-1.5 flex-wrap max-w-full min-w-0">
+
+
           <button
             type="button"
-            onClick={locateUser}
-            disabled={detectingGps}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-            title="Automatically detect your location"
+            onClick={() => setShowBuildingNames((v) => !v)}
+            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
+              showBuildingNames
+                ? 'bg-slate-900 text-white border-slate-900 dark:bg-emerald-700 dark:border-emerald-500'
+                : 'bg-white dark:bg-[#17191d] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-[#2b2f36]'
+            }`}
+            title="Show or hide building markers"
           >
-            {detectingGps ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-            ) : (
-              <Crosshair className="w-3.5 h-3.5 text-emerald-600" />
-            )}
-            <span className="hidden sm:inline">{detectingGps ? 'Locating…' : 'My GPS'}</span>
+            {showBuildingNames ? 'Hide buildings' : 'Show buildings'}
           </button>
 
-          {/* MapmyIndia Key Config */}
-          <button
-            type="button"
-            onClick={() => setShowKeyDialog(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors cursor-pointer"
-            title="Configure MapmyIndia Static Key"
-          >
-            <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">{activeKey ? 'Mappls Active' : 'Set Mappls Key'}</span>
-          </button>
+          {isAdminView && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowBuildingNames(true);
+                setCalibrateMode((v) => !v);
+              }}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
+                calibrateMode
+                  ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs'
+                  : 'bg-white dark:bg-[#17191d] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-[#2b2f36] hover:bg-slate-100'
+              }`}
+              title="Drag buildings to correct their position"
+            >
+              <Move className="w-3 h-3" />
+              <span>{calibrateMode ? 'Done' : 'Adjust buildings'}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ── Quick Campus Landmarks Ribbon ── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1 pl-0.5">
-          <span>🏛️</span> Campus Spots:
-        </span>
-        {CAMPUS_PRESETS.map((spot) => {
-          const isSelected = selectedPin?.type === 'landmark' && selectedPin?.landmark?.name === spot.name;
-          return (
+      {/* Admin Calibration Helper Banner (shown only when Calibrate Roof Dots is active) */}
+      {calibrateMode && (
+        <div className="shrink-0 px-3.5 py-1.5 bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900 dark:text-amber-200">
+          <span className="font-semibold">
+            <strong>Adjust buildings:</strong> drag a building onto its roof. Changes save automatically.
+          </span>
+          <div className="flex items-center gap-2">
             <button
-              key={spot.name}
               type="button"
-              onClick={() => focusLandmark(spot)}
-              className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer active:scale-95 shadow-2xs ${
-                isSelected
-                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
-                  : 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
-              }`}
+              onClick={copyLandmarksCode}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 cursor-pointer"
             >
-              <span>{spot.icon}</span>
-              <span>{spot.name}</span>
+              <Copy className="w-3 h-3" />
+              <span>{copiedCode ? 'Copied campus.js!' : 'Copy campus.js coords'}</span>
             </button>
-          );
-        })}
-      </div>
+            <button
+              type="button"
+              onClick={resetLandmarks}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-amber-300 text-amber-900 dark:text-amber-200 text-[11px] font-bold hover:bg-amber-100/60 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" /> Reset defaults
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* ── Main Layout: Split View with Interactive Map + Issues Sidebar ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Map Container (takes 8 cols on desktop) */}
-        <div className="lg:col-span-8 relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-100 dark:bg-slate-950 min-h-[500px]">
-          <div 
-            ref={mapContainerRef} 
-            className="w-full h-[520px] lg:h-[580px] relative z-0"
-          />
+      {/* ── Main Split Body: Map (Left) + Actionable Triage Queue (Right) ── */}
+      <div
+        className={`grid grid-cols-1 lg:grid-cols-12 ${
+          fill ? 'lg:flex-1 lg:min-h-0' : ''
+        }`}
+      >
+        {/* LEFT: Strictly isolated map stacking context (`isolate relative z-0`) so map controls NEVER overlap navbar dropdowns */}
+        <div
+          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden min-h-[340px] sm:min-h-[420px] lg:min-h-0"
+          style={fill ? { isolation: 'isolate' } : { height, isolation: 'isolate' }}
+        >
+          <div ref={containerRef} className="w-full h-full relative z-0" />
+          {mapError && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-1.5 p-6 text-center bg-slate-100 dark:bg-[#101113]">
+              <MapPin className="w-7 h-7 text-rose-500" />
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Map unavailable</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 max-w-xs">{mapError}</p>
+            </div>
+          )}
 
-          {/* Engine & View Status Badge */}
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold shadow-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
-              <Compass className="w-3.5 h-3.5 text-indigo-600" />
-              {mapEngine === 'mappls' ? (
-                <span className="text-emerald-600 font-extrabold">MapmyIndia Vector Map</span>
-              ) : (
-                <span className="text-slate-700 dark:text-slate-300">
-                  {mapViewMode === 'satellite' ? '🛰️ Satellite View' : '🗺️ Street View'}
+          {/* Top overlay bar inside isolated map (z-20 inside z-0 container -> never collides with header popovers!) */}
+          <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between gap-2 pointer-events-none">
+            <div className="pointer-events-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 dark:bg-slate-900/90 backdrop-blur-md shadow-md border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100">
+              <Compass className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>
+Satellite
+              </span>
+              <span className="text-slate-300 dark:text-slate-600">·</span>
+              <span className="text-indigo-600 dark:text-indigo-400">
+                {pinnedTickets.length} {pinnedTickets.length === 1 ? 'issue' : 'issues'}
+              </span>
+            </div>
+
+            <div className="pointer-events-auto flex items-center gap-1.5">
+              {gpsToast && (
+                <span className="px-2.5 py-1 rounded-full bg-slate-900/90 text-white text-[11px] font-semibold shadow">
+                  {gpsToast}
                 </span>
               )}
-            </span>
-            <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 shadow-xs hidden sm:inline">
-              {filteredTickets.length} pinned issues
-            </span>
+              <button
+                type="button"
+                onClick={handleMyGps}
+                disabled={gpsBusy}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-md border border-slate-200/80 dark:border-slate-700 transition cursor-pointer active:scale-95"
+                title="Locate my GPS or recenter on IIIT Guwahati"
+              >
+                <Crosshair className={`w-3.5 h-3.5 text-emerald-600 ${gpsBusy ? 'animate-spin' : ''}`} />
+                <span>{gpsBusy ? 'Locating…' : 'My GPS'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* View Modes & Landmarks Switcher */}
-          <div className="absolute top-3 right-3 z-10 flex items-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 text-xs gap-1">
-            <button
-              type="button"
-              onClick={() => setShowLandmarks(!showLandmarks)}
-              title={showLandmarks ? "Hide Landmark Badges" : "Show Landmark Badges"}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                showLandmarks
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <span>🏛️</span>
-              <span className="hidden sm:inline">Landmarks</span>
-            </button>
-            <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-            <button
-              type="button"
-              onClick={() => switchLayer('satellite')}
-              title="Switch to high-resolution Satellite View"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                mapViewMode === 'satellite'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <span>🛰️</span>
-              <span className="hidden sm:inline">Satellite</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => switchLayer('street')}
-              title="Switch to Street Map View"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                mapViewMode === 'street'
-                  ? 'bg-iiitg-800 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <span>🗺️</span>
-              <span className="hidden sm:inline">Street</span>
-            </button>
-          </div>
+          {!mapReady && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs text-xs text-white font-semibold">
+              Loading IIIT Guwahati campus satellite map…
+            </div>
+          )}
 
-          {/* Selected Pin Bottom Action Card */}
-          {selectedPin && (
-            <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 animate-slideUp">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center shrink-0">
-                    {selectedPin.type === 'landmark' ? (
-                      <span className="text-sm">{selectedPin.landmark.icon}</span>
-                    ) : (
-                      <MapPin className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="font-mono text-[10px] text-slate-400 block">
-                      {selectedPin.type === 'ticket' ? selectedPin.ticket.id : selectedPin.type === 'landmark' ? 'CAMPUS LANDMARK' : 'CAMPUS PIN'}
+          {/* Selected ticket floating card at bottom of map */}
+          {selectedTicket && (
+            <div className="absolute bottom-3 left-3 right-12 sm:right-auto sm:w-96 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: selectedTicket._cat.color }}
+                    />
+                    <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      {selectedTicket.id}
                     </span>
-                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">
-                      {selectedPin.type === 'ticket' ? ticketLabel(selectedPin.ticket) : selectedPin.type === 'landmark' ? selectedPin.landmark.name : 'Selected Location'}
-                    </h4>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusStyle(
+                        selectedTicket
+                      )}`}
+                    >
+                      {statusLabel(selectedTicket)}
+                    </span>
                   </div>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white mt-1 truncate">
+                    {ticketLabel(selectedTicket)}
+                  </h4>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                    📍 {selectedTicket.location || selectedTicket._coords?.buildingName || 'IIITG Campus'}
+                  </p>
                 </div>
-                <button 
-                  onClick={() => { setSelectedPin(null); setActiveTicketId(null); }} 
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(null)}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  aria-label="Close preview"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
+              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                {selectedTicket._coords && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openDirections(
+                        selectedTicket._coords.lat,
+                        selectedTicket._coords.lng,
+                        ticketLabel(selectedTicket)
+                      )
+                    }
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                  >
+                    <Navigation className="w-3 h-3" /> Directions
+                  </button>
+                )}
+                {onSelectTicket && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectTicket(selectedTicket)}
+                    className="ml-auto px-2.5 py-1 rounded-lg bg-[#2f4e56] hover:bg-[#253f46] text-white text-[11px] font-bold cursor-pointer"
+                  >
+                    Open Ticket →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
-              {selectedPin.type === 'ticket' ? (
-                <div className="space-y-2.5">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                    {cleanDescription(selectedPin.ticket.description) || 'No additional description provided.'}
-                  </p>
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                    <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                    <span className="truncate">{selectedPin.ticket.location || 'Campus'}</span>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${statusStyle(selectedPin.ticket)}`}>
-                      {statusLabel(selectedPin.ticket)}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPin.lat},${selectedPin.lng}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg inline-flex items-center gap-1"
-                      >
-                        <Navigation className="w-3 h-3 text-indigo-500" />
-                        <span>Navigate</span>
-                      </a>
-                      <button
-                        onClick={() => onSelectTicket?.(selectedPin.ticket)}
-                        className="px-3.5 py-1.5 text-xs font-bold text-white bg-iiitg-800 hover:bg-iiitg-900 rounded-xl transition-all shadow-xs cursor-pointer"
-                      >
-                        View Ticket
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : selectedPin.type === 'landmark' ? (
-                <div className="space-y-2.5">
+        {/* RIGHT: Live Triage Queue */}
+        <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-200/80 dark:border-[#212429] flex flex-col bg-slate-50/40 dark:bg-[#101114] min-h-[320px] lg:min-h-0">
+          {/* Queue filter tabs + search */}
+          <div className="p-3 border-b border-slate-200/70 dark:border-[#212429] space-y-2 shrink-0 bg-white dark:bg-[#121417]">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f1012] p-1 rounded-xl">
+              {queueTabs.map((tab) => {
+                const active = queueFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setQueueFilter(tab.key)}
+                    className={`flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                      active
+                        ? 'bg-[#2f4e56] text-white shadow-2xs dark:bg-indigo-600'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search ID, building, room, issue..."
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-[#2b2f36] bg-slate-50/70 dark:bg-[#0f1012] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#2f4e56]/20"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Scrollable ticket cards */}
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-2 max-h-[420px] lg:max-h-none">
+            {visibleTickets.map((t) => {
+              const active = t.id === selectedId;
+              const urgent = isUrgent(t);
+              const assignedName = t.assignedToName || t.acknowledged_name || '';
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => focusTicketOnMap(t)}
+                  className={`p-3 rounded-xl border transition cursor-pointer bg-white dark:bg-[#15171a] ${
+                    active
+                      ? 'border-[#2f4e56] ring-2 ring-[#2f4e56]/15 dark:border-indigo-400'
+                      : 'border-slate-200/90 dark:border-[#272b31] hover:border-slate-300'
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                      {selectedPin.landmark.type}
-                    </span>
-                    {selectedPin.landmark.plusCode && (
-                      <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-md font-semibold border border-indigo-200/50">
-                        {selectedPin.landmark.plusCode}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-white shadow-2xs"
+                        style={{ backgroundColor: t._cat.color }}
+                        title={t._cat.label}
+                      />
+                      <span className="font-mono text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                        {t.id}
                       </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    {selectedPin.address}
-                  </p>
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[11px] font-mono text-slate-400">
-                      {selectedPin.lat.toFixed(6)}, {selectedPin.lng.toFixed(6)}
+                      {urgent && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800">
+                          <Flame className="w-3 h-3" /> URGENT
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${statusStyle(
+                        t
+                      )}`}
+                    >
+                      {statusLabel(t)}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPin.lat},${selectedPin.lng}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg inline-flex items-center gap-1 border border-slate-200 dark:border-slate-700"
-                      >
-                        <Navigation className="w-3 h-3 text-indigo-500" />
-                        <span>Navigate</span>
-                      </a>
-                      {onRequestReport && (
+                  </div>
+
+                  <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-1.5 truncate">
+                    {ticketLabel(t)}
+                  </p>
+
+                  <div className="mt-2 pt-2 border-t border-slate-100 dark:border-[#212429] flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-300 truncate min-w-0">
+                      <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                      <span className="truncate">
+                        {t.location || t._coords?.buildingName || 'IIITG Campus'}
+                      </span>
+                    </span>
+
+                    <div
+                      className="flex items-center gap-1.5 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {assignedName && (!isAdminView || isResolved(t)) && (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          {assignedName}
+                        </span>
+                      )}
+                      {isAdminView && !isResolved(t) && (
+                        <AssignMenu ticket={t} techs={techs} />
+                      )}
+                      {onSelectTicket && (
                         <button
-                          onClick={() => {
-                            onRequestReport?.({
-                              location: `${selectedPin.landmark.name}, IIIT Guwahati`,
-                              lat: selectedPin.lat,
-                              lng: selectedPin.lng,
-                            });
-                            setSelectedPin(null);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                          type="button"
+                          onClick={() => onSelectTicket(t)}
+                          className="inline-flex items-center gap-0.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#2f4e56] dark:hover:text-indigo-300 px-1.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                         >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Report Here</span>
+                          <span>Open</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    {selectedPin.address}
-                  </p>
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[11px] font-mono text-slate-400">
-                      {selectedPin.lat.toFixed(5)}, {selectedPin.lng.toFixed(5)}
-                    </span>
-                    {onRequestReport && (
-                      <button
-                        onClick={() => {
-                          onRequestReport?.({
-                            location: selectedPin.address,
-                            lat: selectedPin.lat,
-                            lng: selectedPin.lng,
-                          });
-                          setSelectedPin(null);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Report Issue Here</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+              );
+            })}
 
-        {/* ── Issues Directory Sidebar (takes 4 cols on desktop) ── */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[520px] lg:h-[580px] overflow-hidden">
-          <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
-            <div>
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">Mapped Issues</h3>
-              <p className="text-[11px] text-slate-400">Click any issue to focus on map</p>
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
-              {filteredTickets.length} Total
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-            {filteredTickets.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 text-xs">
-                <Compass className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
-                <p className="font-bold text-slate-600 dark:text-slate-400">No issues found</p>
-                <p className="mt-1">Try switching the category filter or search query.</p>
+            {visibleTickets.length === 0 && (
+              <div className="py-12 px-4 text-center text-xs text-slate-400">
+                No tickets match the current filter.
               </div>
-            ) : (
-              filteredTickets.map(t => {
-                const isSelected = activeTicketId === t.id;
-                const meta = getTicketCategoryMeta(t);
-                const coords = resolveTicketCoords(t);
-
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => focusTicket(t)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer text-left group ${
-                      isSelected
-                        ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs ring-1 ring-indigo-400/50'
-                        : 'bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800/60 border-slate-200/80 dark:border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm">{meta.emoji}</span>
-                        <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          {t.id}
-                        </span>
-                      </div>
-                      <span className={`px-2 py-0.2 text-[10px] font-bold rounded-full border ${statusStyle(t)}`}>
-                        {statusLabel(t)}
-                      </span>
-                    </div>
-
-                    <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 leading-snug line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {ticketLabel(t)}
-                    </h4>
-
-                    <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-400">
-                      <span className="truncate flex items-center gap-1 max-w-[170px]" title={t.location || 'Campus'}>
-                        <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                        <span className="truncate">{t.location || 'Campus'}</span>
-                      </span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 text-[10px] group-hover:translate-x-0.5 transition-transform">
-                        <span>Fly to</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
             )}
           </div>
         </div>
       </div>
-
-      {/* ── MapmyIndia Static Key In-App Setup Modal ── */}
-      {showKeyDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" onClick={() => setShowKeyDialog(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-5 space-y-4 border border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-amber-500" />
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">MapmyIndia (Mappls) Static Key</h3>
-              </div>
-              <button onClick={() => setShowKeyDialog(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Copy the <strong>Static Key</strong> from your Mappls Console dashboard (at <code>auth.mappls.com/console</code>) and paste it below. It will activate full MapmyIndia vector tiles and reverse geocoding.
-            </p>
-
-            <form onSubmit={saveKey} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Mappls Static Key</label>
-                <input
-                  type="text"
-                  value={keyInput}
-                  onChange={e => setKeyInput(e.target.value)}
-                  placeholder="Paste your Mappls Static Key here…"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowKeyDialog(false)}
-                  className="px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-iiitg-800 hover:bg-iiitg-900 rounded-xl transition-all cursor-pointer shadow-sm"
-                >
-                  {keySaved ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>Key Saved!</span>
-                    </>
-                  ) : (
-                    <span>Save &amp; Apply</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
-
-function loadLeafletLibrary() {
-  return new Promise((resolve, reject) => {
-    if (window.L) return resolve(window.L);
-
-    if (!document.querySelector('link[data-leaflet-css]')) {
-      const link = document.createElement('link');
-      link.setAttribute('data-leaflet-css', 'true');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    const script = document.createElement('script');
-    script.setAttribute('data-leaflet-js', 'true');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => resolve(window.L);
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
 }

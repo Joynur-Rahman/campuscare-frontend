@@ -40,8 +40,8 @@ export default {
           plum: '#222222',
           raisin: '#2c2c2c',
           rose: '#2c2c2c',
-          iris: '#2c2c2c',
-          steel: '#222222',
+          iris: '#6366f1',
+          steel: '#40444c',
           slateViolet: '#1a1a1a',
         },
         iiitg: {

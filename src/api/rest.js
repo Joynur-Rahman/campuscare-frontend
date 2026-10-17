@@ -147,7 +147,13 @@ export function createRestApi() {
     getDepartments: () => http.get('/api/departments'),
     getCategoriesByDepartment: (deptId) => http.get(`/api/departments/${encodeURIComponent(deptId)}/categories`),
 
-    uploadFile: (file, ticketId) => http.upload('/api/files/upload', file, ticketId ? { ticket_id: ticketId } : {}),
+    uploadFile: async (file, ticketId) => {
+      const isUuid = typeof ticketId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ticketId);
+      const res = await http.upload('/api/files/upload', file, isUuid ? { ticket_id: ticketId } : {});
+      return typeof res === 'string' ? res : (res?.secure_url || res?.url || res);
+    },
+    getUploadSignature: (filename, contentType) =>
+      http.post(`/api/files/upload/signature?filename=${encodeURIComponent(filename)}&content_type=${encodeURIComponent(contentType)}`),
     deleteFile: (mediaId) => http.del(`/api/files/${encodeURIComponent(mediaId)}`),
 
     subscribeToTickets: (scope, cb, onError, onSync) =>
@@ -172,11 +178,10 @@ export function createRestApi() {
       let catId = p.category_id ?? p.category;
       let deptId = p.department_id ?? p.department;
       
-      // Resolve mock string IDs to UUIDs by fetching from the backend
+      // Resolve string IDs to UUIDs by fetching from the backend
       if (catId && !catId.includes('-')) {
         try {
           const depts = await http.get('/api/departments');
-          // We need the mock catalog to know which team (department) this category belongs to
           const { CATEGORIES } = await import('../data/catalog.js');
           const catObj = CATEGORIES.find(c => c.key === catId);
           if (catObj) {
@@ -203,14 +208,15 @@ export function createRestApi() {
         desc = `${desc}\n\n📍 Location: ${p.location}${coordsStr}`;
       }
 
+      const isConfidential = p.confidential !== undefined ? Boolean(p.confidential) : (p.isPublic !== undefined ? !p.isPublic : false);
       const res = await http.post('/api/tickets', {
         title: p.title || p.categoryDisplay || `${p.category} - ${p.subCategory}`,
         description: desc,
         category_id: catId,
         department_id: deptId,
-        confidential: p.confidential ?? false,
+        confidential: isConfidential,
       });
-      return normalizeTicket({ ...res, location: p.location, latitude: p.latitude, longitude: p.longitude });
+      return normalizeTicket({ ...res, isPublic: !isConfidential, photoUrl: p.photoUrl || res?.photoUrl || null, location: p.location, latitude: p.latitude, longitude: p.longitude });
     },
     followTicket: (id) => http.post(`/api/tickets/${encodeURIComponent(id)}/follow`),
     unfollowTicket: (id) => http.del(`/api/tickets/${encodeURIComponent(id)}/follow`),
@@ -259,6 +265,7 @@ export function createRestApi() {
     subscribeToMyMessages: (uid, cb, onError, onSync) =>
       poll(() => http.get(`/api/messages/me/${encodeURIComponent(uid)}`), cb, onError, onSync),
     getThread: (threadId) => http.get(`/api/messages/thread/${encodeURIComponent(threadId)}`),
+    getTicketMessages: (threadId) => http.get(`/api/messages/thread/${encodeURIComponent(threadId)}`),
     markAdminMessageRead: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`),
     markThreadReadByUser: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`),
 

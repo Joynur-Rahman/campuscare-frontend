@@ -32,6 +32,7 @@ export function AppProvider({ children }) {
     setClerkGetToken(getToken);
   }, [getToken]);
 
+  // Real Clerk session restore
   useEffect(() => {
     if (!authLoaded || !userLoaded) return;
 
@@ -124,11 +125,10 @@ export function AppProvider({ children }) {
     return () => clearTimeout(bootTimer);
   }, [authLoaded, userLoaded, clerkUser, signOut, showToast]);
 
-  const login = useCallback(async (payload) => {
-    // Legacy mock login support or throw error
+  const login = useCallback(async () => {
     throw new Error('Please use the Clerk login interface.');
   }, []);
-  
+
   const logout = useCallback(async () => {
     await signOut();
     setUser(null);

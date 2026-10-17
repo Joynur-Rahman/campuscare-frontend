@@ -1,3 +1,4 @@
+import { landmarkForText } from './campus.js';
 import { categoryLabel } from '../data/catalog.js';
 
 const isResolved = t => ['resolved', 'done'].includes((t?.status || '').toLowerCase().trim());
@@ -41,7 +42,9 @@ export function byCategory(tickets) {
 export function byPlace(tickets) {
   const map = {};
   tickets.forEach(t => {
-    const p = (t.location || 'Campus').split(' — ')[0].trim() || 'Campus';
+    // Group spellings of the same building ("Academic Block", "Academic Building — Lab 2"…) under its official name
+    const hit = landmarkForText(t.location);
+    const p = hit?.name || (t.location || 'Campus').split(' — ')[0].trim() || 'Campus';
     map[p] = (map[p] || 0) + 1;
   });
   return Object.entries(map).map(([k, v]) => ({ place: k, count: v })).sort((a, b) => b.count - a.count);
