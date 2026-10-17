@@ -11,6 +11,8 @@ import {
   HeartPulse,
   BookOpen,
   Building2,
+  KeyRound,
+  CheckCircle2,
 } from 'lucide-react';
 import { SignIn, useClerk } from '@clerk/react';
 
@@ -216,8 +218,15 @@ function LoginCard() {
   const [error, setError] = useState('');
   const [clerkFallback, setClerkFallback] = useState(() =>
     typeof window !== 'undefined' &&
-    /sso-callback|factor|verify|forgot|reset/.test(window.location.hash)
+    /sso-callback|factor|verify/.test(window.location.hash)
   );
+
+  const [resetStep, setResetStep] = useState(null); // null | 'request' | 'verify'
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [factorStrategy, setFactorStrategy] = useState('reset_password_email_code');
 
   const roleInfo = CAMPUS_ROLES.find((r) => r.value === campusRole) || CAMPUS_ROLES[0];
   const usesGoogle = tab === 'campus' && campusRole !== 'non_teaching';
@@ -235,6 +244,7 @@ function LoginCard() {
     setTab(k);
     setError('');
     setPassword('');
+    setResetStep(null);
   };
 
   const pickRole = (v) => {
@@ -272,20 +282,114 @@ function LoginCard() {
   async function submit(e) {
     e.preventDefault();
     setError('');
-    if (!identifier.trim() || !password) {
+    const id = normaliseId(identifier);
+    if (!id || !password) {
       return setError('Enter your phone/email and password.');
     }
     try {
       setBusy(true);
-      const res = await clerk.client.signIn.create({
-        identifier: normaliseId(identifier),
+      let res = await clerk.client.signIn.create({
+        identifier: id,
         password,
+      });
+
+      if (res.status === 'complete') {
+        await clerk.setActive({ session: res.createdSessionId });
+        return;
+      }
+
+      if (res.status === 'needs_first_factor') {
+        const factorRes = await clerk.client.signIn.attemptFirstFactor({
+          strategy: 'password',
+          password,
+        });
+        if (factorRes.status === 'complete') {
+          await clerk.setActive({ session: factorRes.createdSessionId });
+          return;
+        }
+        res = factorRes;
+      }
+
+      if (res.status === 'needs_second_factor') {
+        setClerkFallback(true);
+        return;
+      }
+
+      setError(`Authentication incomplete (status: ${res.status}). Please check your credentials.`);
+    } catch (err) {
+      console.error('[Login] Sign-in error:', err);
+      setError(clerkError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const startReset = () => {
+    setError('');
+    setResetIdentifier(identifier.trim());
+    setResetCode('');
+    setNewPassword('');
+    setResetStep('request');
+  };
+
+  async function handleSendResetCode(e) {
+    e.preventDefault();
+    setError('');
+    const id = normaliseId(resetIdentifier || identifier);
+    if (!id) {
+      return setError('Please enter your registered phone or email.');
+    }
+    try {
+      setBusy(true);
+      const res = await clerk.client.signIn.create({
+        identifier: id,
+      });
+      const factor = res.supportedFirstFactors?.find(
+        (f) => f.strategy === 'reset_password_email_code' || f.strategy === 'reset_password_phone_code'
+      );
+      if (factor) {
+        setFactorStrategy(factor.strategy);
+        await clerk.client.signIn.prepareFirstFactor({
+          strategy: factor.strategy,
+          ...(factor.emailAddressId ? { emailAddressId: factor.emailAddressId } : {}),
+          ...(factor.phoneNumberId ? { phoneNumberId: factor.phoneNumberId } : {}),
+        });
+      } else {
+        await clerk.client.signIn.create({
+          strategy: 'reset_password_email_code',
+          identifier: id,
+        });
+      }
+      setResetStep('verify');
+    } catch (err) {
+      setError(clerkError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConfirmReset(e) {
+    e.preventDefault();
+    setError('');
+    if (!resetCode.trim()) {
+      return setError('Please enter the 6-digit verification code.');
+    }
+    if (!newPassword || newPassword.length < 8) {
+      return setError('New password must be at least 8 characters long.');
+    }
+    try {
+      setBusy(true);
+      const res = await clerk.client.signIn.attemptFirstFactor({
+        strategy: factorStrategy || 'reset_password_email_code',
+        code: resetCode.trim(),
+        password: newPassword,
       });
       if (res.status === 'complete') {
         await clerk.setActive({ session: res.createdSessionId });
         return;
       }
-      setClerkFallback(true);
+      setError('Password reset completed. Please sign in with your new password.');
+      setResetStep(null);
     } catch (err) {
       setError(clerkError(err));
     } finally {
@@ -333,13 +437,147 @@ function LoginCard() {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight text-white">
-              {copy.title}
+              {resetStep ? (resetStep === 'verify' ? 'Set New Password' : 'Reset Password') : copy.title}
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5 leading-snug">{copy.sub}</p>
+            <p className="text-xs text-slate-300 mt-0.5 leading-snug">
+              {resetStep
+                ? (resetStep === 'verify' ? 'Enter verification code and your new password.' : 'Receive a verification code to recover your account.')
+                : copy.sub}
+            </p>
           </div>
         </div>
 
-        {clerkFallback ? (
+        {resetStep === 'request' ? (
+          <form onSubmit={handleSendResetCode} className="mt-4 space-y-3.5" noValidate>
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-400/20 text-xs text-amber-200 flex items-start gap-2.5">
+              <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <span>Enter your registered email address or phone number to receive a verification code.</span>
+            </div>
+
+            <div>
+              <label htmlFor="cc-reset-id" className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-300 mb-1">
+                Registered Phone / Email
+              </label>
+              <input
+                id="cc-reset-id"
+                value={resetIdentifier}
+                onChange={(e) => setResetIdentifier(e.target.value)}
+                placeholder="e.g. yourname@iiitg.ac.in or 10-digit mobile"
+                autoComplete="username"
+                className={inputCls}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full h-11 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin text-slate-900" /> : (
+                <>
+                  <span>Send Reset Code</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            {error && (
+              <p role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-400/30 rounded-xl px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => { setResetStep(null); setError(''); }}
+              className="w-full text-center text-xs font-bold text-amber-400 hover:text-amber-300 pt-1 cursor-pointer"
+            >
+              ← Back to sign in
+            </button>
+          </form>
+        ) : resetStep === 'verify' ? (
+          <form onSubmit={handleConfirmReset} className="mt-4 space-y-3.5" noValidate>
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-400/20 text-xs text-emerald-200 flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span>A 6-digit code has been sent. Enter it below along with your new password.</span>
+            </div>
+
+            <div>
+              <label htmlFor="cc-reset-code" className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-300 mb-1">
+                6-Digit Verification Code
+              </label>
+              <input
+                id="cc-reset-code"
+                value={resetCode}
+                onChange={(e) => setResetCode(e.target.value)}
+                placeholder="Enter 6-digit code"
+                autoComplete="one-time-code"
+                className={`${inputCls} tracking-widest font-mono text-center text-base`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="cc-reset-new-pw" className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-300 mb-1">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  id="cc-reset-new-pw"
+                  type={showNewPw ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
+                  className={`${inputCls} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPw((v) => !v)}
+                  aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 cursor-pointer"
+                >
+                  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full h-11 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin text-slate-900" /> : (
+                <>
+                  <span>Set New Password & Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            {error && (
+              <p role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-400/30 rounded-xl px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <button
+                type="button"
+                onClick={() => { setResetStep('request'); setError(''); }}
+                className="font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
+              >
+                Resend code
+              </button>
+              <button
+                type="button"
+                onClick={() => { setResetStep(null); setError(''); }}
+                className="font-bold text-amber-400 hover:text-amber-300 cursor-pointer"
+              >
+                ← Back to sign in
+              </button>
+            </div>
+          </form>
+        ) : clerkFallback ? (
           <div className="mt-4">
             <SignIn routing="hash" appearance={{ variables: { colorPrimary: '#d4af37' } }} />
             <button
@@ -425,7 +663,7 @@ function LoginCard() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => setClerkFallback(true)}
+                      onClick={startReset}
                       className="text-xs font-bold text-amber-300 hover:text-amber-200 cursor-pointer"
                     >
                       Reset password?
