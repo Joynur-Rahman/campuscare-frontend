@@ -62,7 +62,7 @@ const TABS = [
 ];
 
 export default function TechnicianPortal() {
-  const { api, user, showToast } = useApp();
+  const { api, user, showToast, ticketModal, closeTicket } = useApp();
   const [tab, setTab] = useState('New');
   const [open, setOpen] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -120,6 +120,15 @@ export default function TechnicianPortal() {
     [api, uid, email, cacheKey]
   );
   const { data: all, loading } = useSubscription(subscribe, [email, uid], initialTickets);
+
+  // Listen to global open ticket triggers from TopNav messages / notifications
+  useEffect(() => {
+    if (ticketModal) {
+      const full = (all || []).find(t => String(t.id) === String(ticketModal.id)) || ticketModal;
+      setOpen(full);
+      closeTicket();
+    }
+  }, [ticketModal, closeTicket, all]);
 
   // Apply optimistic overlay & exclude Lost & Found items from the Technician repair queue
   const enrichedTickets = useMemo(() => {

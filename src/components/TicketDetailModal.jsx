@@ -46,17 +46,29 @@ const QUICK_REPLIES = [
   'Fixed ✅ — please check and confirm',
 ];
 
+// In-memory cache for loaded threads so reopening any ticket renders instantly with 0ms delay
+const threadCache = new Map();
+
 // Shared ticket detail + right-hand-side drawer chat
 export default function TicketDetailModal({ ticket, onClose, action }) {
   useBodyScrollLock();
   const { api, user, showToast } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  // Own copy so outside updates to the ticket object can't double-append messages
-  const [local, setLocal] = useState(() => (ticket ? { ...ticket, messages: [...(ticket.messages || [])] } : ticket));
+
+  // Initialize from ticket or cached messages for instant display
+  const cachedMessages = ticket?.id ? (threadCache.get(ticket.id) || []) : [];
+  const initialMessages = (ticket?.messages?.length ? ticket.messages : cachedMessages) || [];
+  const [local, setLocal] = useState(() => (ticket ? { ...ticket, messages: [...initialMessages] } : ticket));
+  const [loadingThread, setLoadingThread] = useState(() => !initialMessages.length);
+
   useEffect(() => {
     if (ticket) {
-      setLocal(prev => prev ? { ...prev, ...ticket, messages: prev.messages?.length ? prev.messages : [...(ticket.messages || [])] } : { ...ticket, messages: [...(ticket.messages || [])] });
+      const cached = ticket.id ? (threadCache.get(ticket.id) || []) : [];
+      setLocal(prev => {
+        const msgs = prev?.messages?.length ? prev.messages : (ticket.messages?.length ? ticket.messages : cached);
+        return prev ? { ...prev, ...ticket, messages: [...msgs] } : { ...ticket, messages: [...msgs] };
+      });
     }
   }, [ticket?.id, ticket?.status, ticket?.assignedToName, ticket?.rating, ticket?.upvotes]);
 
@@ -116,7 +128,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     };
   };
 
-  // Poll for thread updates
+  // Poll for thread updates with 2000ms frequency and memory cache sync
   useEffect(() => {
     let active = true;
     const fetchThread = async () => {
@@ -124,6 +136,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
       try {
         const list = await api.getTicketMessages(local.id);
         if (active && Array.isArray(list)) {
+          threadCache.set(local.id, list);
           setLocal(l => {
             if (!l) return l;
             return {
@@ -131,13 +144,14 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
               messages: list.map(mapMsg)
             };
           });
+          setLoadingThread(false);
         }
       } catch (err) {
-        // quiet fallback
+        if (active) setLoadingThread(false);
       }
     };
     fetchThread();
-    const interval = setInterval(fetchThread, 3000);
+    const interval = setInterval(fetchThread, 2000);
     return () => { active = false; clearInterval(interval); };
   }, [local?.id, currentUserId]);
 
@@ -166,21 +180,28 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
       at: Date.now(),
       isSystem: false,
     };
-    // Optimistic add
-    setLocal(l => ({ ...l, messages: [...(l?.messages || []), msg] }));
+    // Optimistic add to state and threadCache immediately
+    const nextList = [...(local?.messages || []), msg];
+    setLocal(l => ({ ...l, messages: nextList }));
+    threadCache.set(local.id, nextList);
     setText('');
     try {
       const res = await api.addTicketMessage(local.id, msg);
       if (res && res.id) {
         const mapped = mapMsg(res);
-        setLocal(l => ({
-          ...l,
-          messages: [...(l?.messages || []).filter(m => m !== msg), mapped]
-        }));
+        setLocal(l => {
+          const updated = [...(l?.messages || []).filter(m => m !== msg), mapped];
+          threadCache.set(local.id, updated);
+          return { ...l, messages: updated };
+        });
       }
     } catch (err) {
       showToast(err.message || 'Failed to send message', 'error');
-      setLocal(l => ({ ...l, messages: (l?.messages || []).filter(m => m !== msg) }));
+      setLocal(l => {
+        const reverted = (l?.messages || []).filter(m => m !== msg);
+        threadCache.set(local.id, reverted);
+        return { ...l, messages: reverted };
+      });
     } finally {
       setSending(false);
     }
@@ -382,7 +403,12 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
             );
           })}
 
-          {rawMessages.filter(m => !m.isSystem).length === 0 && (
+          {loadingThread && rawMessages.length === 0 ? (
+            <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading conversation history…</span>
+            </div>
+          ) : rawMessages.filter(m => !m.isSystem).length === 0 && (
             <div className="text-center py-12">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-[#15171a]/80 border border-[#d9e3e1] dark:border-[#25282e] text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
                 <MessageSquare className="w-3.5 h-3.5 text-slate-400" />

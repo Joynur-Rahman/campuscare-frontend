@@ -24,7 +24,7 @@ function formatTimeAgo(timestamp) {
 }
 
 export default function TopNav({ portal, tabs, activeTab, onTab }) {
-  const { user, logout, theme, cycleTheme } = useApp();
+  const { user, logout, theme, cycleTheme, openTicket } = useApp();
   const { openUserProfile } = useClerk();
   const [emergency, setEmergency] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -79,10 +79,14 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         const id = String(t.id);
         const isUnread = !readNotifIds.includes(id);
         const time = formatTimeAgo(t.updated_at || t.created_at);
+        const shortId = shortTicketId(t);
 
         if (t.status === 'resolved') {
           return {
             id,
+            ticketId: t.id,
+            ticket: t,
+            shortId,
             title: 'Ticket Resolved',
             desc: `"${t.title || 'Complaint'}" was marked resolved${t.acknowledged_name ? ` by ${t.acknowledged_name}` : ''}.`,
             time,
@@ -95,6 +99,9 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         if (t.status === 'in_progress') {
           return {
             id,
+            ticketId: t.id,
+            ticket: t,
+            shortId,
             title: 'Work In Progress',
             desc: `${t.acknowledged_name ? `${t.acknowledged_name} is working on ` : 'Assigned to work on '}"${t.title || 'Complaint'}".`,
             time,
@@ -107,6 +114,9 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         if (t.status === 'escalated') {
           return {
             id,
+            ticketId: t.id,
+            ticket: t,
+            shortId,
             title: 'Ticket Escalated',
             desc: `"${t.title || 'Complaint'}" escalated for priority review.`,
             time,
@@ -119,6 +129,9 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         if (t.status === 'reopened') {
           return {
             id,
+            ticketId: t.id,
+            ticket: t,
+            shortId,
             title: 'Ticket Reopened',
             desc: `"${t.title || 'Complaint'}" was reopened for follow-up.`,
             time,
@@ -130,6 +143,9 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         }
         return {
           id,
+          ticketId: t.id,
+          ticket: t,
+          shortId,
           title: role === 'staff' ? 'Assigned Ticket' : 'Complaint Submitted',
           desc: `"${t.title || 'Complaint'}" registered in system.`,
           time,
@@ -166,18 +182,23 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     };
   }, [api, user?.role]);
 
-  // The ticket list doesn't carry chat messages, so load each recent ticket's thread
-  // (existing GET endpoint) while the Messages panel is open.
+  // The ticket list doesn't carry chat messages, so load active tickets for non-admin users
   const [threads, setThreads] = useState({});
   useEffect(() => {
     if (!msgOpen || !api?.getTicketMessages || !tickets.length) return;
+    const roleStr = (user?.role || '').toLowerCase();
+    const isAdmin = roleStr === 'admin' || roleStr === 'administrator';
+    // For admin, adminMsgs already provides live messages for all tickets via a single fast query
+    if (isAdmin) return;
+
     let alive = true;
     const uid = user?.clerk_id || user?.id;
     const mine = tickets.filter(t => role !== 'student' || !uid || t.owner_id === uid || t.userId === uid || !t.owner_id);
     const recent = mine
       .slice()
       .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
-      .slice(0, 15);
+      .slice(0, 5);
+
     const load = async () => {
       const results = await Promise.allSettled(recent.map(t => api.getTicketMessages(t.id)));
       if (!alive) return;
@@ -190,46 +211,110 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
       });
     };
     load();
-    const iv = setInterval(load, 15000);
+    const iv = setInterval(load, 10000);
     return () => { alive = false; clearInterval(iv); };
-  }, [msgOpen, tickets, role, user?.clerk_id, user?.id]);
+  }, [msgOpen, tickets, role, user?.clerk_id, user?.id, user?.role]);
 
-  // Derive conversations from tickets
+  // Derive conversations from tickets and adminMsgs
   const ticketMsgs = useMemo(() => {
     const res = [];
+    // Group any messages with thread_id from adminMsgs
+    const msgsByThread = {};
+    (adminMsgs || []).forEach(m => {
+      const tid = m.thread_id || m.ticket_id || m.ticketId;
+      if (tid) {
+        if (!msgsByThread[tid]) msgsByThread[tid] = [];
+        msgsByThread[tid].push(m);
+      }
+    });
+
+    const processedTicketIds = new Set();
+
     tickets.forEach(t => {
-      const msgs = (Array.isArray(t.messages) && t.messages.length) ? t.messages : (threads[t.id] || []);
+      processedTicketIds.add(String(t.id));
+      const threadList = msgsByThread[t.id] || [];
+      const msgs = (Array.isArray(t.messages) && t.messages.length)
+        ? t.messages
+        : ((threads[t.id] && threads[t.id].length) ? threads[t.id] : threadList);
+
       if (msgs.length > 0) {
         const lastMsg = msgs[msgs.length - 1];
         res.push({
-          id: `tmsg_${t.id}_${lastMsg.at || Date.now()}`,
+          id: `tmsg_${t.id}_${lastMsg.at || lastMsg.created_at || Date.now()}`,
           ticketId: t.id,
+          ticket: t,
           ticketTitle: t.title || t.categoryDisplay || t.subCategory || 'Complaint',
-          sender: lastMsg.senderName || lastMsg.sender_name || lastMsg.sender || 'Technician',
-          snippet: lastMsg.text,
+          location: t.location || '',
+          sender: lastMsg.sender_name || lastMsg.senderName || lastMsg.sender || 'Technician',
+          snippet: lastMsg.text || lastMsg.body || lastMsg.snippet || '',
           time: formatTimeAgo(lastMsg.created_at || lastMsg.at),
           at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0),
-          tag: `Ticket ${shortTicketId(t)}`,
+          tag: shortTicketId(t),
           unread: !readNotifIds.includes(String(t.id)),
         });
       }
     });
+
+    // Also include any tickets present in msgsByThread that aren't yet in tickets array
+    Object.keys(msgsByThread).forEach(tid => {
+      if (!processedTicketIds.has(String(tid))) {
+        const list = msgsByThread[tid];
+        if (list.length > 0) {
+          const lastMsg = list[list.length - 1];
+          res.push({
+            id: `tmsg_${tid}_${lastMsg.created_at || Date.now()}`,
+            ticketId: tid,
+            ticket: null,
+            ticketTitle: lastMsg.ticket_title || 'Ticket Discussion',
+            location: lastMsg.ticket_location || '',
+            sender: lastMsg.sender_name || lastMsg.sender || 'Campus Member',
+            snippet: lastMsg.text || lastMsg.body || '',
+            time: formatTimeAgo(lastMsg.created_at),
+            at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : 0,
+            tag: `#${String(tid).slice(0, 8)}`,
+            unread: !readNotifIds.includes(String(tid)),
+          });
+        }
+      }
+    });
+
     return res.sort((a, b) => b.at - a.at);
-  }, [tickets, threads, readNotifIds]);
+  }, [tickets, threads, adminMsgs, readNotifIds]);
 
   // Format administrator messages
   const formattedAdminMsgs = useMemo(() => {
-    return adminMsgs.map(m => ({
-      id: m.id || String(m.at),
-      title: m.title || 'Official Administrator Notice',
-      sender: m.sender || m.senderName || 'Administrator Office',
-      snippet: m.body || m.text || m.snippet || '',
-      time: formatTimeAgo(m.created_at || m.at),
-      at: m.created_at ? new Date(m.created_at).getTime() : (m.at || 0),
-      tag: m.tag || 'Official Broadcast',
-      unread: !readAdminMsgIds.includes(m.id || String(m.at)),
-    })).sort((a, b) => b.at - a.at);
-  }, [adminMsgs, readAdminMsgIds]);
+    return adminMsgs.map(m => {
+      const ticketId = m.thread_id || m.ticket_id || m.ticketId;
+      const ticket = ticketId ? tickets.find(t => String(t.id) === String(ticketId)) : null;
+      const isTicketChat = Boolean(ticketId);
+
+      const tag = ticket
+        ? shortTicketId(ticket)
+        : (ticketId ? `#${String(ticketId).slice(0, 8)}` : (m.tag || 'Official Broadcast'));
+
+      const title = ticket
+        ? (ticket.title || ticket.categoryDisplay || ticket.subCategory || 'Ticket Chat')
+        : (m.ticket_title || m.title || (isTicketChat ? 'Ticket Message' : 'Official Administrator Notice'));
+
+      const location = ticket?.location || m.ticket_location || '';
+      const sender = m.sender_name || m.senderName || m.sender || (isTicketChat ? (m.sender_role ? `${m.sender_role.toUpperCase()}` : 'Campus User') : 'Administrator Office');
+
+      return {
+        id: m.id || String(m.at),
+        ticketId,
+        ticket,
+        isTicketChat,
+        title,
+        location,
+        sender,
+        snippet: m.body || m.text || m.snippet || '',
+        time: formatTimeAgo(m.created_at || m.at),
+        at: m.created_at ? new Date(m.created_at).getTime() : (m.at || 0),
+        tag,
+        unread: !readAdminMsgIds.includes(m.id || String(m.at)),
+      };
+    }).sort((a, b) => b.at - a.at);
+  }, [adminMsgs, readAdminMsgIds, tickets]);
 
   const unreadAdminCount = formattedAdminMsgs.filter(m => m.unread).length;
   const unreadTicketMsgsCount = ticketMsgs.filter(m => m.unread).length;
@@ -257,16 +342,23 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     });
   };
 
-  const handleNotifClick = (id) => {
+  const handleNotifClick = (itemOrId) => {
+    const notifId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
     setReadNotifIds(prev => {
-      if (prev.includes(id)) return prev;
-      const next = [...prev, id];
+      if (prev.includes(notifId)) return prev;
+      const next = [...prev, notifId];
       try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
       return next;
     });
+    setNotifOpen(false);
+    const ticketId = typeof itemOrId === 'object' ? (itemOrId.ticketId || itemOrId.id) : itemOrId;
+    const targetTicket = (typeof itemOrId === 'object' && itemOrId.ticket) || tickets.find(t => String(t.id) === String(ticketId));
+    if (openTicket && (targetTicket || ticketId)) {
+      openTicket(targetTicket || ticketId);
+    }
   };
 
-    const markAllMsgsRead = () => {
+  const markAllMsgsRead = () => {
     const allAdminIds = formattedAdminMsgs.map(m => m.id);
     setReadAdminMsgIds(prev => {
       const next = Array.from(new Set([...prev, ...allAdminIds]));
@@ -281,23 +373,38 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     });
   };
 
-  const handleAdminMsgClick = (id) => {
+  const handleAdminMsgClick = (itemOrId) => {
+    const id = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
     setReadAdminMsgIds(prev => {
       if (prev.includes(id)) return prev;
       const next = [...prev, id];
       try { localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next)); } catch {}
       return next;
     });
+
+    if (typeof itemOrId === 'object' && itemOrId.ticketId) {
+      setMsgOpen(false);
+      const targetTicket = itemOrId.ticket || tickets.find(t => String(t.id) === String(itemOrId.ticketId));
+      if (openTicket) {
+        openTicket(targetTicket || itemOrId.ticketId);
+      }
+    }
   };
 
-  const handleTicketMsgClick = (ticketId) => {
+  const handleTicketMsgClick = (itemOrId) => {
+    const ticketId = typeof itemOrId === 'object' ? itemOrId.ticketId : itemOrId;
+    const sId = String(ticketId);
     setReadNotifIds(prev => {
-      const sId = String(ticketId);
       if (prev.includes(sId)) return prev;
       const next = [...prev, sId];
       try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
       return next;
     });
+    setMsgOpen(false);
+    const targetTicket = (typeof itemOrId === 'object' && itemOrId.ticket) || tickets.find(t => String(t.id) === sId);
+    if (openTicket) {
+      openTicket(targetTicket || ticketId);
+    }
   };
 
   return (
@@ -452,32 +559,55 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     {formattedAdminMsgs.map(m => (
                       <div
                         key={m.id}
-                        onClick={() => handleAdminMsgClick(m.id)}
-                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${
+                        onClick={() => handleAdminMsgClick(m)}
+                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 group ${
                           m.unread ? 'bg-indigo-50/50 dark:bg-indigo-950/25 border-l-2 border-indigo-600' : ''
                         }`}
                       >
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-iiitg-800 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                          <ShieldCheck className="w-4 h-4 text-white" />
+                        <div className={`w-8 h-8 rounded-xl ${m.isTicketChat ? 'bg-gradient-to-tr from-emerald-500 to-teal-600 text-white font-extrabold text-xs' : 'bg-gradient-to-tr from-indigo-600 to-iiitg-800 text-white'} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
+                          {m.isTicketChat ? (m.sender || 'T')[0] : <ShieldCheck className="w-4 h-4 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                              {m.title}
-                            </span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {m.isTicketChat && (
+                                <span className="font-mono text-[10px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 ring-1 ring-indigo-500/20 shrink-0">
+                                  {m.tag}
+                                </span>
+                              )}
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {m.title}
+                              </span>
+                            </div>
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium">{m.time}</span>
                           </div>
-                          <p className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 mb-1">
-                            {m.sender}
+
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">{m.sender}</span>
+                            {m.location && (
+                              <span className="text-[10px] text-slate-400 truncate font-normal">
+                                · 📍 {m.location}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-700 dark:text-slate-200 bg-slate-100/70 dark:bg-slate-800/60 px-2.5 py-1.5 rounded-lg line-clamp-2 leading-relaxed">
+                            "{m.snippet}"
                           </p>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                            {m.snippet}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full">
-                              🏛️ {m.tag}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium">Official Dispatch</span>
+
+                          <div className="flex items-center justify-between gap-1.5 mt-1.5">
+                            {m.isTicketChat ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 group-hover:underline">
+                                Open Ticket &amp; Reply &rarr;
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full">
+                                  🏛️ {m.tag}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">Official Dispatch</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {m.unread && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5 ring-2 ring-indigo-200 dark:ring-indigo-900" />}
@@ -499,8 +629,8 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     {ticketMsgs.map(m => (
                       <div
                         key={m.id}
-                        onClick={() => handleTicketMsgClick(m.ticketId)}
-                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${
+                        onClick={() => handleTicketMsgClick(m)}
+                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 group ${
                           m.unread ? 'bg-emerald-50/50 dark:bg-emerald-950/25 border-l-2 border-emerald-600' : ''
                         }`}
                       >
@@ -509,18 +639,35 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{m.sender}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-mono text-[10px] font-black px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 ring-1 ring-emerald-500/20 shrink-0">
+                                {m.tag}
+                              </span>
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {m.ticketTitle}
+                              </span>
+                            </div>
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium">{m.time}</span>
                           </div>
-                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mb-0.5">
-                            Re: {m.ticketTitle}
+
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                            <span className="text-emerald-700 dark:text-emerald-400 font-bold">{m.sender}</span>
+                            {m.location && (
+                              <span className="text-[10px] text-slate-400 truncate font-normal">
+                                · 📍 {m.location}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-700 dark:text-slate-200 bg-slate-100/70 dark:bg-slate-800/60 px-2.5 py-1.5 rounded-lg line-clamp-2 leading-relaxed">
+                            "{m.snippet}"
                           </p>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                            {m.snippet}
-                          </p>
-                          <span className="inline-block mt-1.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">
-                            {m.tag}
-                          </span>
+
+                          <div className="flex items-center justify-between mt-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 group-hover:underline">
+                              Open Ticket &amp; Reply &rarr;
+                            </span>
+                          </div>
                         </div>
                         {m.unread && <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 mt-1.5 ring-2 ring-emerald-200 dark:ring-emerald-900" />}
                       </div>
@@ -588,18 +735,28 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                     return (
                       <div
                         key={n.id}
-                        onClick={() => handleNotifClick(n.id)}
-                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 ${n.unread ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}
+                        onClick={() => handleNotifClick(n)}
+                        className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 group ${n.unread ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}
                       >
                         <div className={`w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-0.5 ${n.color}`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{n.title}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {n.shortId && (
+                                <span className="font-mono text-[9px] font-black px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 shrink-0">
+                                  {n.shortId}
+                                </span>
+                              )}
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{n.title}</span>
+                            </div>
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium">{n.time}</span>
                           </div>
                           <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{n.desc}</p>
+                          <span className="inline-block mt-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline">
+                            View Ticket Details &rarr;
+                          </span>
                         </div>
                         {n.unread && <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 mt-1.5" />}
                       </div>

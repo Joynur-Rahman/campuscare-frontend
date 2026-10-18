@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { LayoutDashboard, Ticket, HardHat, BarChart3, UserCog } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
@@ -19,7 +19,7 @@ const TABS = [
 ];
 
 export default function AdminPortal() {
-  const { api } = useApp();
+  const { api, ticketModal, closeTicket } = useApp();
   const [tab, setTab] = useState('dashboard');
   const [open, setOpen] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('all');
@@ -31,6 +31,15 @@ export default function AdminPortal() {
   const { data: tickets, loading } = useSubscription(ticketsSub, []);
   const { data: techs } = useSubscription(techsSub, []);
   const { data: members } = useSubscription(membersSub, []);
+
+  // Listen to global open ticket triggers from TopNav messages / notifications
+  useEffect(() => {
+    if (ticketModal) {
+      const full = (tickets || []).find(t => String(t.id) === String(ticketModal.id)) || ticketModal;
+      setOpen(full);
+      closeTicket();
+    }
+  }, [ticketModal, closeTicket, tickets]);
 
   const meta = TABS.find(t => t.key === tab) || TABS[0];
 

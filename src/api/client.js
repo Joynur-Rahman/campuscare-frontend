@@ -11,11 +11,12 @@ export function setClerkGetToken(fn) {
   _cachedToken = null;
 }
 
-export async function getToken() {
+export async function getToken(forceFresh = false) {
   const now = Date.now();
-  if (_cachedToken && now < _cachedTokenExpiresAt) {
+  if (!forceFresh && _cachedToken && now < _cachedTokenExpiresAt) {
     return _cachedToken;
   }
+  _cachedToken = null;
   if (_clerkGetToken) {
     try {
       const token = await _clerkGetToken();
@@ -59,40 +60,56 @@ async function parse(res) {
   return body;
 }
 
-async function headers(extra) {
-  const h = { 'Accept': 'application/json', ...extra };
-  const token = await getToken();
-  if (token) h['Authorization'] = `Bearer ${token}`;
-  return h;
+async function request(method, path, data, extraHeaders, isUpload = false) {
+  let url = `${API_BASE_URL}${path}`;
+  if (method === 'GET' && data) {
+    url += '?' + new URLSearchParams(data).toString();
+  }
+
+  const buildHeaders = async (forceFresh = false) => {
+    const h = { 'Accept': 'application/json', ...extraHeaders };
+    const token = await getToken(forceFresh);
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+  };
+
+  let init = {
+    method,
+    headers: await buildHeaders(false),
+  };
+
+  if (isUpload) {
+    init.body = data;
+  } else if (method !== 'GET' && data != null) {
+    init.body = JSON.stringify(data);
+    init.headers['Content-Type'] = 'application/json';
+  }
+
+  let res = await fetch(url, init);
+
+  // Auto-refresh token and retry ONCE on 401 Unauthorized
+  if (res.status === 401) {
+    _cachedToken = null;
+    const freshHeaders = await buildHeaders(true);
+    init.headers = freshHeaders;
+    if (!isUpload && method !== 'GET' && data != null) {
+      init.headers['Content-Type'] = 'application/json';
+    }
+    res = await fetch(url, init);
+  }
+
+  return parse(res);
 }
 
 export const http = {
-  async get(path, params) {
-    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-    return fetch(`${API_BASE_URL}${path}${qs}`, { headers: await headers() }).then(parse);
-  },
-  async post(path, data) {
-    return fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST', headers: await headers({ 'Content-Type': 'application/json' }),
-      body: data == null ? undefined : JSON.stringify(data),
-    }).then(parse);
-  },
-  async put(path, data) {
-    return fetch(`${API_BASE_URL}${path}`, {
-      method: 'PUT', headers: await headers({ 'Content-Type': 'application/json' }),
-      body: data == null ? undefined : JSON.stringify(data),
-    }).then(parse);
-  },
-  async del(path, data) {
-    return fetch(`${API_BASE_URL}${path}`, {
-      method: 'DELETE', headers: await headers(data ? { 'Content-Type': 'application/json' } : undefined),
-      body: data == null ? undefined : JSON.stringify(data),
-    }).then(parse);
-  },
-  async upload(path, file, fields) {
+  get: (path, params) => request('GET', path, params),
+  post: (path, data) => request('POST', path, data),
+  put: (path, data) => request('PUT', path, data),
+  del: (path, data) => request('DELETE', path, data),
+  upload: async (path, file, fields) => {
     const fd = new FormData();
     fd.append('file', file);
     Object.entries(fields || {}).forEach(([k, v]) => fd.append(k, v));
-    return fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers: await headers(), body: fd }).then(parse);
+    return request('POST', path, fd, undefined, true);
   },
 };

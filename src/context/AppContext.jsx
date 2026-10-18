@@ -150,7 +150,47 @@ export function AppProvider({ children }) {
     }
   }, [theme]);
   const cycleTheme = useCallback(() => setTheme(t => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto')), []);
+  const [ticketModal, setTicketModal] = useState(null);
 
-  const value = { user, setUser, booting, login, logout, theme, cycleTheme, toasts, showToast, dismissToast, api };
+  const openTicket = useCallback(async (ticketOrId) => {
+    if (!ticketOrId) return;
+    if (typeof ticketOrId === 'object' && ticketOrId.id) {
+      setTicketModal(ticketOrId);
+      return;
+    }
+    const ticketId = String(ticketOrId);
+    try {
+      const full = await api.getTicket(ticketId);
+      if (full) {
+        setTicketModal(full);
+      } else {
+        setTicketModal({ id: ticketId, title: 'Ticket ' + ticketId });
+      }
+    } catch (e) {
+      console.error('[AppContext] Failed to fetch ticket for modal:', e);
+      setTicketModal({ id: ticketId, title: 'Ticket ' + ticketId });
+    }
+  }, [api]);
+
+  const closeTicket = useCallback(() => {
+    setTicketModal(null);
+  }, []);
+
+  const value = {
+    user,
+    setUser,
+    booting,
+    login,
+    logout,
+    theme,
+    cycleTheme,
+    toasts,
+    showToast,
+    dismissToast,
+    api,
+    ticketModal,
+    openTicket,
+    closeTicket,
+  };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }
