@@ -229,3 +229,72 @@ export function cleanDescription(desc) {
     .replace(/\s*📍\s*Location:[\s\S]*$/, '')
     .trim();
 }
+
+export const CATEGORY_PREFIXES = {
+  it: 'IT',
+  network: 'IT',
+  electrical: 'ELEC',
+  electrician: 'ELEC',
+  appliance: 'ELEC',
+  water: 'WAT',
+  plumbing: 'WAT',
+  mess: 'MESS',
+  canteen: 'MESS',
+  food: 'MESS',
+  hostel: 'HSTL',
+  room: 'HSTL',
+  civil: 'CIV',
+  furniture: 'CIV',
+  carpentry: 'CIV',
+  housekeeping: 'HK',
+  cleaning: 'HK',
+  sanitation: 'HK',
+  security: 'SEC',
+  guard: 'SEC',
+  medical: 'MED',
+  health: 'MED',
+  doctor: 'MED',
+  academic: 'ACAD',
+  exam: 'ACAD',
+  library: 'ACAD',
+  lost: 'LF',
+  found: 'LF',
+  welfare: 'WELF',
+  counselling: 'COUN',
+  other: 'GEN',
+};
+
+export function getTicketPrefix(t) {
+  if (!t) return 'TCK';
+  if (t.isLostFound || t.is_lost_found || t.lostFound || t.category === 'Lost & Found') return 'LF';
+
+  const text = `${t.category || ''} ${t.categoryDisplay || ''} ${t.department || ''} ${t.title || ''}`.toLowerCase();
+
+  for (const [key, prefix] of Object.entries(CATEGORY_PREFIXES)) {
+    if (text.includes(key)) {
+      return prefix;
+    }
+  }
+  return 'TCK';
+}
+
+export function shortTicketId(t) {
+  if (!t) return '';
+  const id = typeof t === 'string' ? t : (t.id || t.ticket_id || '');
+  if (!id) return '';
+
+  const prefix = typeof t === 'object' ? getTicketPrefix(t) : 'TCK';
+
+  // If the id is already formatted like #ABC-1234 or short, return it
+  if (id.startsWith('#') || (id.includes('-') && id.length <= 10)) {
+    return id.startsWith('#') ? id : `#${id}`;
+  }
+
+  // Clean the id (remove any non-alphanumeric chars)
+  const clean = id.replace(/[^a-zA-Z0-9]/g, '');
+  if (!clean) return `#${prefix}`;
+
+  // Take the last 4 characters in uppercase
+  const suffix = clean.slice(-4).toUpperCase();
+  return `#${prefix}-${suffix}`;
+}

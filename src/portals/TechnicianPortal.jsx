@@ -9,7 +9,7 @@ import TicketCard from '../components/TicketCard.jsx';
 import TicketDetailModal from '../components/TicketDetailModal.jsx';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import CallMenu from '../components/CallMenu.jsx';
-import { createdMs, isLostFound } from '../lib/ticketUtils.js';
+import { createdMs, isLostFound, shortTicketId } from '../lib/ticketUtils.js';
 import { landmarkForText } from '../lib/campus.js';
 
 const ADMIN_PHONE = import.meta.env.VITE_ADMIN_OFFICE_PHONE || '';
@@ -614,7 +614,7 @@ export default function TechnicianPortal() {
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Ticket</p>
               <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                {resolveTarget.title || resolveTarget.categoryDisplay || resolveTarget.id}
+                {resolveTarget.title || resolveTarget.categoryDisplay || shortTicketId(resolveTarget)}
               </p>
             </div>
 

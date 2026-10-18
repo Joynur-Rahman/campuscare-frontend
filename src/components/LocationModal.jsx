@@ -4,7 +4,7 @@ import { X, MapPin, Navigation, Compass } from 'lucide-react';
 import { buildingLabelHtml, BUILDING_NAME_MIN_ZOOM, loadMapplsSdk, createMapplsMap, addCampusOverlay, centeredHtml, useSatelliteStyle, getMapplsKey } from '../lib/mappls.js';
 import { CAMPUS_LANDMARKS, IIITG_CAMPUS_POLYGON } from '../lib/campus.js';
 import { loadLeaflet } from '../lib/leafletFallback.js';
-import { getTicketCoords } from '../lib/ticketUtils.js';
+import { getTicketCoords, shortTicketId } from '../lib/ticketUtils.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 
 export default function LocationModal({ ticket, onClose }) {
@@ -110,8 +110,11 @@ export default function LocationModal({ ticket, onClose }) {
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between bg-slate-50 dark:bg-slate-900/50">
           <div className="min-w-0 pr-3">
-            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-              {ticket.id}
+            <span
+              title={`Full ID: ${ticket.id}`}
+              className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400"
+            >
+              {shortTicketId(ticket)}
             </span>
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate mt-0.5">
               {ticket.title || ticket.categoryDisplay || 'Issue Location'}

@@ -3,7 +3,7 @@ import {
   MapPin, Calendar, Wrench, Users, MessageSquareText, Clock,
   Droplets, Zap, Wifi, Shield, Archive, Star, Compass, Search, CheckCircle2
 } from 'lucide-react';
-import { statusLabel, ticketLabel, createdMs, fmtDate, getTicketCoords, cleanDescription, isLostFound } from '../lib/ticketUtils.js';
+import { statusLabel, ticketLabel, shortTicketId, createdMs, fmtDate, getTicketCoords, cleanDescription, isLostFound } from '../lib/ticketUtils.js';
 import LocationModal from './LocationModal.jsx';
 import TicketTimelineStepper from './TicketTimelineStepper.jsx';
 import RatingModal from './RatingModal.jsx';
@@ -75,8 +75,17 @@ export default function TicketCard({
         {/* Top Header Badge Row */}
         <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b9bec9] px-2 py-0.5 rounded-lg bg-[#eaf1ef] dark:bg-[#1d2024] border border-[#d3dfdc] dark:border-[#2a2e35] tracking-tight">
-              {t.id}
+            <span
+              title={`Full ID: ${t.id} (Click to copy)`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(t.id);
+                }
+              }}
+              className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b9bec9] px-2 py-0.5 rounded-lg bg-[#eaf1ef] dark:bg-[#1d2024] border border-[#d3dfdc] dark:border-[#2a2e35] tracking-tight cursor-pointer hover:border-[#2f4e56] dark:hover:border-slate-500 transition-colors"
+            >
+              {shortTicketId(t)}
             </span>
 
             {lf ? (

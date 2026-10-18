@@ -38,6 +38,7 @@ import {
   statusLabel,
   statusStyle,
   ticketLabel,
+  shortTicketId,
 } from '../lib/ticketUtils.js';
 import AssignMenu from './admin/AssignMenu.jsx';
 
@@ -812,8 +813,11 @@ Satellite
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: selectedTicket._cat.color }}
                     />
-                    <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                      {selectedTicket.id}
+                    <span
+                      title={`Full ID: ${selectedTicket.id}`}
+                      className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400"
+                    >
+                      {shortTicketId(selectedTicket)}
                     </span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusStyle(
@@ -938,8 +942,11 @@ Satellite
                         style={{ backgroundColor: t._cat.color }}
                         title={t._cat.label}
                       />
-                      <span className="font-mono text-xs font-extrabold text-slate-700 dark:text-slate-200">
-                        {t.id}
+                      <span
+                        title={`Full ID: ${t.id}`}
+                        className="font-mono text-xs font-extrabold text-slate-700 dark:text-slate-200"
+                      >
+                        {shortTicketId(t)}
                       </span>
                       {urgent && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800">

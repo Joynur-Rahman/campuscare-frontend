@@ -6,6 +6,7 @@ import LocationPicker from './LocationPicker.jsx';
 import { readDeviceGps, distanceToCampusM, CAMPUS_TOLERANCE_M, MAX_GPS_ACCURACY_M, fmtDistance } from '../lib/campus.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import { findMatchingLandmark } from '../lib/mappls.js';
+import { shortTicketId } from '../lib/ticketUtils.js';
 
 // Short names for the group tabs (full names live in the catalogue)
 const GROUP_SHORT = {
@@ -195,7 +196,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         if (failed) showToast(`Ticket created, but ${failed} attachment(s) failed to upload.`, 'warning');
       }
 
-      showToast(`Ticket ${t.id} created.`, 'success');
+      showToast(`Ticket ${shortTicketId({ ...t, category: cat, categoryDisplay: catName })} created.`, 'success');
       onCreated?.(t); onClose();
     } catch (err) { showToast(err.message || 'Failed to create ticket', 'error'); }
     finally { setBusy(false); }

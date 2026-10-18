@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Star, X, Check, Loader2, Sparkles, Wrench } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
-import { ticketLabel } from '../lib/ticketUtils.js';
+import { ticketLabel, shortTicketId } from '../lib/ticketUtils.js';
 
 const RATING_LABELS = {
   1: 'Poor resolution / Unresolved',
@@ -105,8 +105,11 @@ export default function RatingModal({ ticket: ticketProp, t: tProp, onClose, onR
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
           {/* Ticket Context Pill */}
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-start gap-2.5">
-            <span className="font-mono text-xs font-black text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shrink-0">
-              {ticket.id}
+            <span
+              title={`Full ID: ${ticket.id}`}
+              className="font-mono text-xs font-black text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shrink-0"
+            >
+              {shortTicketId(ticket)}
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-slate-900 dark:text-white truncate">

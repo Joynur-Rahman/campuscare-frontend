@@ -3,7 +3,7 @@ import { Power, KeyRound, Trash2, Star, Search, X, MoreVertical, Users, Wrench, 
 import { useApp } from '../../context/AppContext.jsx';
 import { techStats } from '../../lib/adminMetrics.js';
 import { DEPT_GROUPS, deptInfo } from '../../lib/departments.js';
-import { ticketLabel } from '../../lib/ticketUtils.js';
+import { ticketLabel, shortTicketId } from '../../lib/ticketUtils.js';
 
 const GROUP_ICON = { maintenance: Wrench, services: Building2, academic: GraduationCap, welfare: HeartHandshake };
 const initials = n => String(n || '?').replace(/\(.*?\)/g, '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -200,7 +200,7 @@ export default function AdminTechnicians({ tickets = [], techs = [] }) {
                       <div className="px-2.5 py-1.5 rounded-xl bg-sky-50/90 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex items-center justify-between gap-2 text-[11px]">
                         <span className="font-bold text-sky-900 dark:text-sky-200 truncate flex items-center gap-1.5">
                           <Wrench className="w-3 h-3 text-sky-600 shrink-0" />
-                          <span className="truncate">{currentJob.id}: {ticketLabel(currentJob)}</span>
+                          <span className="truncate">{shortTicketId(currentJob)}: {ticketLabel(currentJob)}</span>
                         </span>
                         {r.activeJobs.length > 1 && (
                           <span className="px-1.5 py-0.5 rounded bg-sky-200/70 dark:bg-sky-800 text-sky-900 dark:text-sky-100 text-[10px] font-extrabold shrink-0">

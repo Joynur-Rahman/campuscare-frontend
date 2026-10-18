@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import {
-  statusLabel, statusStyle, ticketLabel, getTicketCoords,
+  statusLabel, statusStyle, ticketLabel, shortTicketId, getTicketCoords,
   cleanDescription, fmtDate, createdMs
 } from '../lib/ticketUtils.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
@@ -207,8 +207,16 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
         {/* ── Header Strip ── */}
         <div className="px-4 sm:px-5 py-3.5 bg-[#edf2f1]/95 dark:bg-[#0e0f12]/95 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0 flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-            <span title={`#${local.id}`} className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b9bec9] px-2.5 py-1 rounded-lg bg-[#e1e9e7] dark:bg-[#1b1e22] border border-[#d6ded7] dark:border-[#2a2e35] tracking-tight min-w-0 truncate">
-              #{local.id}
+            <span
+              title={`Full ID: ${local.id} (Click to copy)`}
+              onClick={() => {
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(local.id);
+                }
+              }}
+              className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b9bec9] px-2.5 py-1 rounded-lg bg-[#e1e9e7] dark:bg-[#1b1e22] border border-[#d6ded7] dark:border-[#2a2e35] tracking-tight min-w-0 truncate cursor-pointer hover:border-[#2f4e56] dark:hover:border-slate-500 transition-colors"
+            >
+              {shortTicketId(local)}
             </span>
             <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border shrink-0 whitespace-nowrap ${statusStyle(local)}`}>
               {statusLabel(local)}

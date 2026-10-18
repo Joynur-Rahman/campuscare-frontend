@@ -7,6 +7,7 @@ import {
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../api';
 import EmergencyModal from './EmergencyModal.jsx';
+import { shortTicketId } from '../lib/ticketUtils.js';
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'Recently';
@@ -208,7 +209,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           snippet: lastMsg.text,
           time: formatTimeAgo(lastMsg.created_at || lastMsg.at),
           at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0),
-          tag: `Ticket #${t.id}`,
+          tag: `Ticket ${shortTicketId(t)}`,
           unread: !readNotifIds.includes(String(t.id)),
         });
       }

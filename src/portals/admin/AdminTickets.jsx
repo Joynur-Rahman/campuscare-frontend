@@ -3,7 +3,7 @@ import { CircleCheck, Wrench, Search, X, Inbox, UserX, Siren, ListChecks, Hourgl
 import TicketCard from '../../components/TicketCard.jsx';
 import CallMenu from '../../components/CallMenu.jsx';
 import AssignMenu from '../../components/admin/AssignMenu.jsx';
-import { createdMs, isLostFound } from '../../lib/ticketUtils.js';
+import { createdMs, isLostFound, shortTicketId } from '../../lib/ticketUtils.js';
 import { roleTitleFor } from '../../lib/departments.js';
 
 const norm = s => (s?.status || '').toLowerCase().trim();
@@ -61,7 +61,7 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
         const hay = `${t.category || ''} ${t.categoryDisplay || ''} ${t.title || ''} ${t.subCategory || ''}`.toLowerCase();
         return hay.includes(catFilter);
       })
-      .filter(t => !s || `${t.id} ${t.categoryDisplay || ''} ${t.title || ''} ${t.description || ''} ${t.location || ''} ${t.assignedToName || ''} ${t.userName || ''}`.toLowerCase().includes(s));
+      .filter(t => !s || `${t.id} ${shortTicketId(t)} ${t.categoryDisplay || ''} ${t.title || ''} ${t.description || ''} ${t.location || ''} ${t.assignedToName || ''} ${t.userName || ''}`.toLowerCase().includes(s));
 
     out.sort((a, b) => {
       if (sortBy === 'urgent' && isUrgent(a) !== isUrgent(b)) return isUrgent(b) - isUrgent(a);

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext.jsx';
 import LocationPicker from './LocationPicker.jsx';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import { findMatchingLandmark } from '../lib/mappls.js';
+import { shortTicketId } from '../lib/ticketUtils.js';
 
 function Step({ n, title, hint }) {
   return (
@@ -68,7 +69,7 @@ export default function LostFoundModal({ onClose, onCreated }) {
         priority: 'Normal', urgent: false, isPublic: true, upvotes: 1,
         ...(photoUrl ? { photoUrl } : {}),
       });
-      showToast(`Posted to Lost & Found (${t.id}).`, 'success');
+      showToast(`Posted to Lost & Found (${shortTicketId({ ...t, isLostFound: true })}).`, 'success');
       onCreated?.(t); onClose();
     } catch (err) { showToast(err.message || 'Failed to post', 'error'); }
     finally { setBusy(false); }
