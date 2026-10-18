@@ -5,7 +5,7 @@ const telHref = (p) => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
 
 /**
  * Green "Call ▾" button with a small menu of people to ring.
- * contacts: [{ who: 'Student', name: 'Priya', phone: '+91…' }]
+ * contacts: [{ who, name, phone }]
  */
 export default function CallMenu({ contacts = [] }) {
   const [open, setOpen] = useState(false);

@@ -159,8 +159,8 @@ export default function LostFoundModal({ onClose, onCreated }) {
               </div>
             </div>
 
-            <p className="text-[11.5px] text-slate-600 flex items-start gap-2 rounded-xl bg-amber-50/70 border border-amber-100 px-3 py-2.5">
-              <Globe className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+            <p className="text-[11.5px] text-amber-900 dark:text-amber-100 flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/40 px-3 py-2.5">
+              <Globe className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
               Posted on the public Lost &amp; Found board so anyone on campus can help reunite it with its owner.
             </p>
           </div>

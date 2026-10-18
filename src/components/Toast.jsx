@@ -2,24 +2,27 @@ import { CheckCircle2, AlertTriangle, Info, XCircle, X } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 
 const ICON = { success: CheckCircle2, warning: AlertTriangle, error: XCircle, info: Info };
+// Solid (opaque) colours so a toast never blends into what is behind it
 const COLOR = {
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  warning: 'border-amber-200 bg-amber-50 text-amber-800',
-  error: 'border-rose-200 bg-rose-50 text-rose-800',
-  info: 'border-slate-200 bg-white text-slate-800',
+  success: 'cc-toast-success',
+  warning: 'cc-toast-warning',
+  error: 'cc-toast-error',
+  info: 'cc-toast-info',
 };
 
 export default function Toasts() {
   const { toasts, dismissToast } = useApp();
   return (
-    <div className="fixed bottom-4 right-4 z-[200] flex flex-col gap-2 w-[min(360px,90vw)]">
+    <div className="cc-toast-stack" role="status" aria-live="polite">
       {toasts.map(t => {
         const Icon = ICON[t.type] || Info;
         return (
-          <div key={t.id} className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border shadow-lg text-sm font-semibold ${COLOR[t.type] || COLOR.info}`}>
-            <Icon className="w-4 h-4 mt-0.5 shrink-0" />
-            <span className="flex-1">{t.message}</span>
-            <button onClick={() => dismissToast(t.id)} className="opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+          <div key={t.id} className={`cc-toast ${COLOR[t.type] || COLOR.info}`}>
+            <Icon className="cc-toast-icon w-[18px] h-[18px] mt-px shrink-0" />
+            <span className="flex-1 min-w-0 break-words">{t.message}</span>
+            <button type="button" aria-label="Dismiss" onClick={() => dismissToast(t.id)} className="cc-toast-x shrink-0 -mr-1 -mt-0.5 p-1 rounded-md">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         );
       })}

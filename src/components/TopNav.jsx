@@ -163,17 +163,46 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     };
   }, [api]);
 
+  // The ticket list doesn't carry chat messages, so load each recent ticket's thread
+  // (existing GET endpoint) while the Messages panel is open.
+  const [threads, setThreads] = useState({});
+  useEffect(() => {
+    if (!msgOpen || !api?.getTicketMessages || !tickets.length) return;
+    let alive = true;
+    const uid = user?.clerk_id || user?.id;
+    const mine = tickets.filter(t => role !== 'student' || !uid || t.owner_id === uid || t.userId === uid || !t.owner_id);
+    const recent = mine
+      .slice()
+      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
+      .slice(0, 15);
+    const load = async () => {
+      const results = await Promise.allSettled(recent.map(t => api.getTicketMessages(t.id)));
+      if (!alive) return;
+      setThreads(prev => {
+        const next = { ...prev };
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled' && Array.isArray(r.value)) next[recent[i].id] = r.value;
+        });
+        return next;
+      });
+    };
+    load();
+    const iv = setInterval(load, 15000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [msgOpen, tickets, role, user?.clerk_id, user?.id]);
+
   // Derive conversations from tickets
   const ticketMsgs = useMemo(() => {
     const res = [];
     tickets.forEach(t => {
-      if (Array.isArray(t.messages) && t.messages.length > 0) {
-        const lastMsg = t.messages[t.messages.length - 1];
+      const msgs = (Array.isArray(t.messages) && t.messages.length) ? t.messages : (threads[t.id] || []);
+      if (msgs.length > 0) {
+        const lastMsg = msgs[msgs.length - 1];
         res.push({
           id: `tmsg_${t.id}_${lastMsg.at || Date.now()}`,
           ticketId: t.id,
           ticketTitle: t.title || t.categoryDisplay || t.subCategory || 'Complaint',
-          sender: lastMsg.senderName || lastMsg.sender || 'Technician',
+          sender: lastMsg.senderName || lastMsg.sender_name || lastMsg.sender || 'Technician',
           snippet: lastMsg.text,
           time: formatTimeAgo(lastMsg.created_at || lastMsg.at),
           at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0),
@@ -183,7 +212,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
       }
     });
     return res.sort((a, b) => b.at - a.at);
-  }, [tickets, readNotifIds]);
+  }, [tickets, threads, readNotifIds]);
 
   // Format administrator messages
   const formattedAdminMsgs = useMemo(() => {
