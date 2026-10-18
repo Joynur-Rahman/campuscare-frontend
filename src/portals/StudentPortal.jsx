@@ -862,8 +862,9 @@ export default function StudentPortal() {
       {report && (
         <ReportModal
           initial={typeof report === 'object' ? report : null}
+          sharedOnly={tab === 'Community'}
           onClose={() => setReport(false)}
-          onCreated={() => setTab('Mine')}
+          onCreated={(created) => setTab(tab === 'Community' && created?.isPublic !== false ? 'Community' : 'Mine')}
         />
       )}
       {lf && (

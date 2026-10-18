@@ -33,7 +33,7 @@ function Step({ n, title, hint }) {
   );
 }
 
-export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null }) {
+export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null, sharedOnly = false }) {
   useBodyScrollLock();
   const { api, showToast } = useApp();
 
@@ -48,7 +48,8 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const [coords, setCoords] = useState(initialCoords);
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
+  // Opened from the Shared Issues tab → the report is shared by default (no tick needed)
+  const [isPublic, setIsPublic] = useState(sharedOnly);
   const [urgent, setUrgent] = useState(false);
   const [files, setFiles] = useState([]); // [{ file, url, kind }]
   const [busy, setBusy] = useState(false);
@@ -172,7 +173,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         }
       }
 
-      const pub = isPublic && !confidential;
+      const pub = (sharedOnly || isPublic) && !confidential;
       const t = await api.createTicket({
         // Filed under a backend-known category; the full label travels in the title
         category: isCustomCat ? 'Other' : submitKey(cat),
@@ -381,7 +382,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
               )}
             </div>
           ) : (cat && (isCustomCat || issue || customIssue) ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] leading-snug text-emerald-900">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] leading-snug text-emerald-900 dark:border-emerald-500/50 dark:bg-emerald-500/10 dark:text-emerald-100">
               <span className="font-bold">No location needed.</span> You can send this from anywhere — your room, home or outside the campus.
             </div>
           ) : null)}
@@ -453,10 +454,10 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
             </label>
             {!confidential && (
               <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-[#9fbcbf] bg-[#eef3f1] dark:bg-[rgba(99,102,241,0.12)] dark:border-[#6366f1]' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-                <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} className="mt-0.5 w-4 h-4 accent-iiitg-800 shrink-0" />
+                <input type="checkbox" checked={sharedOnly || isPublic} disabled={sharedOnly} onChange={e => setIsPublic(e.target.checked)} className="mt-0.5 w-4 h-4 accent-iiitg-800 shrink-0" />
                 <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-800"><Users className="w-3.5 h-3.5 text-[#2f4e56]" /> Shared issue</span>
-                  <span className="block text-[11px] text-slate-500 leading-snug">Others can press "Me too"</span>
+                  <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-800"><Users className="w-3.5 h-3.5 text-[#2f4e56] dark:text-indigo-300" /> Shared issue</span>
+                  <span className="block text-[11px] text-slate-500 leading-snug">{sharedOnly ? 'Posted to Shared Issues — others can press "Me too"' : 'Others can press "Me too"'}</span>
                 </span>
               </label>
             )}
@@ -464,12 +465,12 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         </div>
 
         {fenceAlert && (
-          <div role="alert" className="shrink-0 mx-5 mb-2 mt-1 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-3 text-rose-900 shadow-sm">
+          <div role="alert" className="shrink-0 mx-5 mb-2 mt-1 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-3 text-rose-900 shadow-sm dark:border-rose-500/50 dark:bg-rose-500/10 dark:text-rose-100">
             <ShieldAlert className="w-5 h-5 mt-0.5 shrink-0 text-rose-600" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-extrabold">{fenceAlert.title} — ticket not submitted</p>
               <p className="text-[12.5px] leading-snug mt-0.5">{fenceAlert.body}</p>
-              <p className="text-[11.5px] mt-1 text-rose-700">Ragging, faculty, harassment, academic and office complaints don't need a location and can be sent from anywhere.</p>
+              <p className="text-[11.5px] mt-1 text-rose-700 dark:text-rose-200">Ragging, faculty, harassment, academic and office complaints don't need a location and can be sent from anywhere.</p>
             </div>
             <button type="button" onClick={() => setFenceAlert(null)} className="p-1 rounded-lg hover:bg-rose-100" aria-label="Dismiss"><X className="w-4 h-4" /></button>
           </div>
