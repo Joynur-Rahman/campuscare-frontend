@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Send, Loader2, CheckCheck, MapPin, Compass,
-  Calendar, Wrench, Star, MessageSquare
+  Calendar, Wrench, Star, MessageSquare, Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import {
@@ -94,6 +94,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const hasJoined = Boolean(currentUserId && Array.isArray(local?.upvotedBy) && local.upvotedBy.includes(currentUserId));
   const canRate = !isAdmin && !isStaff && (!local?.isPublic || isOwner || hasJoined);
   const isResolved = s === 'resolved' || s === 'fixed' || s === 'done';
+  const canViewChat = isAdmin || isStaff || isOwner;
 
   const mapMsg = (m) => {
     if (!m) return m;
@@ -128,8 +129,12 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     };
   };
 
-  // Poll for thread updates with 2000ms frequency and memory cache sync
+  // Poll for thread updates with 2000ms frequency and memory cache sync (only if user has chat access)
   useEffect(() => {
+    if (!canViewChat) {
+      setLoadingThread(false);
+      return;
+    }
     let active = true;
     const fetchThread = async () => {
       if (!local?.id) return;
@@ -153,7 +158,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     fetchThread();
     const interval = setInterval(fetchThread, 2000);
     return () => { active = false; clearInterval(interval); };
-  }, [local?.id, currentUserId]);
+  }, [local?.id, currentUserId, canViewChat]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -167,7 +172,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   }
 
   async function sendBody(body) {
-    if (!body || sending) return;
+    if (!body || sending || !canViewChat) return;
     setSending(true);
     const msg = {
       sender: senderTag,
@@ -349,117 +354,134 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
           <TicketTimelineStepper ticket={local} />
         </div>
 
-        {/* ── Chat Messages Scroll Feed ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#e4ecea]/70 dark:bg-[#0d0f11]/90">
-          {rawMessages.map((m, i, arr) => {
-            const mine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
-            if (m.isSystem) {
-              return (
-                <div key={i} className="text-center py-1 select-none">
-                  <span className="inline-block text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-[#e1e9e7]/80 dark:bg-[#16181c] px-3 py-0.5 rounded-full border border-[#d2dddb] dark:border-[#25282e] shadow-2xs">
-                    {m.text}
-                  </span>
-                </div>
-              );
-            }
+        {/* ── Chat Messages or Privacy Notice ── */}
+        {!canViewChat ? (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-6 text-center bg-[#e4ecea]/40 dark:bg-[#0d0f11]/60">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40 flex items-center justify-center mb-3.5 text-amber-600 dark:text-amber-400 shadow-xs">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">
+              Private Conversation
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[280px] leading-relaxed">
+              Ticket messages and updates are confidential between the student who submitted this issue and the maintenance team.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* ── Chat Messages Scroll Feed ── */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#e4ecea]/70 dark:bg-[#0d0f11]/90">
+              {rawMessages.map((m, i, arr) => {
+                const mine = m.isMine !== undefined ? m.isMine : (m.sender === senderTag);
+                if (m.isSystem) {
+                  return (
+                    <div key={i} className="text-center py-1 select-none">
+                      <span className="inline-block text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-[#e1e9e7]/80 dark:bg-[#16181c] px-3 py-0.5 rounded-full border border-[#d2dddb] dark:border-[#25282e] shadow-2xs">
+                        {m.text}
+                      </span>
+                    </div>
+                  );
+                }
 
-            const currentDay = getDayString(m.at);
-            const prevDay = i > 0 ? getDayString(arr[i - 1].at) : null;
-            const showDaySeparator = Boolean(currentDay && currentDay !== prevDay);
+                const currentDay = getDayString(m.at);
+                const prevDay = i > 0 ? getDayString(arr[i - 1].at) : null;
+                const showDaySeparator = Boolean(currentDay && currentDay !== prevDay);
 
-            return (
-              <div key={i} className="space-y-1">
-                {showDaySeparator && (
-                  <div className="flex justify-center my-2 select-none">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-[#e1e9e7] dark:bg-[#16181c] text-slate-600 dark:text-slate-300 shadow-2xs border border-[#d2dddb] dark:border-[#25282e]">
-                      {currentDay}
-                    </span>
-                  </div>
-                )}
-
-                <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                  <div
-                    className={`max-w-[85%] sm:max-w-[80%] px-3.5 pt-2 pb-1.5 rounded-2xl text-[13px] sm:text-sm leading-relaxed relative shadow-xs ${
-                      mine
-                        ? 'bg-[#262262] text-white rounded-tr-xs'
-                        : 'bg-white dark:bg-[#191b1f] text-slate-800 dark:text-slate-100 rounded-tl-xs border border-[#d9e3e1] dark:border-[#25282e]'
-                    }`}
-                  >
-                    {!mine && (
-                      <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">
-                        {m.senderName || m.sender}
+                return (
+                  <div key={i} className="space-y-1">
+                    {showDaySeparator && (
+                      <div className="flex justify-center my-2 select-none">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-[#e1e9e7] dark:bg-[#16181c] text-slate-600 dark:text-slate-300 shadow-2xs border border-[#d2dddb] dark:border-[#25282e]">
+                          {currentDay}
+                        </span>
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap break-words pr-2">
-                      {m.text}
-                    </div>
-                    <div className="flex items-center justify-end gap-1 mt-1 -mb-0.5 select-none text-[10px] opacity-75 font-medium leading-none">
-                      <span>{formatMsgTime(m.at)}</span>
-                      {mine && <CheckCheck className="w-3 h-3 text-emerald-400 shrink-0 inline-block" />}
+
+                    <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`max-w-[85%] sm:max-w-[80%] px-3.5 pt-2 pb-1.5 rounded-2xl text-[13px] sm:text-sm leading-relaxed relative shadow-xs ${
+                          mine
+                            ? 'bg-[#262262] text-white rounded-tr-xs'
+                            : 'bg-white dark:bg-[#191b1f] text-slate-800 dark:text-slate-100 rounded-tl-xs border border-[#d9e3e1] dark:border-[#25282e]'
+                        }`}
+                      >
+                        {!mine && (
+                          <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">
+                            {m.senderName || m.sender}
+                          </div>
+                        )}
+                        <div className="whitespace-pre-wrap break-words pr-2">
+                          {m.text}
+                        </div>
+                        <div className="flex items-center justify-end gap-1 mt-1 -mb-0.5 select-none text-[10px] opacity-75 font-medium leading-none">
+                          <span>{formatMsgTime(m.at)}</span>
+                          {mine && <CheckCheck className="w-3 h-3 text-emerald-400 shrink-0 inline-block" />}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+
+              {loadingThread && rawMessages.length === 0 ? (
+                <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading conversation history…</span>
                 </div>
-              </div>
-            );
-          })}
-
-          {loadingThread && rawMessages.length === 0 ? (
-            <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading conversation history…</span>
-            </div>
-          ) : rawMessages.filter(m => !m.isSystem).length === 0 && (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-[#15171a]/80 border border-[#d9e3e1] dark:border-[#25282e] text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
-                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                <span>No messages yet. Send a message to start the thread.</span>
-              </div>
-            </div>
-          )}
-          <div ref={endRef} />
-        </div>
-
-        {/* ── Locked Bottom Input Bar ── */}
-        {!(role === 'student' && isResolved) && (
-          <>
-          {isStaff && (
-            <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0e0f11] border-t border-[#d9e3e1] dark:border-[#25282e]">
-              {QUICK_REPLIES.map(q => (
-                <button
-                  key={q}
-                  type="button"
-                  disabled={sending}
-                  onClick={() => sendBody(q)}
-                  className="shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white dark:bg-[#15171a] text-[#2f4e56] dark:text-[#b9bec9] border border-[#d3dfdc] dark:border-[#25282e] hover:bg-[#e3ebe9] dark:hover:bg-[#1b1d21] disabled:opacity-50 transition"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-          <form
-            onSubmit={send}
-            className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0e0f11] flex items-center gap-2 shrink-0 ${isStaff ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#25282e]'}`}
-          >
-            <input
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder="Type a message…"
-              className="flex-1 px-4 py-2 sm:py-2.5 rounded-full bg-white dark:bg-[#15171a] text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#262262] border border-[#d9e3e1] dark:border-[#25282e] shadow-2xs transition-all"
-            />
-            <button
-              type="submit"
-              disabled={sending || !text.trim()}
-              className="w-10 h-10 rounded-full bg-[#262262] hover:bg-[#1c184c] text-white flex items-center justify-center transition-all disabled:opacity-40 shadow-sm shrink-0 active:scale-95 cursor-pointer"
-              title="Send message"
-            >
-              {sending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 ml-0.5" />
+              ) : rawMessages.filter(m => !m.isSystem).length === 0 && (
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-[#15171a]/80 border border-[#d9e3e1] dark:border-[#25282e] text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                    <span>No messages yet. Send a message to start the thread.</span>
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
+              <div ref={endRef} />
+            </div>
+
+            {/* ── Locked Bottom Input Bar ── */}
+            {!(role === 'student' && isResolved) && (
+              <>
+              {isStaff && (
+                <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0e0f11] border-t border-[#d9e3e1] dark:border-[#25282e]">
+                  {QUICK_REPLIES.map(q => (
+                    <button
+                      key={q}
+                      type="button"
+                      disabled={sending}
+                      onClick={() => sendBody(q)}
+                      className="shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white dark:bg-[#15171a] text-[#2f4e56] dark:text-[#b9bec9] border border-[#d3dfdc] dark:border-[#25282e] hover:bg-[#e3ebe9] dark:hover:bg-[#1b1d21] disabled:opacity-50 transition"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <form
+                onSubmit={send}
+                className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0e0f11] flex items-center gap-2 shrink-0 ${isStaff ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#25282e]'}`}
+              >
+                <input
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  placeholder="Type a message…"
+                  className="flex-1 px-4 py-2 sm:py-2.5 rounded-full bg-white dark:bg-[#15171a] text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#262262] border border-[#d9e3e1] dark:border-[#25282e] shadow-2xs transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={sending || !text.trim()}
+                  className="w-10 h-10 rounded-full bg-[#262262] hover:bg-[#1c184c] text-white flex items-center justify-center transition-all disabled:opacity-40 shadow-sm shrink-0 active:scale-95 cursor-pointer"
+                  title="Send message"
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 ml-0.5" />
+                  )}
+                </button>
+              </form>
+              </>
+            )}
           </>
         )}
       </aside>

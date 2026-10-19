@@ -193,7 +193,12 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
     let alive = true;
     const uid = user?.clerk_id || user?.id;
-    const mine = tickets.filter(t => role !== 'student' || !uid || t.owner_id === uid || t.userId === uid || !t.owner_id);
+    const isStudent = roleStr === 'student' || role === 'student';
+    const mine = tickets.filter(t => {
+      if (!isStudent) return true;
+      if (!uid) return false;
+      return t.owner_id === uid || t.userId === uid;
+    });
     const recent = mine
       .slice()
       .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
@@ -218,6 +223,10 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   // Derive conversations from tickets and adminMsgs
   const ticketMsgs = useMemo(() => {
     const res = [];
+    const roleStr = (user?.role || role || '').toLowerCase();
+    const isStudent = roleStr === 'student';
+    const uid = user?.clerk_id || user?.id;
+
     // Group any messages with thread_id from adminMsgs
     const msgsByThread = {};
     (adminMsgs || []).forEach(m => {
@@ -230,7 +239,14 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
     const processedTicketIds = new Set();
 
-    tickets.forEach(t => {
+    // For students, filter down strictly to tickets owned by this student
+    const allowedTickets = tickets.filter(t => {
+      if (!isStudent) return true;
+      if (!uid) return false;
+      return t.owner_id === uid || t.userId === uid;
+    });
+
+    allowedTickets.forEach(t => {
       processedTicketIds.add(String(t.id));
       const threadList = msgsByThread[t.id] || [];
       const msgs = (Array.isArray(t.messages) && t.messages.length)
@@ -255,31 +271,33 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
       }
     });
 
-    // Also include any tickets present in msgsByThread that aren't yet in tickets array
-    Object.keys(msgsByThread).forEach(tid => {
-      if (!processedTicketIds.has(String(tid))) {
-        const list = msgsByThread[tid];
-        if (list.length > 0) {
-          const lastMsg = list[list.length - 1];
-          res.push({
-            id: `tmsg_${tid}_${lastMsg.created_at || Date.now()}`,
-            ticketId: tid,
-            ticket: null,
-            ticketTitle: lastMsg.ticket_title || 'Ticket Discussion',
-            location: lastMsg.ticket_location || '',
-            sender: lastMsg.sender_name || lastMsg.sender || 'Campus Member',
-            snippet: lastMsg.text || lastMsg.body || '',
-            time: formatTimeAgo(lastMsg.created_at),
-            at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : 0,
-            tag: `#${String(tid).slice(0, 8)}`,
-            unread: !readNotifIds.includes(String(tid)),
-          });
+    // Also include any tickets present in msgsByThread that aren't yet in tickets array (staff/admin only)
+    if (!isStudent) {
+      Object.keys(msgsByThread).forEach(tid => {
+        if (!processedTicketIds.has(String(tid))) {
+          const list = msgsByThread[tid];
+          if (list.length > 0) {
+            const lastMsg = list[list.length - 1];
+            res.push({
+              id: `tmsg_${tid}_${lastMsg.created_at || Date.now()}`,
+              ticketId: tid,
+              ticket: null,
+              ticketTitle: lastMsg.ticket_title || 'Ticket Discussion',
+              location: lastMsg.ticket_location || '',
+              sender: lastMsg.sender_name || lastMsg.sender || 'Campus Member',
+              snippet: lastMsg.text || lastMsg.body || '',
+              time: formatTimeAgo(lastMsg.created_at),
+              at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : 0,
+              tag: `#${String(tid).slice(0, 8)}`,
+              unread: !readNotifIds.includes(String(tid)),
+            });
+          }
         }
-      }
-    });
+      });
+    }
 
     return res.sort((a, b) => b.at - a.at);
-  }, [tickets, threads, adminMsgs, readNotifIds]);
+  }, [tickets, threads, adminMsgs, readNotifIds, user?.role, role, user?.clerk_id, user?.id]);
 
   // Format administrator messages
   const formattedAdminMsgs = useMemo(() => {
