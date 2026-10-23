@@ -37,13 +37,20 @@ export async function getToken(forceFresh = false) {
       }
     } catch {}
   }
-  try { return localStorage.getItem(TOKEN_KEY) || null; } catch { return null; }
+  try { return sessionStorage.getItem(TOKEN_KEY) || null; } catch { return null; }
 }
 
 export function setToken(t) {
   _cachedToken = t;
   _cachedTokenExpiresAt = t ? Date.now() + 45000 : 0;
-  try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {}
+  try {
+    if (t) {
+      sessionStorage.setItem(TOKEN_KEY, t);
+    } else {
+      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {}
 }
 
 async function parse(res) {
