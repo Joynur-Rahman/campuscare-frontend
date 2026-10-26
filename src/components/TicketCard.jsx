@@ -137,6 +137,13 @@ export default function TicketCard({
               </span>
             )}
 
+            {!lf && t.isPublic && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 shadow-2xs">
+                <Users className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span>Shared Issue</span>
+              </span>
+            )}
+
             {mediaCount > 0 && (
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 shadow-2xs"
@@ -146,20 +153,17 @@ export default function TicketCard({
                 <span>{mediaCount} {mediaCount === 1 ? 'photo' : 'photos'}</span>
               </span>
             )}
+
+            {headerAction && action && !lf && (
+              <div className="shrink-0">{action}</div>
+            )}
           </div>
 
           {headerAction ? (
             <div className="shrink-0">{headerAction}</div>
           ) : action && !lf ? (
             <div className="shrink-0">{action}</div>
-          ) : (
-            (t.upvotes || 0) > 1 && (
-              <span className="inline-flex items-center gap-1 text-xs text-[#2f4e56] dark:text-[#b9bec9] font-bold bg-[#e3ebe9] dark:bg-[#1d2024] px-2.5 py-0.5 rounded-full border border-[#d6ded7] dark:border-[#2a2e35] shrink-0">
-                <Users className="w-3.5 h-3.5 text-[#2f4e56] dark:text-[#b9bec9]" />
-                <span>{t.upvotes} affected</span>
-              </span>
-            )
-          )}
+          ) : null}
         </div>
 
         {/* Title & Description with Category Icon Accent */}

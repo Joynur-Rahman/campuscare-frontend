@@ -56,7 +56,7 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
     { key: 'started', label: 'Not started', test: isPending, Icon: Hourglass, tone: 'text-violet-600 bg-violet-50 dark:text-violet-300 dark:bg-violet-400/15' },
     { key: 'progress', label: 'Being fixed', test: isInProgress, Icon: Wrench, tone: 'text-sky-600 bg-sky-50 dark:text-sky-300 dark:bg-sky-400/15' },
     { key: 'urgent', label: 'Urgent', test: isUrgent, Icon: Siren, tone: 'text-rose-600 bg-rose-50 dark:text-rose-300 dark:bg-rose-400/15' },
-    { key: 'duplicates', label: 'Duplicates', test: t => Boolean(duplicatesMap[t.id]?.length > 0), Icon: GitMerge, tone: 'text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-400/20' },
+    { key: 'duplicates', label: 'Duplicates', test: t => Boolean((duplicatesMap[t.id] || duplicatesMap[String(t.id)])?.length > 0), Icon: GitMerge, tone: 'text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-400/20' },
     { key: 'resolved', label: 'Fixed', test: isResolved, Icon: CircleCheck, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-400/15' },
   ], [duplicatesMap]);
 
@@ -90,7 +90,7 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
 
   const mergeFor = (t) => {
     if (isLostFound(t) || isResolved(t)) return null;
-    const dups = duplicatesMap[t.id];
+    const dups = duplicatesMap[t.id] || duplicatesMap[String(t.id)];
     if (!dups || dups.length === 0) return null;
     const bestDup = dups[0]?.ticket;
     return (
@@ -103,7 +103,7 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
             setMergePair(isTOlder ? { primary: t, duplicate: bestDup } : { primary: bestDup, duplicate: t });
           }
         }}
-        title={`Potential duplicate detected (${dups.length} candidate${dups.length > 1 ? 's' : ''}). Click to review and merge.`}
+        title={`Potential duplicate detected (${dups.length} candidate${dups.length > 1 ? 's' : ''}): ${dups[0]?.reason}. Click to review and merge.`}
         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 text-xs font-bold transition shadow-2xs cursor-pointer"
       >
         <GitMerge className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -137,14 +137,37 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
   };
 
   const actionFor = (t) => {
-    if (!isLostFound(t)) return null;
-    const isLost = /\[lost\]/i.test(`${t.title || ''} ${t.description || ''}`);
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-100/70 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 text-xs font-bold border border-amber-200/80 dark:border-amber-800/60">
-        <Archive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-        <span>{isLost ? 'Community Lost Notice · Security Desk' : 'Community Found Item · Security Desk'}</span>
-      </span>
-    );
+    if (isLostFound(t)) {
+      const isLost = /\[lost\]/i.test(`${t.title || ''} ${t.description || ''}`);
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-100/70 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 text-xs font-bold border border-amber-200/80 dark:border-amber-800/60">
+          <Archive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          <span>{isLost ? 'Community Lost Notice · Security Desk' : 'Community Found Item · Security Desk'}</span>
+        </span>
+      );
+    }
+    const dups = duplicatesMap[t.id] || duplicatesMap[String(t.id)];
+    if (dups && dups.length > 0 && !isResolved(t)) {
+      const bestDup = dups[0]?.ticket;
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (bestDup) {
+              const isTOlder = createdMs(t) <= createdMs(bestDup);
+              setMergePair(isTOlder ? { primary: t, duplicate: bestDup } : { primary: bestDup, duplicate: t });
+            }
+          }}
+          title={dups[0]?.reason}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700/50 text-xs font-bold cursor-pointer transition shadow-2xs"
+        >
+          <GitMerge className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>Duplicate · {dups.length} similar</span>
+        </button>
+      );
+    }
+    return null;
   };
 
   return (
