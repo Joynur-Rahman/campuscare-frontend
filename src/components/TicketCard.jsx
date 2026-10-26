@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import {
   MapPin, Calendar, Wrench, Users, MessageSquareText, Clock,
-  Droplets, Zap, Wifi, Shield, Archive, Star, Compass, Search, CheckCircle2
+  Droplets, Zap, Wifi, Shield, Archive, Star, Compass, Search, CheckCircle2,
+  Camera
 } from 'lucide-react';
 import { statusLabel, ticketLabel, shortTicketId, createdMs, fmtDate, getTicketCoords, cleanDescription, isLostFound } from '../lib/ticketUtils.js';
 import LocationModal from './LocationModal.jsx';
@@ -51,6 +52,11 @@ export default function TicketCard({
   const catTheme = getCategoryTheme(t.category || t.categoryDisplay, t.subCategory);
   const CatIcon = catTheme.Icon;
   const msgCount = Array.isArray(t.messages) ? t.messages.length : 0;
+  const mediaCount = (
+    (Array.isArray(t.media) ? t.media.length : 0) ||
+    (Array.isArray(t.attachments) ? t.attachments.length : 0) ||
+    (t.photoUrl ? 1 : 0)
+  );
 
   const s = String(t.status || '').toLowerCase();
   const isResolved = s === 'resolved' || s === 'fixed' || s === 'done';
@@ -124,6 +130,16 @@ export default function TicketCard({
             {!lf && (t.priority === 'High' || t.urgent) && (
               <span className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 uppercase tracking-wider">
                 Urgent
+              </span>
+            )}
+
+            {mediaCount > 0 && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 shadow-2xs"
+                title={`${mediaCount} attached photo${mediaCount > 1 ? 's' : ''}`}
+              >
+                <Camera className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span>{mediaCount} {mediaCount === 1 ? 'photo' : 'photos'}</span>
               </span>
             )}
           </div>

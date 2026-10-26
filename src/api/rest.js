@@ -87,6 +87,12 @@ function normalizeTicket(t) {
 
   const upvotes = t.upvotes ?? (isPublic ? 1 : 0);
 
+  const media = Array.isArray(t.media) ? t.media : (Array.isArray(t.ticket_media) ? t.ticket_media : []);
+  const attachments = Array.isArray(t.attachments) && t.attachments.length
+    ? t.attachments
+    : media.map(m => (typeof m === 'string' ? m : m?.secure_url || m?.url)).filter(Boolean);
+  const photoUrl = t.photoUrl || t.photo || (attachments.length ? attachments[0] : null);
+
   return {
     ...t,
     description: cleanDesc,
@@ -105,6 +111,9 @@ function normalizeTicket(t) {
     created_at: t.created_at || t.createdAt || null,
     categoryDisplay: t.categoryDisplay || t.title || 'Issue',
     title: t.title || t.categoryDisplay || 'Issue',
+    media,
+    attachments,
+    photoUrl,
   };
 }
 
@@ -173,6 +182,14 @@ export function createRestApi() {
     getTicket: async (id) => {
       const t = await http.get(`/api/tickets/${encodeURIComponent(id)}`);
       return normalizeTicket(t);
+    },
+    getTicketMedia: async (ticketId) => {
+      try {
+        const res = await http.get(`/api/tickets/${encodeURIComponent(ticketId)}/media`);
+        return Array.isArray(res) ? res : [];
+      } catch {
+        return [];
+      }
     },
     createTicket: async (p) => {
       let catId = p.category_id ?? p.category;

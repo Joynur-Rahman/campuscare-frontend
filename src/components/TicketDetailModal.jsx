@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Send, Loader2, CheckCheck, MapPin, Compass,
-  Calendar, Wrench, Star, MessageSquare, Lock
+  Calendar, Wrench, Star, MessageSquare, Lock,
+  Camera, Eye, ExternalLink, ChevronLeft, ChevronRight, FileText
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import {
@@ -74,7 +75,30 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
 
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showRateModal, setShowRateModal] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
   const endRef = useRef(null);
+
+  // Fetch ticket media / attachments directly so Admin and Staff always see uploaded photos
+  useEffect(() => {
+    if (!ticket?.id || !api?.getTicketMedia) return;
+    let active = true;
+    api.getTicketMedia(ticket.id)
+      .then(media => {
+        if (!active || !Array.isArray(media) || !media.length) return;
+        setLocal(prev => {
+          if (!prev) return prev;
+          const attachments = media.map(m => m.secure_url || m.url || m).filter(Boolean);
+          return {
+            ...prev,
+            media,
+            attachments,
+            photoUrl: attachments[0] || prev.photoUrl
+          };
+        });
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [ticket?.id, api]);
 
   const coords = getTicketCoords(local);
   const hasLocation = !local?.confidential && Boolean(local?.location || coords);
@@ -213,6 +237,41 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   }
 
   const rawMessages = dedupeMessages((local?.messages || []).map(mapMsg));
+
+  // Extract all media & attachments with deduplication
+  const mediaItems = [
+    ...(Array.isArray(local?.media) ? local.media : []),
+    ...(Array.isArray(local?.attachments) ? local.attachments.map((url, i) => ({
+      id: `att-${i}`,
+      secure_url: url,
+      original_filename: `Attachment ${i + 1}`,
+      resource_type: url?.toLowerCase?.().endsWith('.pdf') ? 'raw' : 'image',
+      format: url?.toLowerCase?.().endsWith('.pdf') ? 'pdf' : 'jpg'
+    })) : []),
+    ...(local?.photoUrl ? [{ id: 'photo-url', secure_url: local.photoUrl, original_filename: 'Attached Photo', format: 'jpg' }] : [])
+  ].reduce((acc, item) => {
+    const url = item?.secure_url || item?.url || (typeof item === 'string' ? item : null);
+    if (url && !acc.some(x => (x.secure_url || x.url) === url)) {
+      acc.push({ ...item, secure_url: url, url });
+    }
+    return acc;
+  }, []);
+
+  // Keyboard navigation for image lightbox
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      if (e.key === 'ArrowLeft' && mediaItems.length > 1) {
+        setLightboxIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+      }
+      if (e.key === 'ArrowRight' && mediaItems.length > 1) {
+        setLightboxIndex((prev) => (prev + 1) % mediaItems.length);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [lightboxIndex, mediaItems.length]);
 
   const drawerContent = (
     <>
@@ -353,6 +412,65 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
         <div className="px-4 py-2 bg-[#edf2f1]/85 dark:bg-[#0e1012]/85 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0 text-slate-900 dark:text-white">
           <TicketTimelineStepper ticket={local} />
         </div>
+
+        {/* ── Attached Photos & Evidence Section (Visible to Admin, Staff & Students) ── */}
+        {mediaItems.length > 0 && (
+          <div className="px-4 sm:px-5 py-2.5 bg-white/85 dark:bg-[#131518]/90 border-b border-[#d9e3e1] dark:border-[#25282e] shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                <Camera className="w-3.5 h-3.5 text-[#2f4e56] dark:text-teal-400" />
+                <span>Problem Photos & Evidence</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-[#e1e9e7] dark:bg-[#20242a] text-[#2f4e56] dark:text-[#b9bec9] text-[10px] font-black">
+                  {mediaItems.length}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Click to view full size</span>
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              {mediaItems.map((item, idx) => {
+                const url = item.secure_url || item.url;
+                const isPdf = item.format === 'pdf' || url?.toLowerCase?.().endsWith('.pdf');
+                return (
+                  <div
+                    key={item.id || idx}
+                    onClick={() => {
+                      if (isPdf) {
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      } else {
+                        setLightboxIndex(idx);
+                      }
+                    }}
+                    title={item.original_filename || `Attachment ${idx + 1} (Click to inspect)`}
+                    className="group relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 border border-[#d9e3e1] dark:border-[#2f333a] bg-slate-100 dark:bg-[#1b1e23] cursor-pointer hover:border-[#2f4e56] dark:hover:border-teal-500 transition-all shadow-2xs hover:shadow-md"
+                  >
+                    {isPdf ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-1.5 text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/20">
+                        <FileText className="w-6 h-6 mb-1" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-center line-clamp-1">PDF Doc</span>
+                      </div>
+                    ) : (
+                      <>
+                        <img
+                          src={url}
+                          alt={item.original_filename || `Problem photo ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+                          <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity" />
+                        </div>
+                      </>
+                    )}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1 text-[9px] text-white font-medium truncate px-1 pointer-events-none text-center">
+                      {item.original_filename || `Photo ${idx + 1}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Chat Messages or Privacy Notice ── */}
         {!canViewChat ? (
@@ -503,6 +621,116 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
             ticket.rating = r;
           }}
         />
+      )}
+
+      {/* ── Fullscreen Media Lightbox Modal ── */}
+      {lightboxIndex !== null && mediaItems[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 select-none animate-in fade-in duration-200"
+          onClick={() => setLightboxIndex(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Top Bar */}
+          <div
+            className="w-full flex items-center justify-between text-white/90 z-10 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-md border border-white/20">
+                Photo {lightboxIndex + 1} of {mediaItems.length}
+              </span>
+              <span className="text-xs text-white/70 truncate max-w-[200px] sm:max-w-xs">
+                {mediaItems[lightboxIndex].original_filename || 'Evidence Photo'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href={mediaItems[lightboxIndex].secure_url || mediaItems[lightboxIndex].url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open original in new tab"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              >
+                <ExternalLink className="w-5 h-5" />
+              </a>
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(null)}
+                aria-label="Close photo preview"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Central Image Viewer with Prev / Next */}
+          <div
+            className="relative flex-1 flex items-center justify-center w-full max-w-5xl my-2 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {mediaItems.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+                }}
+                className="absolute left-2 sm:left-4 z-10 p-2 sm:p-3 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg"
+                title="Previous photo (Left arrow)"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            <img
+              src={mediaItems[lightboxIndex].secure_url || mediaItems[lightboxIndex].url}
+              alt={mediaItems[lightboxIndex].original_filename || 'Problem photo'}
+              className="max-h-[80vh] max-w-[90vw] object-contain rounded-xl shadow-2xl transition-all duration-200"
+            />
+
+            {mediaItems.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev + 1) % mediaItems.length);
+                }}
+                className="absolute right-2 sm:right-4 z-10 p-2 sm:p-3 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg"
+                title="Next photo (Right arrow)"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Thumbnails Strip (if multiple) */}
+          {mediaItems.length > 1 && (
+            <div
+              className="flex items-center gap-2 overflow-x-auto max-w-xl py-2 px-3 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 z-10 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {mediaItems.map((item, idx) => (
+                <button
+                  key={item.id || idx}
+                  type="button"
+                  onClick={() => setLightboxIndex(idx)}
+                  className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    idx === lightboxIndex ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img
+                    src={item.secure_url || item.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </>
   );
