@@ -137,6 +137,13 @@ export default function TicketCard({
               </span>
             )}
 
+            {!lf && t.isPublic && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 shadow-2xs">
+                <Users className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span>Shared Issue</span>
+              </span>
+            )}
+
             {mediaCount > 0 && (
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 shadow-2xs"

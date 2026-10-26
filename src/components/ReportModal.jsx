@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, AlertTriangle } from 'lucide-react';
+import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, AlertTriangle, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { CATEGORIES, GROUPS, categoryLabel, getCategory, submitKey, locationMode, isEmergencyIssue } from '../data/catalog.js';
 import LocationPicker from './LocationPicker.jsx';
@@ -50,6 +50,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const [coords, setCoords] = useState(initialCoords);
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
+  const [isPublic, setIsPublic] = useState(Boolean(sharedOnly));
   const [urgent, setUrgent] = useState(false);
   const [files, setFiles] = useState([]); // [{ file, url, kind }]
   const [busy, setBusy] = useState(false);
@@ -202,6 +203,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         }
       }
 
+      const pub = (sharedOnly || isPublic) && !confidential;
       const t = await api.createTicket({
         // Filed under a backend-known category; the full label travels in the title
         category: isCustomCat ? 'Other' : submitKey(cat),
@@ -213,7 +215,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         latitude: (onSite || optionalLoc) ? lat : undefined,
         longitude: (onSite || optionalLoc) ? lng : undefined,
         description: description.trim(), phone: phone.trim(),
-        priority: urgent ? 'High' : 'Normal', urgent, isPublic: false, upvotes: 0,
+        priority: urgent ? 'High' : 'Normal', urgent, isPublic: pub, upvotes: 0,
       });
 
       // Attach photos / videos after the ticket exists (uses the existing upload endpoint)
@@ -509,7 +511,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
           </div>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${urgent ? 'border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40' : 'border-slate-200 dark:border-[#2a2e35] bg-white dark:bg-[#121417] hover:bg-slate-50 dark:hover:bg-[#181a1f]'}`}>
               <input type="checkbox" checked={urgent} onChange={e => setUrgent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-rose-500 shrink-0" />
               <span className="min-w-0">
@@ -517,6 +519,48 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
                 <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Requires immediate attention or priority resolution</span>
               </span>
             </label>
+
+            {!confidential && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${!isPublic ? 'border-[#2f4e56] bg-[#2f4e56]/5 dark:border-indigo-500 dark:bg-indigo-950/30 ring-1 ring-[#2f4e56] dark:ring-indigo-500' : 'border-slate-200 dark:border-[#2a2e35] bg-white dark:bg-[#121417] hover:bg-slate-50 dark:hover:bg-[#181a1f]'}`}>
+                  <input
+                    type="radio"
+                    name="visibility"
+                    checked={!isPublic}
+                    disabled={sharedOnly}
+                    onChange={() => setIsPublic(false)}
+                    className="mt-0.5 w-4 h-4 accent-[#2f4e56] dark:accent-indigo-500 shrink-0"
+                  />
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-900 dark:text-white">
+                      🔒 Private Complaint
+                    </span>
+                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      Visible only to you and staff. Kept completely private.
+                    </span>
+                  </span>
+                </label>
+
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 ring-1 ring-sky-500 dark:ring-sky-400' : 'border-slate-200 dark:border-[#2a2e35] bg-white dark:bg-[#121417] hover:bg-slate-50 dark:hover:bg-[#181a1f]'}`}>
+                  <input
+                    type="radio"
+                    name="visibility"
+                    checked={isPublic}
+                    onChange={() => setIsPublic(true)}
+                    className="mt-0.5 w-4 h-4 accent-sky-600 shrink-0"
+                  />
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-[13px] font-bold text-sky-950 dark:text-sky-300">
+                      <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                      🌐 Shared Issue
+                    </span>
+                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      Shared with everyone in the campus community under Shared Issues.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

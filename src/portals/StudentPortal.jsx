@@ -424,7 +424,7 @@ export default function StudentPortal() {
             }`}
           >
             <Plus className="w-4 h-4 text-amber-300" />
-            <span>{tab === 'LostFound' ? 'Post Lost / Found' : 'Report Issue'}</span>
+            <span>{tab === 'LostFound' ? 'Post Lost / Found' : tab === 'Community' ? 'Report Shared Issue' : 'Report Issue'}</span>
           </button>
         </div>
       </div>
@@ -827,7 +827,7 @@ export default function StudentPortal() {
           initial={typeof report === 'object' ? report : null}
           sharedOnly={tab === 'Community'}
           onClose={() => setReport(false)}
-          onCreated={(created) => setTab('Mine')}
+          onCreated={(created) => setTab(created?.isPublic || tab === 'Community' ? 'Community' : 'Mine')}
         />
       )}
       {lf && (
