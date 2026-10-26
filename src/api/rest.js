@@ -93,8 +93,17 @@ function normalizeTicket(t) {
     : media.map(m => (typeof m === 'string' ? m : m?.secure_url || m?.url)).filter(Boolean);
   const photoUrl = t.photoUrl || t.photo || (attachments.length ? attachments[0] : null);
 
+  let cat = t.category || t.categoryName || t.category_name;
+  if (!cat || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(cat)) {
+    const full = t.categoryDisplay || t.title || '';
+    if (full.includes('—')) cat = full.split('—')[0].trim();
+    else if (full.includes(' - ')) cat = full.split(' - ')[0].trim();
+    else cat = 'Other';
+  }
+
   return {
     ...t,
+    category: cat,
     description: cleanDesc,
     isPublic,
     is_public: isPublic,
@@ -114,6 +123,8 @@ function normalizeTicket(t) {
     media,
     attachments,
     photoUrl,
+    rating: typeof t.rating === 'number' ? t.rating : (t.rating ? Number(t.rating) : null),
+    feedbackComment: t.feedbackComment || t.feedback_comment || t.comment || null,
   };
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MapPin, Calendar, Wrench, Users, MessageSquareText, Clock,
   Droplets, Zap, Wifi, Shield, Archive, Star, Compass, Search, CheckCircle2,
@@ -44,6 +44,10 @@ export default function TicketCard({
   const [showLocation, setShowLocation] = useState(false);
   const [showRateModal, setShowRateModal] = useState(false);
   const [currentRating, setCurrentRating] = useState(t.rating);
+
+  useEffect(() => {
+    if (t.rating !== undefined) setCurrentRating(t.rating);
+  }, [t.rating]);
 
   const coords = getTicketCoords(t);
   const hasLocation = !t.confidential && Boolean(t.location || coords);
