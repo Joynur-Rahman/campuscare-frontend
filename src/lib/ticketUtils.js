@@ -112,7 +112,13 @@ export function fmtDate(ms) {
 }
 
 export const isLostFound = (t) =>
-  /lost\s*&?\s*found/i.test(t?.subCategory || t?.category || t?.title || '');
+  Boolean(
+    t?.isLostFound ||
+    t?.is_lost_found ||
+    t?.lostFound ||
+    /lost\s*&?\s*found|lost\/found|lost item|found item/i.test(t?.subCategory || t?.category || t?.title || '') ||
+    /\[(LOST|FOUND)\]/i.test(t?.description || t?.title || '')
+  );
 
 // Known old approximate coordinates to migrate to exact real-world positions
 const OLD_PRESET_MIGRATIONS = [

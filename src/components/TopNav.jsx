@@ -7,7 +7,7 @@ import {
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../api';
 import EmergencyModal from './EmergencyModal.jsx';
-import { shortTicketId } from '../lib/ticketUtils.js';
+import { shortTicketId, isLostFound } from '../lib/ticketUtils.js';
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'Recently';
@@ -197,7 +197,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     const mine = tickets.filter(t => {
       if (!isStudent) return true;
       if (!uid) return false;
-      return t.owner_id === uid || t.userId === uid;
+      return t.owner_id === uid || t.userId === uid || isLostFound(t);
     });
     const recent = mine
       .slice()
@@ -239,11 +239,11 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
     const processedTicketIds = new Set();
 
-    // For students, filter down strictly to tickets owned by this student
+    // For students, filter down to tickets owned by this student or Lost & Found items
     const allowedTickets = tickets.filter(t => {
       if (!isStudent) return true;
       if (!uid) return false;
-      return t.owner_id === uid || t.userId === uid;
+      return t.owner_id === uid || t.userId === uid || isLostFound(t);
     });
 
     allowedTickets.forEach(t => {

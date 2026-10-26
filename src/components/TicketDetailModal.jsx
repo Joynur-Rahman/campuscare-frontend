@@ -8,7 +8,7 @@ import {
 import { useApp } from '../context/AppContext.jsx';
 import {
   statusLabel, statusStyle, ticketLabel, shortTicketId, getTicketCoords,
-  cleanDescription, fmtDate, createdMs
+  cleanDescription, fmtDate, createdMs, isLostFound
 } from '../lib/ticketUtils.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import LocationModal from './LocationModal.jsx';
@@ -118,7 +118,8 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const hasJoined = Boolean(currentUserId && Array.isArray(local?.upvotedBy) && local.upvotedBy.includes(currentUserId));
   const canRate = !isAdmin && !isStaff && (!local?.isPublic || isOwner || hasJoined);
   const isResolved = s === 'resolved' || s === 'fixed' || s === 'done';
-  const canViewChat = isAdmin || isStaff || isOwner;
+  const isLf = isLostFound(local);
+  const canViewChat = isAdmin || isStaff || isOwner || isLf;
 
   const mapMsg = (m) => {
     if (!m) return m;
@@ -309,6 +310,11 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
             {local.priority === 'High' && (
               <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 uppercase tracking-wider shrink-0">
                 Urgent
+              </span>
+            )}
+            {isLf && (
+              <span className="px-2 py-0.5 text-[9.5px] font-black rounded-md bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 uppercase tracking-wider shrink-0">
+                Claim Chat
               </span>
             )}
           </div>
@@ -550,17 +556,17 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
                 <div className="text-center py-12">
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-[#15171a]/80 border border-[#d9e3e1] dark:border-[#25282e] text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
                     <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                    <span>No messages yet. Send a message to start the thread.</span>
+                    <span>{isLf ? 'No messages yet. Message the owner to claim or verify this item.' : 'No messages yet. Send a message to start the thread.'}</span>
                   </div>
                 </div>
               )}
               <div ref={endRef} />
             </div>
 
-            {/* ── Locked Bottom Input Bar ── */}
-            {!(role === 'student' && isResolved) && (
+            {/* ── Bottom Input Bar ── */}
+            {!(role === 'student' && isResolved && !isLf) && (
               <>
-              {isStaff && (
+              {isStaff && !isLf && (
                 <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0e0f11] border-t border-[#d9e3e1] dark:border-[#25282e]">
                   {QUICK_REPLIES.map(q => (
                     <button
@@ -575,14 +581,39 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
                   ))}
                 </div>
               )}
+              {isLf && (
+                <div className="shrink-0 px-3 sm:px-4 pt-2 flex gap-1.5 overflow-x-auto no-scrollbar bg-[#edf2f1] dark:bg-[#0e0f11] border-t border-[#d9e3e1] dark:border-[#25282e]">
+                  {(isOwner ? [
+                    'Please describe any unique marks or ID',
+                    'Meet me at campus entrance',
+                    'Item kept at campus security gate',
+                    'Verified & claimed! Thank you 🙌',
+                  ] : [
+                    'Hi! I think this is mine 🙋‍♂️',
+                    'Where can we meet to verify?',
+                    'Can you share more details?',
+                    'I found and handed it to security 🏢',
+                  ]).map(q => (
+                    <button
+                      key={q}
+                      type="button"
+                      disabled={sending}
+                      onClick={() => sendBody(q)}
+                      className="shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white dark:bg-[#15171a] text-[#2f4e56] dark:text-[#b9bec9] border border-[#d3dfdc] dark:border-[#25282e] hover:bg-[#e3ebe9] dark:hover:bg-[#1b1d21] disabled:opacity-50 transition cursor-pointer"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
               <form
                 onSubmit={send}
-                className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0e0f11] flex items-center gap-2 shrink-0 ${isStaff ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#25282e]'}`}
+                className={`p-3 sm:p-4 bg-[#edf2f1] dark:bg-[#0e0f11] flex items-center gap-2 shrink-0 ${isStaff || isLf ? 'pt-2' : 'border-t border-[#d9e3e1] dark:border-[#25282e]'}`}
               >
                 <input
                   value={text}
                   onChange={e => setText(e.target.value)}
-                  placeholder="Type a message…"
+                  placeholder={isLf ? (isOwner ? "Reply to student claimants…" : "Message to claim or share details…") : "Type a message…"}
                   className="flex-1 px-4 py-2 sm:py-2.5 rounded-full bg-white dark:bg-[#15171a] text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#262262] border border-[#d9e3e1] dark:border-[#25282e] shadow-2xs transition-all"
                 />
                 <button
