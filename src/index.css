@@ -19,13 +19,27 @@
   --dark-steel: #40444c;
   --dark-iris: #6366f1;
 }
-html, body, #root { height: 100%; }
+html, body, #root {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+html {
+  background-color: #dfe7e5;
+  color: #1e2f33;
+  -webkit-text-size-adjust: 100%;
+}
+html[data-theme="dark"],
+:root[data-theme="dark"] {
+  background-color: #101214 !important;
+  color-scheme: dark;
+}
 body {
   margin: 0;
   font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-  background: #dfe7e5;
+  background-color: #dfe7e5;
   color: #1e2f33;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 [data-theme="dark"] { 
   color-scheme: dark; 
@@ -680,7 +694,10 @@ html:not([data-theme="dark"]) body {
 [data-theme="dark"] { 
   color-scheme: dark; 
 }
+html[data-theme="dark"],
+:root[data-theme="dark"],
 [data-theme="dark"] body,
+[data-theme="dark"] #root,
 [data-theme="dark"] #authenticatedView { 
   background-color: #101214 !important; 
   color: #e6e8eb !important; 
@@ -1067,13 +1084,18 @@ html:not([data-theme="dark"]) body {
     radial-gradient(1200px 520px at 12% -8%, rgba(179, 202, 207, 0.55), transparent 60%),
     radial-gradient(900px 480px at 100% 0%, rgba(197, 212, 211, 0.6), transparent 62%),
     linear-gradient(180deg, #e2eae8 0%, #dbe4e2 100%) !important;
-  background-attachment: fixed;
 }
 [data-theme="dark"] .app-canvas {
+  background-color: #101214 !important;
   background-image:
     radial-gradient(1100px 500px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
     radial-gradient(900px 460px at 100% 0%, rgba(64, 68, 76, 0.22), transparent 62%) !important;
-  background-attachment: fixed;
+}
+@media (min-width: 1024px) {
+  :root:not([data-theme="dark"]) .app-canvas,
+  [data-theme="dark"] .app-canvas {
+    background-attachment: fixed;
+  }
 }
 /* Shared page width so the top bar and page content line up on every screen */
 .app-container { width: 100%; max-width: 1280px; margin-left: auto; margin-right: auto; }

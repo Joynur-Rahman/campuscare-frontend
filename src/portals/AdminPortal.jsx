@@ -44,7 +44,7 @@ export default function AdminPortal() {
   const meta = TABS.find(t => t.key === tab) || TABS[0];
 
   return (
-    <div className="app-container px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-[calc(100dvh-66px)]">
+    <div className="app-container flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:h-[calc(100dvh-66px)]">
       {/* ── Merged Single-Row Header: Title (left) + Segmented Tabs (right) ── */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex items-baseline gap-2.5">
@@ -79,14 +79,16 @@ export default function AdminPortal() {
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-slate-400 py-14">Loading…</p>
+        <div className="flex-1 flex items-center justify-center py-14">
+          <p className="text-center text-sm text-slate-400">Loading…</p>
+        </div>
       ) : (
         <>
-          {tab === 'dashboard' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminDashboard tickets={tickets} techs={techs} onOpen={setOpen} onGo={go} /></div>}
-          {tab === 'tickets' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminTickets key={ticketFilter} tickets={tickets} techs={techs} onOpen={setOpen} initialFilter={ticketFilter} /></div>}
-          {tab === 'technicians' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminTechnicians tickets={tickets} techs={techs} onOpen={setOpen} /></div>}
-          {tab === 'reports' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminReports tickets={tickets} techs={techs} /></div>}
-          {tab === 'manage' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminManage techs={techs} members={members} /></div>}
+          {tab === 'dashboard' && <div className="cc-page-in flex-1 min-h-0"><AdminDashboard tickets={tickets} techs={techs} onOpen={setOpen} onGo={go} /></div>}
+          {tab === 'tickets' && <div className="cc-page-in flex-1 min-h-0"><AdminTickets key={ticketFilter} tickets={tickets} techs={techs} onOpen={setOpen} initialFilter={ticketFilter} /></div>}
+          {tab === 'technicians' && <div className="cc-page-in flex-1 min-h-0"><AdminTechnicians tickets={tickets} techs={techs} onOpen={setOpen} /></div>}
+          {tab === 'reports' && <div className="cc-page-in flex-1 min-h-0"><AdminReports tickets={tickets} techs={techs} /></div>}
+          {tab === 'manage' && <div className="cc-page-in flex-1 min-h-0"><AdminManage techs={techs} members={members} /></div>}
         </>
       )}
 

@@ -277,12 +277,12 @@ export default function LocationPickerModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2.5 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900">
               Pin Issue Location on IIIT Guwahati Campus
             </h3>
             <p className="text-xs text-slate-500">
@@ -361,7 +361,7 @@ export default function LocationPickerModal({
         </div>
 
         {/* Map container */}
-        <div className="relative isolate z-0 bg-slate-900 h-80 sm:h-96 w-full overflow-hidden">
+        <div className="relative isolate z-0 bg-slate-900 h-64 sm:h-80 md:h-96 w-full overflow-hidden">
           <div ref={containerRef} className="w-full h-full" />
           {!mapReady && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 text-xs text-white font-medium">
@@ -371,7 +371,7 @@ export default function LocationPickerModal({
         </div>
 
         {/* Footer controls */}
-        <div className="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-3 sm:p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2">
             <input
               type="text"

@@ -283,16 +283,16 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
 
   const drawerContent = (
     <>
-      {/* ── 1. Backdrop Overlay (Touches from TopNav to Bottom) ── */}
+      {/* ── 1. Backdrop Overlay ── */}
       <div
-        className="fixed inset-0 top-16 z-[95] bg-black/40 backdrop-blur-xs chat-drawer-backdrop cursor-pointer"
+        className="fixed inset-0 z-[95] bg-black/40 backdrop-blur-xs chat-drawer-backdrop cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* ── 2. Full-Length Right-Hand Drawer ── */}
       <aside
-        className="fixed top-16 right-0 bottom-0 z-[100] w-full sm:w-[470px] md:w-[500px] lg:w-[530px] max-w-full flex flex-col bg-[#e4ecea] dark:bg-[#101214] text-slate-800 dark:text-slate-100 shadow-[-12px_0_36px_rgba(0,0,0,0.18)] border-l border-[#d9e3e1] dark:border-[#25282e] chat-drawer-panel"
+        className="fixed inset-y-0 sm:top-16 right-0 z-[100] w-full sm:w-[470px] md:w-[500px] lg:w-[530px] max-w-full flex flex-col bg-[#e4ecea] dark:bg-[#101214] text-slate-800 dark:text-slate-100 shadow-[-12px_0_36px_rgba(0,0,0,0.18)] border-l border-[#d9e3e1] dark:border-[#25282e] chat-drawer-panel"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}

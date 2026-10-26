@@ -70,7 +70,7 @@ export default function AdminReports({ tickets = [], techs = [] }) {
   return (
     <div className="space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-full lg:min-h-0">
       {/* Top KPI + Export Strip */}
-      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
         {tiles.map(t => (
           <div key={t.label} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#15171a] border border-slate-200/90 dark:border-[#2a2e35] shadow-2xs">
             <span className="w-8 h-8 rounded-lg bg-[#e3ebe9] dark:bg-white/10 text-[#2f4e56] dark:text-[#b9bec9] flex items-center justify-center shrink-0"><t.Icon className="w-4 h-4" /></span>
@@ -138,42 +138,44 @@ export default function AdminReports({ tickets = [], techs = [] }) {
           }
         >
           {trows.length === 0 ? <p className="text-xs text-slate-400 py-3">No staff yet.</p> : (
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-[#fcfdfd] dark:bg-[#121417]">
-                <tr className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="text-left py-2 font-extrabold">Name</th>
-                  <th className="text-left py-2 font-extrabold hidden sm:table-cell">Role · Department</th>
-                  <th className="text-center py-2 font-extrabold">Given</th>
-                  <th className="text-center py-2 font-extrabold">Fixed</th>
-                  <th className="text-left py-2 px-3 font-extrabold hidden md:table-cell w-44">Completion</th>
-                  <th className="text-center py-2 font-extrabold">Reopened</th>
-                  <th className="text-center py-2 font-extrabold">Rating</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trows.map(r => {
-                  const pct = r.given ? Math.round((r.fixed / r.given) * 100) : 0;
-                  return (
-                    <tr key={r.firebaseId || r.id} className="border-t border-[#e6eeeb] dark:border-[#2a2e35] hover:bg-slate-50/70 dark:hover:bg-white/5">
-                      <td className="py-2.5 font-bold text-slate-900 dark:text-white">{r.name}</td>
-                      <td className="py-2.5 text-slate-600 dark:text-slate-300 hidden sm:table-cell truncate max-w-[16rem]">{deptInfo(r.dept).role} · {r.dept || '—'}</td>
-                      <td className="py-2.5 text-center font-bold text-slate-800 dark:text-slate-100">{r.given}</td>
-                      <td className="py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-300">{r.fixed}</td>
-                      <td className="py-2.5 px-3 hidden md:table-cell">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${r.given ? Math.max(8, pct) : 0}%` }} />
+            <div className="overflow-x-auto -mx-1 px-1">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-[#fcfdfd] dark:bg-[#121417]">
+                  <tr className="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="text-left py-2 font-extrabold">Name</th>
+                    <th className="text-left py-2 font-extrabold hidden sm:table-cell">Role · Department</th>
+                    <th className="text-center py-2 font-extrabold">Given</th>
+                    <th className="text-center py-2 font-extrabold">Fixed</th>
+                    <th className="text-left py-2 px-3 font-extrabold hidden md:table-cell w-44">Completion</th>
+                    <th className="text-center py-2 font-extrabold">Reopened</th>
+                    <th className="text-center py-2 font-extrabold">Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trows.map(r => {
+                    const pct = r.given ? Math.round((r.fixed / r.given) * 100) : 0;
+                    return (
+                      <tr key={r.firebaseId || r.id} className="border-t border-[#e6eeeb] dark:border-[#2a2e35] hover:bg-slate-50/70 dark:hover:bg-white/5">
+                        <td className="py-2.5 font-bold text-slate-900 dark:text-white">{r.name}</td>
+                        <td className="py-2.5 text-slate-600 dark:text-slate-300 hidden sm:table-cell truncate max-w-[16rem]">{deptInfo(r.dept).role} · {r.dept || '—'}</td>
+                        <td className="py-2.5 text-center font-bold text-slate-800 dark:text-slate-100">{r.given}</td>
+                        <td className="py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-300">{r.fixed}</td>
+                        <td className="py-2.5 px-3 hidden md:table-cell">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${r.given ? Math.max(8, pct) : 0}%` }} />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-9 text-right">{r.given ? `${pct}%` : '—'}</span>
                           </div>
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-9 text-right">{r.given ? `${pct}%` : '—'}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 text-center text-slate-500">{r.reopened || '–'}</td>
-                      <td className="py-2.5 text-center">{r.avgRating ? <span className="font-bold text-amber-600 dark:text-amber-300">★ {r.avgRating.toFixed(1)}</span> : <span className="text-slate-400">–</span>}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="py-2.5 text-center text-slate-500">{r.reopened || '–'}</td>
+                        <td className="py-2.5 text-center">{r.avgRating ? <span className="font-bold text-amber-600 dark:text-amber-300">★ {r.avgRating.toFixed(1)}</span> : <span className="text-slate-400">–</span>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
       </div>

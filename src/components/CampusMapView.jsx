@@ -753,7 +753,7 @@ export default function CampusMapView({
       >
         {/* LEFT: Strictly isolated map stacking context (`isolate relative z-0`) so map controls NEVER overlap navbar dropdowns */}
         <div
-          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden min-h-[340px] sm:min-h-[420px] lg:min-h-0"
+          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden h-[360px] sm:h-[440px] lg:h-auto min-h-[340px] lg:min-h-0"
           style={fill ? { isolation: 'isolate' } : { height, isolation: 'isolate' }}
         >
           <div ref={containerRef} className="w-full h-full relative z-0" />

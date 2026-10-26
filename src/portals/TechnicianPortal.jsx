@@ -348,7 +348,7 @@ export default function TechnicianPortal() {
   const activeTab = TABS.find((t) => t.key === tab);
 
   return (
-    <div className="app-container px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-[calc(100dvh-66px)]">
+    <div className="app-container flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:h-[calc(100dvh-66px)]">
       {/* ── Merged Single-Row Staff Command Header ── */}
       <div className="shrink-0 rounded-2xl bg-gradient-to-r from-[#243b41] via-[#2f4e56] to-[#3b5d66] text-white shadow-sm px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
         {/* Left: Greeting + Specialty + Urgent Alert + Duty Switch */}
@@ -448,7 +448,7 @@ export default function TechnicianPortal() {
       </div>
 
       {/* ── Main Content: Job Workbench ── */}
-        <div key={tab} className="cc-page-in lg:flex-1 lg:min-h-0 flex flex-col rounded-2xl p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] gap-3">
+      <div key={tab} className="cc-page-in flex-1 min-h-[380px] lg:min-h-0 flex flex-col rounded-2xl p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] gap-3">
           {/* Compact Toolbar: Section Title + Scope Filter + Building Filter + Sort */}
           <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">

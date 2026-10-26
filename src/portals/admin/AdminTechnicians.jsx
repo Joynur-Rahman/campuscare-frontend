@@ -94,7 +94,7 @@ export default function AdminTechnicians({ tickets = [], techs = [], onOpen }) {
   return (
     <div className="space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-full lg:min-h-0">
       {/* Group Filter Cards */}
-      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
         {[{ key: 'all', label: 'All staff', Icon: Users }, ...DEPT_GROUPS.map(g => ({ ...g, Icon: GROUP_ICON[g.key] }))].map(g => {
           const on = group === g.key;
           const n = g.key === 'all' ? rows.length : rows.filter(r => r.info.group === g.key).length;

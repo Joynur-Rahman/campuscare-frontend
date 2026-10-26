@@ -174,12 +174,13 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
     <div className="space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-full lg:min-h-0">
       {/* Compact Status Filter Cards */}
       <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-        {activeFilters.map(x => {
+        {activeFilters.map((x, idx) => {
           const on = filter === x.key;
           const n = tickets.filter(x.test).length;
+          const isOddLast = idx === activeFilters.length - 1 && activeFilters.length % 2 !== 0;
           return (
             <button key={x.key} type="button" onClick={() => setFilter(x.key)} aria-pressed={on}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-sm dark:bg-[#2a2e35] dark:border-[#6366f1]' : 'bg-white/90 border-[#d3dfdc] hover:bg-white hover:border-[#9fbcbf] dark:bg-[#15171a] dark:border-[#2a2e35] dark:hover:bg-[#1b1d21]'}`}>
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${isOddLast ? 'col-span-2 sm:col-span-1' : ''} ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-sm dark:bg-[#2a2e35] dark:border-[#6366f1]' : 'bg-white/90 border-[#d3dfdc] hover:bg-white hover:border-[#9fbcbf] dark:bg-[#15171a] dark:border-[#2a2e35] dark:hover:bg-[#1b1d21]'}`}>
               <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${on ? 'bg-white/15 text-white' : x.tone}`}><x.Icon className="w-3.5 h-3.5" /></span>
               <span className={`flex-1 min-w-0 text-xs font-bold truncate ${on ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{x.label}</span>
               <span className={`text-base font-extrabold leading-none ${on ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{n}</span>

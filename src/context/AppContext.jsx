@@ -140,6 +140,11 @@ export function AppProvider({ children }) {
     const apply = () => {
       const dark = theme === 'dark' || (theme === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
       root.setAttribute('data-theme', dark ? 'dark' : 'light');
+      root.classList.toggle('dark', dark);
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', dark ? '#101214' : '#dfe7e5');
+      }
     };
     apply();
     try { localStorage.setItem('cc_theme', theme); } catch {}
