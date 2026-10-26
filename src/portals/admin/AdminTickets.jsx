@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
-import { CircleCheck, Wrench, Search, X, Inbox, UserX, Siren, ListChecks, Hourglass, Archive, Filter } from 'lucide-react';
+import { CircleCheck, Wrench, Search, X, Inbox, UserX, Siren, ListChecks, Hourglass, Archive, Filter, GitMerge } from 'lucide-react';
 import TicketCard from '../../components/TicketCard.jsx';
 import CallMenu from '../../components/CallMenu.jsx';
 import AssignMenu from '../../components/admin/AssignMenu.jsx';
+import MergeModal from '../../components/admin/MergeModal.jsx';
+import { useApp } from '../../context/AppContext.jsx';
 import { createdMs, isLostFound, shortTicketId } from '../../lib/ticketUtils.js';
+import { findDuplicateClusters } from '../../lib/duplicateUtils.js';
 import { roleTitleFor } from '../../lib/departments.js';
 
 const norm = s => (s?.status || '').toLowerCase().trim();
@@ -38,12 +41,27 @@ const SORTS = [
 ];
 
 export default function AdminTickets({ tickets, techs, onOpen, initialFilter = 'all' }) {
+  const { api, showToast } = useApp();
   const [filter, setFilter] = useState(initialFilter);
   const [catFilter, setCatFilter] = useState('all');
   const [q, setQ] = useState('');
   const [sortBy, setSortBy] = useState('urgent');
+  const [mergePair, setMergePair] = useState(null);
+
+  const duplicatesMap = useMemo(() => findDuplicateClusters(tickets), [tickets]);
+
+  const activeFilters = useMemo(() => [
+    { key: 'all', label: 'All open', test: t => !isResolved(t), Icon: ListChecks, tone: 'text-slate-600 bg-slate-100 dark:text-slate-200 dark:bg-white/10' },
+    { key: 'unassigned', label: 'Not assigned', test: isUnassigned, Icon: UserX, tone: 'text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-400/15' },
+    { key: 'started', label: 'Not started', test: isPending, Icon: Hourglass, tone: 'text-violet-600 bg-violet-50 dark:text-violet-300 dark:bg-violet-400/15' },
+    { key: 'progress', label: 'Being fixed', test: isInProgress, Icon: Wrench, tone: 'text-sky-600 bg-sky-50 dark:text-sky-300 dark:bg-sky-400/15' },
+    { key: 'urgent', label: 'Urgent', test: isUrgent, Icon: Siren, tone: 'text-rose-600 bg-rose-50 dark:text-rose-300 dark:bg-rose-400/15' },
+    { key: 'duplicates', label: 'Duplicates', test: t => Boolean(duplicatesMap[t.id]?.length > 0), Icon: GitMerge, tone: 'text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-400/20' },
+    { key: 'resolved', label: 'Fixed', test: isResolved, Icon: CircleCheck, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-400/15' },
+  ], [duplicatesMap]);
+
   const EVERYTHING = { key: 'everything', label: 'All tickets', test: () => true };
-  const f = filter === 'everything' ? EVERYTHING : (FILTERS.find(x => x.key === filter) || FILTERS[0]);
+  const f = filter === 'everything' ? EVERYTHING : (activeFilters.find(x => x.key === filter) || activeFilters[0]);
 
   const techOf = (t) => {
     const id = t.assignedTo || t.assigned_to;
@@ -69,6 +87,35 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
     });
     return out;
   }, [tickets, f, catFilter, q, sortBy]);
+
+  const mergeFor = (t) => {
+    if (isLostFound(t) || isResolved(t)) return null;
+    const dups = duplicatesMap[t.id];
+    if (!dups || dups.length === 0) return null;
+    const bestDup = dups[0]?.ticket;
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (bestDup) {
+            const isTOlder = createdMs(t) <= createdMs(bestDup);
+            setMergePair(isTOlder ? { primary: t, duplicate: bestDup } : { primary: bestDup, duplicate: t });
+          }
+        }}
+        title={`Potential duplicate detected (${dups.length} candidate${dups.length > 1 ? 's' : ''}). Click to review and merge.`}
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 text-xs font-bold transition shadow-2xs cursor-pointer"
+      >
+        <GitMerge className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+        <span>Merge</span>
+        {dups.length > 1 && (
+          <span className="ml-0.5 px-1 rounded-full bg-amber-200 dark:bg-amber-800 text-[10px] text-amber-900 dark:text-amber-100 font-extrabold">
+            +{dups.length}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   const reassignFor = (t) => {
     if (isLostFound(t)) return null;
@@ -103,8 +150,8 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
   return (
     <div className="space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-full lg:min-h-0">
       {/* Compact Status Filter Cards */}
-      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {FILTERS.map(x => {
+      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        {activeFilters.map(x => {
           const on = filter === x.key;
           const n = tickets.filter(x.test).length;
           return (
@@ -168,13 +215,30 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
                   onOpen={onOpen}
                   canRate={false}
                   action={actionFor(t)}
-                  headerAction={<div className="flex flex-nowrap items-center gap-1.5">{reassignFor(t)}{callFor(t)}</div>}
+                  headerAction={
+                    <div className="flex flex-nowrap items-center gap-1.5">
+                      {mergeFor(t)}
+                      {reassignFor(t)}
+                      {callFor(t)}
+                    </div>
+                  }
                 />
               ))}
             </div>
           </div>
         )}
       </div>
+
+      {mergePair && (
+        <MergeModal
+          primaryTicket={mergePair.primary}
+          duplicateTicket={mergePair.duplicate}
+          onClose={() => setMergePair(null)}
+          onMerged={() => setMergePair(null)}
+          api={api}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 }

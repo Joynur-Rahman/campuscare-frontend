@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, Users } from 'lucide-react';
+import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, Users, Sparkles, CheckCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { CATEGORIES, GROUPS, categoryLabel, getCategory, submitKey, locationMode, isEmergencyIssue } from '../data/catalog.js';
 import LocationPicker from './LocationPicker.jsx';
 import { readDeviceGps, distanceToCampusM, CAMPUS_TOLERANCE_M, MAX_GPS_ACCURACY_M, fmtDistance } from '../lib/campus.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import { findMatchingLandmark } from '../lib/mappls.js';
-import { shortTicketId } from '../lib/ticketUtils.js';
+import { shortTicketId, ticketLabel } from '../lib/ticketUtils.js';
 
 // Short names for the group tabs (full names live in the catalogue)
 const GROUP_SHORT = {
@@ -54,6 +54,9 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const [urgent, setUrgent] = useState(false);
   const [files, setFiles] = useState([]); // [{ file, url, kind }]
   const [busy, setBusy] = useState(false);
+  const [similarTickets, setSimilarTickets] = useState([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [joinedTicketId, setJoinedTicketId] = useState(null);
 
   const isCustomCat = cat === CUSTOM;
   const catInfo = isCustomCat ? null : getCategory(cat);
@@ -76,6 +79,44 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const filesRef = useRef(files);
   filesRef.current = files;
   useEffect(() => () => filesRef.current.forEach(f => URL.revokeObjectURL(f.url)), []);
+
+  // Live duplicate ticket detection
+  useEffect(() => {
+    const problem = (isCustomCat || issue === CUSTOM_ISSUE) ? customIssue.trim() : issue;
+    if (!cat && !problem && !location) {
+      setSimilarTickets([]);
+      return;
+    }
+    if (!problem && !location) {
+      setSimilarTickets([]);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(async () => {
+      setLoadingSimilar(true);
+      try {
+        const catName = isCustomCat ? customCat : categoryLabel(cat);
+        const results = await api.findSimilarTickets({
+          q: problem || catName,
+          category_id: catName,
+          location: location || '',
+          limit: 3,
+        });
+        if (alive) {
+          setSimilarTickets(Array.isArray(results) ? results : []);
+        }
+      } catch {
+        if (alive) setSimilarTickets([]);
+      } finally {
+        if (alive) setLoadingSimilar(false);
+      }
+    }, 400);
+
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [cat, customCat, issue, customIssue, location, isCustomCat, api]);
 
   // Search across every category and sub-problem
   const results = useMemo(() => {
@@ -464,6 +505,61 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
             )}
           </div>
         </div>
+
+        {similarTickets.length > 0 && (
+          <div className="shrink-0 mx-5 mb-2 p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-200/90 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-black text-amber-900">
+                <Sparkles className="w-4 h-4 text-amber-600 fill-amber-500" />
+                <span>Similar active issue detected on campus</span>
+              </span>
+              <span className="text-[10px] font-black text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-md">
+                {similarTickets.length} match{similarTickets.length > 1 ? 'es' : ''}
+              </span>
+            </div>
+
+            <p className="text-[11.5px] text-amber-800/90 leading-tight">
+              A similar issue has already been reported. You can tap <strong>"I'm affected too (+1)"</strong> to boost its priority instead of creating a duplicate report!
+            </p>
+
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5 custom-ticket-scrollbar">
+              {similarTickets.map(st => (
+                <div key={st.id} className="p-2.5 rounded-xl bg-white border border-amber-200 flex items-center justify-between gap-2.5 shadow-2xs">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10.5px] font-black text-slate-700">{shortTicketId(st)}</span>
+                      <span className="text-[11px] font-extrabold text-slate-900 truncate">{ticketLabel(st)}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate flex items-center gap-2 mt-0.5">
+                      {st.location && <span>📍 {st.location.split(',')[0]}</span>}
+                      <span>👥 {st.upvotes || 1} supporter{(st.upvotes || 1) > 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy || joinedTicketId === st.id}
+                    onClick={async () => {
+                      setJoinedTicketId(st.id);
+                      try {
+                        await api.joinTicket(st.id);
+                        showToast(`Joined ${shortTicketId(st)}! You are now marked as affected (+1).`, 'success');
+                        onClose();
+                      } catch (err) {
+                        showToast(err.message || 'Already joined this issue', 'warning');
+                      } finally {
+                        setJoinedTicketId(null);
+                      }
+                    }}
+                    className="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>I'm affected too</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {fenceAlert && (
           <div role="alert" className="shrink-0 mx-5 mb-2 mt-1 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-3 text-rose-900 shadow-sm dark:border-rose-500/50 dark:bg-rose-500/10 dark:text-rose-100">

@@ -186,9 +186,14 @@ export function createRestApi() {
         const list = await http.get('/api/tickets/confidential');
         return Array.isArray(list) ? list.map(normalizeTicket) : list;
       }, cb, onError, onSync),
-    findSimilarTickets: async (q) => {
-      const list = await http.get('/api/tickets/similar', flatten({ q }));
+    findSimilarTickets: async (params) => {
+      const queryObj = typeof params === 'string' ? { q: params } : (params || {});
+      const list = await http.get('/api/tickets/similar', flatten(queryObj));
       return Array.isArray(list) ? list.map(normalizeTicket) : list;
+    },
+    mergeTickets: async (targetId, body) => {
+      const res = await http.post(`/api/tickets/${encodeURIComponent(targetId)}/merge`, body);
+      return normalizeTicket(res);
     },
     getTicket: async (id) => {
       const t = await http.get(`/api/tickets/${encodeURIComponent(id)}`);
@@ -300,8 +305,9 @@ export function createRestApi() {
       poll(() => http.get(`/api/messages/me/${encodeURIComponent(uid)}`), cb, onError, onSync),
     getThread: (threadId) => http.get(`/api/messages/thread/${encodeURIComponent(threadId)}`),
     getTicketMessages: (threadId) => http.get(`/api/messages/thread/${encodeURIComponent(threadId)}`),
-    markAdminMessageRead: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`),
-    markThreadReadByUser: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`),
+    markAdminMessageRead: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`).catch(() => {}),
+    markThreadReadByUser: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`).catch(() => {}),
+    markThreadMessagesRead: (threadId) => http.put(`/api/messages/thread/${encodeURIComponent(threadId)}/read`).catch(() => {}),
 
     subscribeToNotices: (cb, onError, onSync) =>
       poll(() => http.get('/api/notices'), cb, onError, onSync),
