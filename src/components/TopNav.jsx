@@ -71,9 +71,29 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     };
   }, [user?.role, user?.clerk_id, user?.id, user?.email]);
 
-  // Derive notifications from real tickets
+  // Derive notifications from real tickets (scoped to relevant user)
   const notifs = useMemo(() => {
+    const roleStr = (user?.role || role || '').toLowerCase();
+    const isAdmin = roleStr === 'admin' || roleStr === 'administrator';
+    const isStaff = roleStr === 'staff' || roleStr === 'technician';
+    const myEmail = (user?.email || '').toLowerCase().trim();
+
     return tickets
+      .filter(t => {
+        if (isAdmin) return true;
+        if (isStaff) {
+          return Boolean(uid && (t.assigned_to === uid || t.assignedTo === uid));
+        }
+        // Students & general users: strictly their own tickets, or public shared tickets they explicitly joined
+        const isOwner = Boolean(
+          (uid && (t.owner_id === uid || t.ownerId === uid || t.clerk_id === uid || t.userId === uid || t.user_id === uid)) ||
+          (myEmail && (t.userEmail || t.owner_email || '').toLowerCase().trim() === myEmail)
+        );
+        const hasJoined = Boolean(
+          uid && Array.isArray(t.upvoted_by || t.upvotedBy) && (t.upvoted_by || t.upvotedBy).includes(uid)
+        );
+        return isOwner || (Boolean(t.isPublic) && hasJoined);
+      })
       .slice()
       .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
       .slice(0, 10)
@@ -148,7 +168,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           ticketId: t.id,
           ticket: t,
           shortId,
-          title: role === 'staff' ? 'Assigned Ticket' : 'Complaint Submitted',
+          title: isStaff ? 'Assigned Ticket' : 'Complaint Submitted',
           desc: `"${t.title || 'Complaint'}" registered in system.`,
           time,
           unread: isUnread,
@@ -157,7 +177,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           color: 'text-amber-500'
         };
       });
-  }, [tickets, readNotifIds, role]);
+  }, [tickets, readNotifIds, role, uid, user?.email, user?.role]);
 
   // ── Administrator & Ticket Messages ──
   const [adminMsgs, setAdminMsgs] = useState([]);
@@ -237,11 +257,16 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
     let alive = true;
     const currentUid = user?.clerk_id || user?.id;
+    const myEmail = (user?.email || '').toLowerCase().trim();
     const isStudent = roleStr === 'student' || role === 'student';
     const mine = tickets.filter(t => {
       if (!isStudent) return true;
-      if (!currentUid) return false;
-      return t.owner_id === currentUid || t.userId === currentUid || isLostFound(t);
+      if (!currentUid && !myEmail) return false;
+      const isOwner = Boolean(
+        (currentUid && (t.owner_id === currentUid || t.ownerId === currentUid || t.clerk_id === currentUid || t.userId === currentUid || t.user_id === currentUid)) ||
+        (myEmail && (t.userEmail || t.owner_email || '').toLowerCase().trim() === myEmail)
+      );
+      return isOwner || isLostFound(t);
     });
     const recent = mine
       .slice()
@@ -262,7 +287,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     load();
     const iv = setInterval(load, 8000);
     return () => { alive = false; clearInterval(iv); };
-  }, [msgOpen, tickets, role, user?.clerk_id, user?.id, user?.role]);
+  }, [msgOpen, tickets, role, user?.clerk_id, user?.id, user?.role, user?.email]);
 
   // Derive conversations from tickets and adminMsgs
   const ticketMsgs = useMemo(() => {
@@ -270,6 +295,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     const roleStr = (user?.role || role || '').toLowerCase();
     const isStudent = roleStr === 'student';
     const currentUid = user?.clerk_id || user?.id;
+    const myEmail = (user?.email || '').toLowerCase().trim();
 
     // Group any messages with thread_id from adminMsgs
     const msgsByThread = {};
@@ -283,11 +309,22 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
     const processedTicketIds = new Set();
 
-    // For students, filter down to tickets owned by this student or Lost & Found items
+    // For students, filter down to tickets owned by this student or Lost & Found items they participated in
     const allowedTickets = tickets.filter(t => {
       if (!isStudent) return true;
-      if (!currentUid) return false;
-      return t.owner_id === currentUid || t.userId === currentUid || isLostFound(t);
+      if (!currentUid && !myEmail) return false;
+      const isOwner = Boolean(
+        (currentUid && (t.owner_id === currentUid || t.ownerId === currentUid || t.clerk_id === currentUid || t.userId === currentUid || t.user_id === currentUid)) ||
+        (myEmail && (t.userEmail || t.owner_email || '').toLowerCase().trim() === myEmail)
+      );
+      if (isOwner) return true;
+      if (isLostFound(t)) {
+        const msgs = (Array.isArray(t.messages) && t.messages.length)
+          ? t.messages
+          : ((threads[t.id] && threads[t.id].length) ? threads[t.id] : (msgsByThread[t.id] || []));
+        return msgs.some(m => currentUid && (m.sender_id === currentUid || m.senderId === currentUid));
+      }
+      return false;
     });
 
     allowedTickets.forEach(t => {

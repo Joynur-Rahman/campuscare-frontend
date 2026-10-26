@@ -752,10 +752,10 @@ export default function StudentPortal() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-2">
                 {list.map((t) => {
                   const isMyTicket =
-                    (myUid && (t.userId === myUid || t.owner_id === myUid || t.clerk_id === myUid)) ||
-                    (myEmail && (t.userEmail || '').toLowerCase() === myEmail);
+                    (myUid && (t.userId === myUid || t.owner_id === myUid || t.ownerId === myUid || t.clerk_id === myUid || t.user_id === myUid)) ||
+                    (myEmail && (t.userEmail || t.owner_email || '').toLowerCase().trim() === myEmail);
                   const hasJoined =
-                    Array.isArray(t.upvotedBy) && myUid && t.upvotedBy.includes(myUid);
+                    myUid && Array.isArray(t.upvotedBy || t.upvoted_by) && (t.upvotedBy || t.upvoted_by).includes(myUid);
 
                   let actionBtn = null;
                   if (isLostFound(t)) {
@@ -790,7 +790,7 @@ export default function StudentPortal() {
                       t={t}
                       onOpen={setOpen}
                       action={actionBtn}
-                      canRate={Boolean(isMyTicket || hasJoined)}
+                      canRate={Boolean(isMyTicket || (Boolean(t.isPublic) && hasJoined))}
                       unassignedLabel="Awaiting Technician"
                     />
                   );
@@ -807,8 +807,8 @@ export default function StudentPortal() {
           onClose={() => setOpen(null)}
           action={(() => {
             const isMyTicket =
-              (myUid && (open.userId === myUid || open.owner_id === myUid || open.clerk_id === myUid)) ||
-              (myEmail && (open.userEmail || '').toLowerCase() === myEmail);
+              (myUid && (open.userId === myUid || open.owner_id === myUid || open.ownerId === myUid || open.clerk_id === myUid || open.user_id === myUid)) ||
+              (myEmail && (open.userEmail || open.owner_email || '').toLowerCase().trim() === myEmail);
             if (isMyTicket) {
               return (
                 <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
