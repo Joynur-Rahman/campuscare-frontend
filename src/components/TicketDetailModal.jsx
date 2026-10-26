@@ -53,7 +53,7 @@ const threadCache = new Map();
 // Shared ticket detail + right-hand-side drawer chat
 export default function TicketDetailModal({ ticket, onClose, action }) {
   useBodyScrollLock();
-  const { api, user, showToast } = useApp();
+  const { api, user, showToast, markTicketMessagesRead } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -62,6 +62,13 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const initialMessages = (ticket?.messages?.length ? ticket.messages : cachedMessages) || [];
   const [local, setLocal] = useState(() => (ticket ? { ...ticket, messages: [...initialMessages] } : ticket));
   const [loadingThread, setLoadingThread] = useState(() => !initialMessages.length);
+
+  // Automatically mark this ticket's messages as read upon viewing
+  useEffect(() => {
+    if (ticket?.id && markTicketMessagesRead) {
+      markTicketMessagesRead(ticket.id);
+    }
+  }, [ticket?.id, markTicketMessagesRead]);
 
   useEffect(() => {
     if (ticket) {

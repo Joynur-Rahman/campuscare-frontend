@@ -305,8 +305,9 @@ export function createRestApi() {
       poll(() => http.get(`/api/messages/me/${encodeURIComponent(uid)}`), cb, onError, onSync),
     getThread: (threadId) => http.get(`/api/messages/thread/${encodeURIComponent(threadId)}`),
     getTicketMessages: (threadId) => http.get(`/api/messages/thread/${encodeURIComponent(threadId)}`),
-    markAdminMessageRead: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`),
-    markThreadReadByUser: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`),
+    markAdminMessageRead: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`).catch(() => {}),
+    markThreadReadByUser: (id) => http.put(`/api/messages/${encodeURIComponent(id)}/read`).catch(() => {}),
+    markThreadMessagesRead: (threadId) => http.put(`/api/messages/thread/${encodeURIComponent(threadId)}/read`).catch(() => {}),
 
     subscribeToNotices: (cb, onError, onSync) =>
       poll(() => http.get('/api/notices'), cb, onError, onSync),

@@ -152,8 +152,46 @@ export function AppProvider({ children }) {
   const cycleTheme = useCallback(() => setTheme(t => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto')), []);
   const [ticketModal, setTicketModal] = useState(null);
 
+  const markTicketMessagesRead = useCallback((ticketId) => {
+    if (!ticketId) return;
+    const sId = String(ticketId);
+    const uid = user?.clerk_id || user?.id || 'guest';
+    const now = Date.now();
+    try {
+      const threadKey = `cc_read_threads_${uid}`;
+      const existingThreads = JSON.parse(localStorage.getItem(threadKey) || '{}');
+      existingThreads[sId] = now;
+      localStorage.setItem(threadKey, JSON.stringify(existingThreads));
+
+      // Also ensure legacy/backup notifs key includes sId so old readers remain consistent
+      const notifKey = `cc_read_notifs_${uid}`;
+      const notifs = JSON.parse(localStorage.getItem(notifKey) || '[]');
+      if (!notifs.includes(sId)) {
+        notifs.push(sId);
+        localStorage.setItem(notifKey, JSON.stringify(notifs));
+      }
+      const legacyNotifs = JSON.parse(localStorage.getItem('cc_read_notifs') || '[]');
+      if (!legacyNotifs.includes(sId)) {
+        legacyNotifs.push(sId);
+        localStorage.setItem('cc_read_notifs', JSON.stringify(legacyNotifs));
+      }
+    } catch {}
+
+    // Dispatch global event so TopNav updates instantly without delay
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cc-messages-read', { detail: { ticketId: sId, at: now } }));
+    }
+
+    // Inform backend to mark messages read in the database
+    if (api?.markThreadMessagesRead) {
+      api.markThreadMessagesRead(sId);
+    }
+  }, [user?.clerk_id, user?.id, api]);
+
   const openTicket = useCallback(async (ticketOrId) => {
     if (!ticketOrId) return;
+    const tid = typeof ticketOrId === 'object' ? ticketOrId.id : String(ticketOrId);
+    if (tid) markTicketMessagesRead(tid);
     if (typeof ticketOrId === 'object' && ticketOrId.id) {
       setTicketModal(ticketOrId);
       return;
@@ -170,7 +208,7 @@ export function AppProvider({ children }) {
       console.error('[AppContext] Failed to fetch ticket for modal:', e);
       setTicketModal({ id: ticketId, title: 'Ticket ' + ticketId });
     }
-  }, [api]);
+  }, [api, markTicketMessagesRead]);
 
   const closeTicket = useCallback(() => {
     setTicketModal(null);
@@ -191,6 +229,7 @@ export function AppProvider({ children }) {
     ticketModal,
     openTicket,
     closeTicket,
+    markTicketMessagesRead,
   };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

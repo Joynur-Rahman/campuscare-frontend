@@ -38,12 +38,14 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
   const initials = (user?.name || user?.full_name || user?.email || 'U').slice(0, 1).toUpperCase();
   const role = user?.role || 'student';
+  const uid = user?.clerk_id || user?.id;
+  const uKey = uid || 'guest';
 
   // Live ticket-driven notifications
   const [tickets, setTickets] = useState([]);
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
-      const stored = localStorage.getItem('cc_read_notifs');
+      const stored = localStorage.getItem(`cc_read_notifs_${uKey}`) || localStorage.getItem('cc_read_notifs');
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -162,17 +164,59 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const [msgTab, setMsgTab] = useState('tickets'); // 'tickets' | 'admin'
   const [readAdminMsgIds, setReadAdminMsgIds] = useState(() => {
     try {
-      const stored = localStorage.getItem('cc_read_admin_msgs');
+      const stored = localStorage.getItem(`cc_read_admin_msgs_${uKey}`) || localStorage.getItem('cc_read_admin_msgs');
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
   });
 
+  const [readThreads, setReadThreads] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`cc_read_threads_${uKey}`);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Re-sync from localStorage when active user changes
+  useEffect(() => {
+    if (!user) return;
+    const currentKey = user.clerk_id || user.id || 'guest';
+    try {
+      const storedAdmin = localStorage.getItem(`cc_read_admin_msgs_${currentKey}`) || localStorage.getItem('cc_read_admin_msgs');
+      if (storedAdmin) setReadAdminMsgIds(JSON.parse(storedAdmin));
+      const storedThreads = localStorage.getItem(`cc_read_threads_${currentKey}`);
+      if (storedThreads) setReadThreads(JSON.parse(storedThreads));
+      const storedNotifs = localStorage.getItem(`cc_read_notifs_${currentKey}`) || localStorage.getItem('cc_read_notifs');
+      if (storedNotifs) setReadNotifIds(JSON.parse(storedNotifs));
+    } catch {}
+  }, [user?.clerk_id, user?.id]);
+
+  // Listen to global thread read events emitted by TicketDetailModal or AppContext
+  useEffect(() => {
+    const onRead = (e) => {
+      const { ticketId, at = Date.now() } = e?.detail || {};
+      if (!ticketId) return;
+      const sId = String(ticketId);
+      setReadThreads(prev => {
+        const next = { ...prev, [sId]: Math.max(prev[sId] || 0, at) };
+        try {
+          const currentKey = user?.clerk_id || user?.id || 'guest';
+          localStorage.setItem(`cc_read_threads_${currentKey}`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    };
+    window.addEventListener('cc-messages-read', onRead);
+    return () => window.removeEventListener('cc-messages-read', onRead);
+  }, [user?.clerk_id, user?.id]);
+
   // Subscribe to live administrator messages (only for admin users)
   useEffect(() => {
-    const role = (user?.role || '').toLowerCase();
-    const isAdmin = role === 'admin' || role === 'administrator';
+    const roleStr = (user?.role || '').toLowerCase();
+    const isAdmin = roleStr === 'admin' || roleStr === 'administrator';
     if (!isAdmin || !api?.subscribeToAdminMessages) return;
     const unsub = api.subscribeToAdminMessages((list) => {
       if (Array.isArray(list)) setAdminMsgs(list);
@@ -192,17 +236,17 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     if (isAdmin) return;
 
     let alive = true;
-    const uid = user?.clerk_id || user?.id;
+    const currentUid = user?.clerk_id || user?.id;
     const isStudent = roleStr === 'student' || role === 'student';
     const mine = tickets.filter(t => {
       if (!isStudent) return true;
-      if (!uid) return false;
-      return t.owner_id === uid || t.userId === uid || isLostFound(t);
+      if (!currentUid) return false;
+      return t.owner_id === currentUid || t.userId === currentUid || isLostFound(t);
     });
     const recent = mine
       .slice()
       .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
-      .slice(0, 5);
+      .slice(0, 8);
 
     const load = async () => {
       const results = await Promise.allSettled(recent.map(t => api.getTicketMessages(t.id)));
@@ -216,7 +260,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
       });
     };
     load();
-    const iv = setInterval(load, 10000);
+    const iv = setInterval(load, 8000);
     return () => { alive = false; clearInterval(iv); };
   }, [msgOpen, tickets, role, user?.clerk_id, user?.id, user?.role]);
 
@@ -225,7 +269,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     const res = [];
     const roleStr = (user?.role || role || '').toLowerCase();
     const isStudent = roleStr === 'student';
-    const uid = user?.clerk_id || user?.id;
+    const currentUid = user?.clerk_id || user?.id;
 
     // Group any messages with thread_id from adminMsgs
     const msgsByThread = {};
@@ -242,8 +286,8 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     // For students, filter down to tickets owned by this student or Lost & Found items
     const allowedTickets = tickets.filter(t => {
       if (!isStudent) return true;
-      if (!uid) return false;
-      return t.owner_id === uid || t.userId === uid || isLostFound(t);
+      if (!currentUid) return false;
+      return t.owner_id === currentUid || t.userId === currentUid || isLostFound(t);
     });
 
     allowedTickets.forEach(t => {
@@ -255,18 +299,24 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
 
       if (msgs.length > 0) {
         const lastMsg = msgs[msgs.length - 1];
+        const lastSenderId = lastMsg.sender_id || lastMsg.senderId;
+        const isMine = Boolean(currentUid && lastSenderId === currentUid);
+        const msgTime = lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0);
+        const threadReadTime = readThreads[String(t.id)] || 0;
+        const isUnread = !isMine && msgTime > threadReadTime && !Boolean(lastMsg.read_at);
+
         res.push({
-          id: `tmsg_${t.id}_${lastMsg.at || lastMsg.created_at || Date.now()}`,
+          id: lastMsg.id ? String(lastMsg.id) : `tmsg_${t.id}_${msgTime}`,
           ticketId: t.id,
           ticket: t,
           ticketTitle: t.title || t.categoryDisplay || t.subCategory || 'Complaint',
           location: t.location || '',
-          sender: lastMsg.sender_name || lastMsg.senderName || lastMsg.sender || 'Technician',
+          sender: isMine ? 'You' : (lastMsg.sender_name || lastMsg.senderName || lastMsg.sender || 'Technician'),
           snippet: lastMsg.text || lastMsg.body || lastMsg.snippet || '',
           time: formatTimeAgo(lastMsg.created_at || lastMsg.at),
-          at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0),
+          at: msgTime,
           tag: shortTicketId(t),
-          unread: !readNotifIds.includes(String(t.id)),
+          unread: isUnread,
         });
       }
     });
@@ -278,18 +328,24 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
           const list = msgsByThread[tid];
           if (list.length > 0) {
             const lastMsg = list[list.length - 1];
+            const lastSenderId = lastMsg.sender_id || lastMsg.senderId;
+            const isMine = Boolean(currentUid && lastSenderId === currentUid);
+            const msgTime = lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : (lastMsg.at || 0);
+            const threadReadTime = readThreads[String(tid)] || 0;
+            const isUnread = !isMine && msgTime > threadReadTime && !Boolean(lastMsg.read_at);
+
             res.push({
-              id: `tmsg_${tid}_${lastMsg.created_at || Date.now()}`,
+              id: lastMsg.id ? String(lastMsg.id) : `tmsg_${tid}_${msgTime}`,
               ticketId: tid,
               ticket: null,
               ticketTitle: lastMsg.ticket_title || 'Ticket Discussion',
               location: lastMsg.ticket_location || '',
-              sender: lastMsg.sender_name || lastMsg.sender || 'Campus Member',
+              sender: isMine ? 'You' : (lastMsg.sender_name || lastMsg.sender || 'Campus Member'),
               snippet: lastMsg.text || lastMsg.body || '',
               time: formatTimeAgo(lastMsg.created_at),
-              at: lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : 0,
+              at: msgTime,
               tag: `#${String(tid).slice(0, 8)}`,
-              unread: !readNotifIds.includes(String(tid)),
+              unread: isUnread,
             });
           }
         }
@@ -297,10 +353,11 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     }
 
     return res.sort((a, b) => b.at - a.at);
-  }, [tickets, threads, adminMsgs, readNotifIds, user?.role, role, user?.clerk_id, user?.id]);
+  }, [tickets, threads, adminMsgs, readThreads, user?.role, role, user?.clerk_id, user?.id]);
 
   // Format administrator messages
   const formattedAdminMsgs = useMemo(() => {
+    const currentUid = user?.clerk_id || user?.id;
     return adminMsgs.map(m => {
       const ticketId = m.thread_id || m.ticket_id || m.ticketId;
       const ticket = ticketId ? tickets.find(t => String(t.id) === String(ticketId)) : null;
@@ -315,10 +372,13 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         : (m.ticket_title || m.title || (isTicketChat ? 'Ticket Message' : 'Official Administrator Notice'));
 
       const location = ticket?.location || m.ticket_location || '';
-      const sender = m.sender_name || m.senderName || m.sender || (isTicketChat ? (m.sender_role ? `${m.sender_role.toUpperCase()}` : 'Campus User') : 'Administrator Office');
+      const isMine = Boolean(currentUid && (m.sender_id === currentUid || m.senderId === currentUid));
+      const sender = isMine ? 'You' : (m.sender_name || m.senderName || m.sender || (isTicketChat ? (m.sender_role ? `${m.sender_role.toUpperCase()}` : 'Campus User') : 'Administrator Office'));
+      const msgId = m.id ? String(m.id) : String(m.at || 0);
+      const isRead = isMine || Boolean(m.read_at) || readAdminMsgIds.includes(msgId);
 
       return {
-        id: m.id || String(m.at),
+        id: msgId,
         ticketId,
         ticket,
         isTicketChat,
@@ -329,10 +389,10 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         time: formatTimeAgo(m.created_at || m.at),
         at: m.created_at ? new Date(m.created_at).getTime() : (m.at || 0),
         tag,
-        unread: !readAdminMsgIds.includes(m.id || String(m.at)),
+        unread: !isRead,
       };
     }).sort((a, b) => b.at - a.at);
-  }, [adminMsgs, readAdminMsgIds, tickets]);
+  }, [adminMsgs, readAdminMsgIds, tickets, user?.clerk_id, user?.id]);
 
   const unreadAdminCount = formattedAdminMsgs.filter(m => m.unread).length;
   const unreadTicketMsgsCount = ticketMsgs.filter(m => m.unread).length;
@@ -353,19 +413,27 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   
   const markAllNotifsRead = () => {
     const allIds = notifs.map(n => n.id);
+    const currentKey = user?.clerk_id || user?.id || 'guest';
     setReadNotifIds(prev => {
       const next = Array.from(new Set([...prev, ...allIds]));
-      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem(`cc_read_notifs_${currentKey}`, JSON.stringify(next));
+        localStorage.setItem('cc_read_notifs', JSON.stringify(next));
+      } catch {}
       return next;
     });
   };
 
   const handleNotifClick = (itemOrId) => {
     const notifId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
+    const currentKey = user?.clerk_id || user?.id || 'guest';
     setReadNotifIds(prev => {
       if (prev.includes(notifId)) return prev;
       const next = [...prev, notifId];
-      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem(`cc_read_notifs_${currentKey}`, JSON.stringify(next));
+        localStorage.setItem('cc_read_notifs', JSON.stringify(next));
+      } catch {}
       return next;
     });
     setNotifOpen(false);
@@ -377,32 +445,61 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   };
 
   const markAllMsgsRead = () => {
+    const currentKey = user?.clerk_id || user?.id || 'guest';
     const allAdminIds = formattedAdminMsgs.map(m => m.id);
     setReadAdminMsgIds(prev => {
       const next = Array.from(new Set([...prev, ...allAdminIds]));
-      try { localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem(`cc_read_admin_msgs_${currentKey}`, JSON.stringify(next));
+        localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next));
+      } catch {}
       return next;
     });
-    const allTicketIds = ticketMsgs.map(m => String(m.ticketId));
-    setReadNotifIds(prev => {
-      const next = Array.from(new Set([...prev, ...allTicketIds]));
-      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+    allAdminIds.forEach(id => api?.markAdminMessageRead?.(id));
+
+    const now = Date.now();
+    setReadThreads(prev => {
+      const next = { ...prev };
+      ticketMsgs.forEach(m => {
+        const tid = String(m.ticketId);
+        next[tid] = now;
+        api?.markThreadMessagesRead?.(tid);
+      });
+      try {
+        localStorage.setItem(`cc_read_threads_${currentKey}`, JSON.stringify(next));
+      } catch {}
       return next;
     });
   };
 
   const handleAdminMsgClick = (itemOrId) => {
     const id = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
+    const currentKey = user?.clerk_id || user?.id || 'guest';
     setReadAdminMsgIds(prev => {
       if (prev.includes(id)) return prev;
       const next = [...prev, id];
-      try { localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem(`cc_read_admin_msgs_${currentKey}`, JSON.stringify(next));
+        localStorage.setItem('cc_read_admin_msgs', JSON.stringify(next));
+      } catch {}
       return next;
     });
+    if (api?.markAdminMessageRead && id) {
+      api.markAdminMessageRead(id);
+    }
 
     if (typeof itemOrId === 'object' && itemOrId.ticketId) {
+      const tid = String(itemOrId.ticketId);
+      setReadThreads(prev => {
+        const next = { ...prev, [tid]: Date.now() };
+        try {
+          localStorage.setItem(`cc_read_threads_${currentKey}`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      if (api?.markThreadMessagesRead) api.markThreadMessagesRead(tid);
       setMsgOpen(false);
-      const targetTicket = itemOrId.ticket || tickets.find(t => String(t.id) === String(itemOrId.ticketId));
+      const targetTicket = itemOrId.ticket || tickets.find(t => String(t.id) === tid);
       if (openTicket) {
         openTicket(targetTicket || itemOrId.ticketId);
       }
@@ -412,12 +509,18 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const handleTicketMsgClick = (itemOrId) => {
     const ticketId = typeof itemOrId === 'object' ? itemOrId.ticketId : itemOrId;
     const sId = String(ticketId);
-    setReadNotifIds(prev => {
-      if (prev.includes(sId)) return prev;
-      const next = [...prev, sId];
-      try { localStorage.setItem('cc_read_notifs', JSON.stringify(next)); } catch {}
+    const currentKey = user?.clerk_id || user?.id || 'guest';
+    const now = Date.now();
+    setReadThreads(prev => {
+      const next = { ...prev, [sId]: now };
+      try {
+        localStorage.setItem(`cc_read_threads_${currentKey}`, JSON.stringify(next));
+      } catch {}
       return next;
     });
+    if (api?.markThreadMessagesRead) {
+      api.markThreadMessagesRead(sId);
+    }
     setMsgOpen(false);
     const targetTicket = (typeof itemOrId === 'object' && itemOrId.ticket) || tickets.find(t => String(t.id) === sId);
     if (openTicket) {
