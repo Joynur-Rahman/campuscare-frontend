@@ -118,12 +118,21 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const senderTag = isAdmin ? 'Admin' : isStaff ? 'Technician' : 'Student';
 
   const s = String(local?.status || '').toLowerCase().trim();
-  // Rating: students only; on shared issues only the reporter or people who joined ("Me too")
-  const myEmail = (user?.email || '').toLowerCase();
-  const isOwner = Boolean((currentUserId && (local?.userId === currentUserId || local?.owner_id === currentUserId)) ||
-    (myEmail && (local?.userEmail || '').toLowerCase() === myEmail));
-  const hasJoined = Boolean(currentUserId && Array.isArray(local?.upvotedBy) && local.upvotedBy.includes(currentUserId));
-  const canRate = !isAdmin && !isStaff && (!local?.isPublic || isOwner || hasJoined);
+  const myEmail = (user?.email || '').toLowerCase().trim();
+  const isOwner = Boolean(
+    (currentUserId && (
+      local?.userId === currentUserId ||
+      local?.owner_id === currentUserId ||
+      local?.ownerId === currentUserId ||
+      local?.clerk_id === currentUserId ||
+      local?.user_id === currentUserId
+    )) ||
+    (myEmail && (local?.userEmail || local?.owner_email || '').toLowerCase().trim() === myEmail)
+  );
+  const hasJoined = Boolean(
+    currentUserId && Array.isArray(local?.upvotedBy || local?.upvoted_by) && (local.upvotedBy || local.upvoted_by).includes(currentUserId)
+  );
+  const canRate = !isAdmin && !isStaff && (isOwner || (Boolean(local?.isPublic) && hasJoined));
   const isResolved = s === 'resolved' || s === 'fixed' || s === 'done';
   const isLf = isLostFound(local);
   const canViewChat = isAdmin || isStaff || isOwner || isLf;
