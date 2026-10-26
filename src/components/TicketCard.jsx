@@ -146,20 +146,17 @@ export default function TicketCard({
                 <span>{mediaCount} {mediaCount === 1 ? 'photo' : 'photos'}</span>
               </span>
             )}
+
+            {headerAction && action && !lf && (
+              <div className="shrink-0">{action}</div>
+            )}
           </div>
 
           {headerAction ? (
             <div className="shrink-0">{headerAction}</div>
           ) : action && !lf ? (
             <div className="shrink-0">{action}</div>
-          ) : (
-            (t.upvotes || 0) > 1 && (
-              <span className="inline-flex items-center gap-1 text-xs text-[#2f4e56] dark:text-[#b9bec9] font-bold bg-[#e3ebe9] dark:bg-[#1d2024] px-2.5 py-0.5 rounded-full border border-[#d6ded7] dark:border-[#2a2e35] shrink-0">
-                <Users className="w-3.5 h-3.5 text-[#2f4e56] dark:text-[#b9bec9]" />
-                <span>{t.upvotes} affected</span>
-              </span>
-            )
-          )}
+          ) : null}
         </div>
 
         {/* Title & Description with Category Icon Accent */}

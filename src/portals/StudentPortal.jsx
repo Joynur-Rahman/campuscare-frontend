@@ -779,26 +779,8 @@ export default function StudentPortal() {
                           Your report
                         </span>
                       );
-                    } else if (hasJoined) {
-                      actionBtn = (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                          ✓ Affected ({t.upvotes || 1})
-                        </span>
-                      );
                     } else {
-                      actionBtn = (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            meToo(t);
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold text-white bg-[#2f4e56] hover:bg-[#1e353b] dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-full transition-all shadow-xs cursor-pointer active:scale-95"
-                          title="Also facing this issue? Upvote instead of filing a duplicate ticket"
-                        >
-                          👍 Me too ({t.upvotes || 0})
-                        </button>
-                      );
+                      actionBtn = null;
                     }
                   }
 
@@ -827,9 +809,6 @@ export default function StudentPortal() {
             const isMyTicket =
               (myUid && (open.userId === myUid || open.owner_id === myUid || open.clerk_id === myUid)) ||
               (myEmail && (open.userEmail || '').toLowerCase() === myEmail);
-            const hasJoined =
-              Array.isArray(open.upvotedBy) && myUid && open.upvotedBy.includes(myUid);
-            if (!open.isPublic || isLostFound(open)) return null;
             if (isMyTicket) {
               return (
                 <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
@@ -837,43 +816,18 @@ export default function StudentPortal() {
                 </span>
               );
             }
-            if (hasJoined) {
-              return (
-                <span className="px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center gap-1">
-                  ✓ Affected ({open.upvotes || 1})
-                </span>
-              );
-            }
-            return (
-              <button
-                type="button"
-                onClick={async () => {
-                  await meToo(open);
-                  setOpen((o) =>
-                    o
-                      ? {
-                          ...o,
-                          upvotes: (o.upvotes || 1) + 1,
-                          upvotedBy: [...(o.upvotedBy || []), myUid],
-                        }
-                      : o
-                  );
-                }}
-                className="px-3 py-1.5 bg-[#2f4e56] hover:bg-[#1e353b] text-white text-xs font-bold rounded-xl transition-colors"
-              >
-                👍 Me too ({open.upvotes || 1})
-              </button>
-            );
+            return null;
           })()}
         />
       )}
 
       {report && (
         <ReportModal
+          userTickets={all}
           initial={typeof report === 'object' ? report : null}
           sharedOnly={tab === 'Community'}
           onClose={() => setReport(false)}
-          onCreated={(created) => setTab(tab === 'Community' && created?.isPublic !== false ? 'Community' : 'Mine')}
+          onCreated={(created) => setTab('Mine')}
         />
       )}
       {lf && (

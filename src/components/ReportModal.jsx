@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, Users, Sparkles, CheckCheck } from 'lucide-react';
+import { X, Send, Loader2, ShieldAlert, MapPin, Search, ImagePlus, Film, Trash2, PencilLine, ClipboardPen, Siren, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { CATEGORIES, GROUPS, categoryLabel, getCategory, submitKey, locationMode, isEmergencyIssue } from '../data/catalog.js';
 import LocationPicker from './LocationPicker.jsx';
 import { readDeviceGps, distanceToCampusM, CAMPUS_TOLERANCE_M, MAX_GPS_ACCURACY_M, fmtDistance } from '../lib/campus.js';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock.js';
 import { findMatchingLandmark } from '../lib/mappls.js';
-import { shortTicketId, ticketLabel } from '../lib/ticketUtils.js';
+import { shortTicketId, ticketLabel, fmtDate, createdMs, statusLabel } from '../lib/ticketUtils.js';
+import { findUserActiveDuplicate } from '../lib/duplicateUtils.js';
 
 // Short names for the group tabs (full names live in the catalogue)
 const GROUP_SHORT = {
@@ -34,9 +35,9 @@ function Step({ n, title, hint }) {
   );
 }
 
-export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null, sharedOnly = false }) {
+export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null, sharedOnly = false, userTickets = [] }) {
   useBodyScrollLock();
-  const { api, showToast } = useApp();
+  const { api, showToast, openTicket } = useApp();
 
   const [group, setGroup] = useState(GROUPS[0]);
   const [query, setQuery] = useState('');
@@ -49,14 +50,21 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const [coords, setCoords] = useState(initialCoords);
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
-  // Opened from the Shared Issues tab → the report is shared by default (no tick needed)
-  const [isPublic, setIsPublic] = useState(sharedOnly);
   const [urgent, setUrgent] = useState(false);
   const [files, setFiles] = useState([]); // [{ file, url, kind }]
   const [busy, setBusy] = useState(false);
-  const [similarTickets, setSimilarTickets] = useState([]);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
-  const [joinedTicketId, setJoinedTicketId] = useState(null);
+
+  // Student's own tickets to prevent raising duplicate active tickets
+  const [myTickets, setMyTickets] = useState(userTickets || []);
+  useEffect(() => {
+    if (userTickets && userTickets.length > 0) {
+      setMyTickets(userTickets);
+    } else if (api?.getTickets) {
+      api.getTickets().then(list => {
+        if (Array.isArray(list)) setMyTickets(list);
+      }).catch(() => {});
+    }
+  }, [userTickets, api]);
 
   const isCustomCat = cat === CUSTOM;
   const catInfo = isCustomCat ? null : getCategory(cat);
@@ -80,43 +88,18 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   filesRef.current = files;
   useEffect(() => () => filesRef.current.forEach(f => URL.revokeObjectURL(f.url)), []);
 
-  // Live duplicate ticket detection
-  useEffect(() => {
-    const problem = (isCustomCat || issue === CUSTOM_ISSUE) ? customIssue.trim() : issue;
-    if (!cat && !problem && !location) {
-      setSimilarTickets([]);
-      return;
-    }
-    if (!problem && !location) {
-      setSimilarTickets([]);
-      return;
-    }
-    let alive = true;
-    const timer = setTimeout(async () => {
-      setLoadingSimilar(true);
-      try {
-        const catName = isCustomCat ? customCat : categoryLabel(cat);
-        const results = await api.findSimilarTickets({
-          q: problem || catName,
-          category_id: catName,
-          location: location || '',
-          limit: 3,
-        });
-        if (alive) {
-          setSimilarTickets(Array.isArray(results) ? results : []);
-        }
-      } catch {
-        if (alive) setSimilarTickets([]);
-      } finally {
-        if (alive) setLoadingSimilar(false);
-      }
-    }, 400);
+  const problem = (isCustomCat || issue === CUSTOM_ISSUE) ? customIssue.trim() : issue;
+  const catName = isCustomCat ? customCat : categoryLabel(cat);
 
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [cat, customCat, issue, customIssue, location, isCustomCat, api]);
+  // Immediate detection: does THIS student already have an active ticket for this exact issue?
+  const myDuplicateTicket = useMemo(() => {
+    if (!problem && !cat) return null;
+    return findUserActiveDuplicate(myTickets, {
+      category: catName,
+      problem,
+      title: `${catName} — ${problem}`,
+    });
+  }, [myTickets, catName, problem, cat]);
 
   // Search across every category and sub-problem
   const results = useMemo(() => {
@@ -172,6 +155,10 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
     if (!problem) return showToast('Pick or type the problem.', 'warning');
     if (!description.trim()) return showToast('Please describe the problem.', 'warning');
     if (onSite && !location.trim() && !coords) return showToast('Please add where the problem is.', 'warning');
+    if (myDuplicateTicket) {
+      showToast(`You already have an active ticket (${shortTicketId(myDuplicateTicket)}) for this issue. Duplicate submissions are not allowed.`, 'warning');
+      return;
+    }
 
     setBusy(true);
     try {
@@ -215,7 +202,6 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         }
       }
 
-      const pub = (sharedOnly || isPublic) && !confidential;
       const t = await api.createTicket({
         // Filed under a backend-known category; the full label travels in the title
         category: isCustomCat ? 'Other' : submitKey(cat),
@@ -227,7 +213,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
         latitude: (onSite || optionalLoc) ? lat : undefined,
         longitude: (onSite || optionalLoc) ? lng : undefined,
         description: description.trim(), phone: phone.trim(),
-        priority: urgent ? 'High' : 'Normal', urgent, isPublic: pub, upvotes: pub ? 1 : 0,
+        priority: urgent ? 'High' : 'Normal', urgent, isPublic: false, upvotes: 0,
       });
 
       // Attach photos / videos after the ticket exists (uses the existing upload endpoint)
@@ -390,6 +376,43 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
                   )}
                 </div>
               )}
+
+              {myDuplicateTicket && (
+                <div
+                  role="alert"
+                  className="mt-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-500 dark:border-amber-400 text-slate-900 dark:text-slate-100 shadow-md space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-300">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Active ticket already open for this issue</span>
+                    </span>
+                    <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                      {shortTicketId(myDuplicateTicket)}
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-relaxed">
+                    You have already submitted a report for <strong className="text-slate-900 dark:text-white font-bold">"{myDuplicateTicket.title || ticketLabel(myDuplicateTicket)}"</strong> on {fmtDate(createdMs(myDuplicateTicket))}.
+                    <br />
+                    Status: <strong className="text-amber-800 dark:text-amber-300 font-bold">{statusLabel(myDuplicateTicket)}</strong>.
+                    To protect student privacy and avoid duplicate processing, raising another ticket for this same active problem is blocked.
+                  </p>
+
+                  <div className="pt-0.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        openTicket(myDuplicateTicket);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>View My Existing Ticket ({shortTicketId(myDuplicateTicket)})</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -486,80 +509,16 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
           </div>
           </div>
 
-          <div className={`grid gap-2 ${confidential ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-            <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${urgent ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+          <div>
+            <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${urgent ? 'border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40' : 'border-slate-200 dark:border-[#2a2e35] bg-white dark:bg-[#121417] hover:bg-slate-50 dark:hover:bg-[#181a1f]'}`}>
               <input type="checkbox" checked={urgent} onChange={e => setUrgent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-rose-500 shrink-0" />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-800"><Siren className="w-3.5 h-3.5 text-rose-500" /> Urgent</span>
-                <span className="block text-[11px] text-slate-500 leading-snug">Safety risk or many people affected</span>
+                <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-800 dark:text-slate-100"><Siren className="w-3.5 h-3.5 text-rose-500" /> Urgent issue</span>
+                <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Requires immediate attention or priority resolution</span>
               </span>
             </label>
-            {!confidential && (
-              <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-[#9fbcbf] bg-[#eef3f1] dark:bg-[rgba(99,102,241,0.12)] dark:border-[#6366f1]' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-                <input type="checkbox" checked={sharedOnly || isPublic} disabled={sharedOnly} onChange={e => setIsPublic(e.target.checked)} className="mt-0.5 w-4 h-4 accent-iiitg-800 shrink-0" />
-                <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-800"><Users className="w-3.5 h-3.5 text-[#2f4e56] dark:text-indigo-300" /> Shared issue</span>
-                  <span className="block text-[11px] text-slate-500 leading-snug">{sharedOnly ? 'Posted to Shared Issues — others can press "Me too"' : 'Others can press "Me too"'}</span>
-                </span>
-              </label>
-            )}
           </div>
         </div>
-
-        {similarTickets.length > 0 && (
-          <div className="shrink-0 mx-5 mb-2 p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-200/90 shadow-2xs space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-xs font-black text-amber-900">
-                <Sparkles className="w-4 h-4 text-amber-600 fill-amber-500" />
-                <span>Similar active issue detected on campus</span>
-              </span>
-              <span className="text-[10px] font-black text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-md">
-                {similarTickets.length} match{similarTickets.length > 1 ? 'es' : ''}
-              </span>
-            </div>
-
-            <p className="text-[11.5px] text-amber-800/90 leading-tight">
-              A similar issue has already been reported. You can tap <strong>"I'm affected too (+1)"</strong> to boost its priority instead of creating a duplicate report!
-            </p>
-
-            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5 custom-ticket-scrollbar">
-              {similarTickets.map(st => (
-                <div key={st.id} className="p-2.5 rounded-xl bg-white border border-amber-200 flex items-center justify-between gap-2.5 shadow-2xs">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[10.5px] font-black text-slate-700">{shortTicketId(st)}</span>
-                      <span className="text-[11px] font-extrabold text-slate-900 truncate">{ticketLabel(st)}</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 truncate flex items-center gap-2 mt-0.5">
-                      {st.location && <span>📍 {st.location.split(',')[0]}</span>}
-                      <span>👥 {st.upvotes || 1} supporter{(st.upvotes || 1) > 1 ? 's' : ''}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={busy || joinedTicketId === st.id}
-                    onClick={async () => {
-                      setJoinedTicketId(st.id);
-                      try {
-                        await api.joinTicket(st.id);
-                        showToast(`Joined ${shortTicketId(st)}! You are now marked as affected (+1).`, 'success');
-                        onClose();
-                      } catch (err) {
-                        showToast(err.message || 'Already joined this issue', 'warning');
-                      } finally {
-                        setJoinedTicketId(null);
-                      }
-                    }}
-                    className="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1"
-                  >
-                    <CheckCheck className="w-3.5 h-3.5" />
-                    <span>I'm affected too</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {fenceAlert && (
           <div role="alert" className="shrink-0 mx-5 mb-2 mt-1 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-3 text-rose-900 shadow-sm dark:border-rose-500/50 dark:bg-rose-500/10 dark:text-rose-100">
@@ -569,17 +528,31 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
               <p className="text-[12.5px] leading-snug mt-0.5">{fenceAlert.body}</p>
               <p className="text-[11.5px] mt-1 text-rose-700 dark:text-rose-200">Ragging, faculty, harassment, academic and office complaints don't need a location and can be sent from anywhere.</p>
             </div>
-            <button type="button" onClick={() => setFenceAlert(null)} className="p-1 rounded-lg hover:bg-rose-100" aria-label="Dismiss"><X className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setFenceAlert(null)} className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40" aria-label="Dismiss"><X className="w-4 h-4" /></button>
           </div>
         )}
 
         {/* Footer (always visible) */}
-        <div className="shrink-0 px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center gap-3">
-          <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition">
+        <div className="shrink-0 px-5 py-3.5 border-t border-slate-200 dark:border-[#2a2e35] bg-slate-50 dark:bg-[#1a1d21] flex items-center gap-3">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-[#23262c] transition">
             Cancel
           </button>
-          <button type="submit" disabled={busy} className="flex-1 py-2.5 bg-iiitg-800 hover:bg-iiitg-900 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Submit ticket</>}
+          <button
+            type="submit"
+            disabled={busy || Boolean(myDuplicateTicket)}
+            className={`flex-1 py-2.5 font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition ${
+              myDuplicateTicket
+                ? 'bg-slate-200 text-slate-500 border border-slate-300 dark:bg-[#202328] dark:border-[#2a2e35] dark:text-slate-400 cursor-not-allowed'
+                : 'bg-iiitg-800 hover:bg-iiitg-900 text-white disabled:opacity-60 cursor-pointer'
+            }`}
+          >
+            {busy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : myDuplicateTicket ? (
+              <>Active ticket already open for this issue</>
+            ) : (
+              <><Send className="w-4 h-4" /> Submit ticket</>
+            )}
           </button>
         </div>
         </form>
