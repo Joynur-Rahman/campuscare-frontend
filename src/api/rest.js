@@ -186,9 +186,14 @@ export function createRestApi() {
         const list = await http.get('/api/tickets/confidential');
         return Array.isArray(list) ? list.map(normalizeTicket) : list;
       }, cb, onError, onSync),
-    findSimilarTickets: async (q) => {
-      const list = await http.get('/api/tickets/similar', flatten({ q }));
+    findSimilarTickets: async (params) => {
+      const queryObj = typeof params === 'string' ? { q: params } : (params || {});
+      const list = await http.get('/api/tickets/similar', flatten(queryObj));
       return Array.isArray(list) ? list.map(normalizeTicket) : list;
+    },
+    mergeTickets: async (targetId, body) => {
+      const res = await http.post(`/api/tickets/${encodeURIComponent(targetId)}/merge`, body);
+      return normalizeTicket(res);
     },
     getTicket: async (id) => {
       const t = await http.get(`/api/tickets/${encodeURIComponent(id)}`);
