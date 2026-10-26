@@ -283,18 +283,28 @@ export function shortTicketId(t) {
   const id = typeof t === 'string' ? t : (t.id || t.ticket_id || '');
   if (!id) return '';
 
-  const prefix = typeof t === 'object' ? getTicketPrefix(t) : 'TCK';
+  // Extract year from ticket created_at or date or fallback to current year
+  let year = new Date().getFullYear();
+  if (typeof t === 'object') {
+    const rawDate = t.created_at || t.createdAt || t.date;
+    if (rawDate) {
+      const parsed = new Date(rawDate).getFullYear();
+      if (!isNaN(parsed) && parsed >= 2020 && parsed <= 2100) {
+        year = parsed;
+      }
+    }
+  }
 
-  // If the id is already formatted like #ABC-1234 or short, return it
-  if (id.startsWith('#') || (id.includes('-') && id.length <= 10)) {
+  const categoryTag = typeof t === 'object' ? getTicketPrefix(t) : 'GEN';
+
+  // If already formatted like #IIITG-... or IIITG-..., return it
+  if (typeof id === 'string' && /IIITG-\d{4}-/i.test(id)) {
     return id.startsWith('#') ? id : `#${id}`;
   }
 
-  // Clean the id (remove any non-alphanumeric chars)
-  const clean = id.replace(/[^a-zA-Z0-9]/g, '');
-  if (!clean) return `#${prefix}`;
+  // Clean the id (extract alphanumeric characters)
+  const clean = String(id).replace(/[^a-zA-Z0-9]/g, '');
+  const numPart = clean ? clean.slice(-4).toUpperCase() : '0001';
 
-  // Take the last 4 characters in uppercase
-  const suffix = clean.slice(-4).toUpperCase();
-  return `#${prefix}-${suffix}`;
+  return `#IIITG-${year}-${numPart}-${categoryTag}`;
 }

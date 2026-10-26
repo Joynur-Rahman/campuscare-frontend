@@ -84,7 +84,7 @@ export default function AdminPortal() {
         <>
           {tab === 'dashboard' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminDashboard tickets={tickets} techs={techs} onOpen={setOpen} onGo={go} /></div>}
           {tab === 'tickets' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminTickets key={ticketFilter} tickets={tickets} techs={techs} onOpen={setOpen} initialFilter={ticketFilter} /></div>}
-          {tab === 'technicians' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminTechnicians tickets={tickets} techs={techs} /></div>}
+          {tab === 'technicians' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminTechnicians tickets={tickets} techs={techs} onOpen={setOpen} /></div>}
           {tab === 'reports' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminReports tickets={tickets} techs={techs} /></div>}
           {tab === 'manage' && <div className="cc-page-in lg:flex-1 lg:min-h-0"><AdminManage techs={techs} members={members} /></div>}
         </>

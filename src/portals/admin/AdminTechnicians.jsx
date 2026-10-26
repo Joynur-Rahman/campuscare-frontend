@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Power, KeyRound, Trash2, Star, Search, X, MoreVertical, Users, Wrench, Building2, GraduationCap, HeartHandshake, Phone, CheckCircle2, Copy } from 'lucide-react';
+import { Power, KeyRound, Trash2, Star, Search, X, MoreVertical, Users, Wrench, Building2, GraduationCap, HeartHandshake, Phone, CheckCircle2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
 import { techStats } from '../../lib/adminMetrics.js';
 import { DEPT_GROUPS, deptInfo } from '../../lib/departments.js';
@@ -10,10 +10,11 @@ const initials = n => String(n || '?').replace(/\(.*?\)/g, '').trim().split(/\s+
 const telHref = p => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
 const isResolved = t => ['resolved', 'done', 'fixed'].includes((t?.status || '').toLowerCase().trim());
 
-export default function AdminTechnicians({ tickets = [], techs = [] }) {
+export default function AdminTechnicians({ tickets = [], techs = [], onOpen }) {
   const { api, showToast } = useApp();
   const [busy, setBusy] = useState(null);
   const [optimisticDuty, setOptimisticDuty] = useState({});
+  const [expandedJobs, setExpandedJobs] = useState({});
   const [group, setGroup] = useState('all');
   const [dutyFilter, setDutyFilter] = useState('all'); // 'all' | 'on' | 'active'
   const [q, setQ] = useState('');
@@ -197,17 +198,67 @@ export default function AdminTechnicians({ tickets = [], techs = [] }) {
 
                     {/* Live Workload Context Strip */}
                     {currentJob ? (
-                      <div className="px-2.5 py-1.5 rounded-xl bg-sky-50/90 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex items-center justify-between gap-2 text-[11px]">
-                        <span className="font-bold text-sky-900 dark:text-sky-200 truncate flex items-center gap-1.5">
-                          <Wrench className="w-3 h-3 text-sky-600 shrink-0" />
-                          <span className="truncate">{shortTicketId(currentJob)}: {ticketLabel(currentJob)}</span>
-                        </span>
-                        {r.activeJobs.length > 1 && (
-                          <span className="px-1.5 py-0.5 rounded bg-sky-200/70 dark:bg-sky-800 text-sky-900 dark:text-sky-100 text-[10px] font-extrabold shrink-0">
-                            +{r.activeJobs.length - 1} more
-                          </span>
-                        )}
-                      </div>
+                      expandedJobs[id] ? (
+                        <div className="rounded-xl bg-sky-50/95 dark:bg-sky-950/50 border border-sky-300/80 dark:border-sky-800 p-2 text-[11px] flex flex-col gap-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between font-extrabold text-sky-900 dark:text-sky-200 px-0.5 pb-1 border-b border-sky-200/60 dark:border-sky-800/60">
+                            <span className="flex items-center gap-1.5 text-[11px]">
+                              <Wrench className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                              <span>Assigned tickets ({r.activeJobs.length})</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedJobs(p => ({ ...p, [id]: false }))}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-700 dark:text-sky-300 hover:bg-sky-200/60 dark:hover:bg-sky-900/60 cursor-pointer flex items-center gap-0.5 transition"
+                            >
+                              Show less <ChevronUp className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="max-h-36 overflow-y-auto space-y-1 pr-0.5 custom-ticket-scrollbar">
+                            {r.activeJobs.map((job, idx) => (
+                              <button
+                                key={job.id || idx}
+                                type="button"
+                                onClick={() => onOpen?.(job)}
+                                className="w-full text-left flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg bg-white/90 dark:bg-[#161a20] border border-sky-100 dark:border-sky-900/40 hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-sky-950/30 transition cursor-pointer group"
+                                title="Click to view ticket details"
+                              >
+                                <span className="truncate flex-1 font-semibold text-slate-800 dark:text-slate-200 group-hover:text-sky-900 dark:group-hover:text-white">
+                                  <span className="font-extrabold text-sky-700 dark:text-sky-400 mr-1.5 font-mono">{shortTicketId(job)}:</span>
+                                  <span>{ticketLabel(job)}</span>
+                                </span>
+                                {job.location && (
+                                  <span className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500 shrink-0 truncate max-w-[80px]">
+                                    {job.location}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="px-2.5 py-1.5 rounded-xl bg-sky-50/90 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex items-center justify-between gap-2 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => onOpen?.(currentJob)}
+                            className="font-bold text-sky-900 dark:text-sky-200 truncate flex items-center gap-1.5 text-left hover:underline cursor-pointer min-w-0"
+                            title="Click to view ticket details"
+                          >
+                            <Wrench className="w-3 h-3 text-sky-600 shrink-0" />
+                            <span className="truncate">{shortTicketId(currentJob)}: {ticketLabel(currentJob)}</span>
+                          </button>
+                          {r.activeJobs.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedJobs(p => ({ ...p, [id]: true }))}
+                              className="px-2 py-0.5 rounded-lg bg-sky-200/80 hover:bg-sky-300 dark:bg-sky-800 dark:hover:bg-sky-700 text-sky-950 dark:text-sky-100 text-[10.5px] font-extrabold shrink-0 cursor-pointer flex items-center gap-1 transition shadow-2xs"
+                              title="Click to view all active jobs"
+                            >
+                              <span>+{r.activeJobs.length - 1} more</span>
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )
                     ) : (
                       <div className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />

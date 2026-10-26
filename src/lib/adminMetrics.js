@@ -30,13 +30,25 @@ export function techStats(tickets, techs) {
 export function byCategory(tickets) {
   const map = {};
   tickets.forEach(t => {
-    const k = t.category || t.category_id || 'Other';
-    map[k] = map[k] || { reported: 0, fixed: 0, urgent: 0 };
-    map[k].reported++;
-    if (isResolved(t)) map[k].fixed++;
-    if (t.priority === 'High' || t.status === 'escalated') map[k].urgent++;
+    let cat = t.category || t.categoryName || t.category_name;
+    // If missing or raw UUID, extract readable name from categoryDisplay or title
+    if (!cat || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(cat)) {
+      const full = t.categoryDisplay || t.title || '';
+      if (full.includes('—')) {
+        cat = full.split('—')[0].trim();
+      } else if (full.includes(' - ')) {
+        cat = full.split(' - ')[0].trim();
+      } else {
+        cat = 'Other';
+      }
+    }
+    const label = categoryLabel(cat) || cat;
+    map[label] = map[label] || { reported: 0, fixed: 0, urgent: 0, label };
+    map[label].reported++;
+    if (isResolved(t)) map[label].fixed++;
+    if (t.priority === 'High' || t.status === 'escalated') map[label].urgent++;
   });
-  return Object.entries(map).map(([k, v]) => ({ key: k, label: categoryLabel(k) || k, ...v })).sort((a, b) => b.reported - a.reported);
+  return Object.entries(map).map(([k, v]) => ({ key: k, label: v.label || k, ...v })).sort((a, b) => b.reported - a.reported);
 }
 
 export function byPlace(tickets) {

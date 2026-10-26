@@ -58,11 +58,11 @@ export default function RatingModal({ ticket: ticketProp, t: tProp, onClose, onR
       ticket.rating = rating;
       if (fullFeedback) ticket.feedbackComment = fullFeedback;
       onRated?.(rating);
-      showToast?.(`Thank you! Rated ${rating}★ for ticket #${ticket.id}`, 'success');
+      showToast?.(`Thank you! Rated ${rating}★ for ticket ${shortTicketId(ticket)}`, 'success');
       onClose();
     } catch (err) {
       console.error('[RatingModal] Error submitting rating:', err);
-      showToast?.('Failed to submit rating. Please try again.', 'error');
+      showToast?.(err.message || 'Failed to submit rating. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
