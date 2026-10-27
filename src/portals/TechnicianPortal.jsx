@@ -305,7 +305,7 @@ export default function TechnicianPortal() {
             e.stopPropagation();
             handleStartWork(t);
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#2f4e56] hover:bg-[#233b41] dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-xl disabled:opacity-60 transition-colors shadow-xs shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#2f4e56] hover:bg-[#233b41] dark:bg-white dark:hover:bg-slate-200 dark:text-black rounded-xl disabled:opacity-60 transition-colors shadow-xs shrink-0 cursor-pointer"
         >
           {busyId === t.id ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -350,7 +350,7 @@ export default function TechnicianPortal() {
   return (
     <div className="app-container flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:h-[calc(100dvh-66px)]">
       {/* ── Merged Single-Row Staff Command Header ── */}
-      <div className="shrink-0 rounded-2xl bg-gradient-to-r from-[#243b41] via-[#2f4e56] to-[#3b5d66] text-white shadow-sm px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="shrink-0 rounded-none bg-[#243b41] dark:bg-[#161618] border border-slate-700/30 dark:border-[#212124] text-white shadow-none px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
         {/* Left: Greeting + Specialty + Urgent Alert + Duty Switch */}
         <div className="flex flex-wrap items-center gap-2.5 min-w-0">
           <div className="flex items-center gap-2">
@@ -448,7 +448,7 @@ export default function TechnicianPortal() {
       </div>
 
       {/* ── Main Content: Job Workbench ── */}
-      <div key={tab} className="cc-page-in flex-1 min-h-[380px] lg:min-h-0 flex flex-col rounded-2xl p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] gap-3">
+      <div key={tab} className="cc-page-in flex-1 min-h-[380px] lg:min-h-0 flex flex-col rounded-none p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#212124] gap-3">
           {/* Compact Toolbar: Section Title + Scope Filter + Building Filter + Sort */}
           <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">

@@ -2,14 +2,14 @@
 
 export function StatTile({ icon: Icon, label, value, color = 'text-slate-800 dark:text-slate-100', sub, active = false, highlight = '' }) {
   const toneCls = highlight === 'rose'
-    ? 'bg-rose-50/85 dark:bg-rose-950/35 border-rose-200/90 dark:border-rose-800/70'
+    ? 'bg-rose-50/85 dark:bg-[#161618] border-rose-200/90 dark:border-[#212124]'
     : highlight === 'amber'
-      ? 'bg-amber-50/85 dark:bg-amber-950/35 border-amber-200/90 dark:border-amber-800/70'
-      : 'bg-white dark:bg-[#121417] border-slate-200/90 dark:border-[#2a2e35]';
+      ? 'bg-amber-50/85 dark:bg-[#161618] border-amber-200/90 dark:border-[#212124]'
+      : 'bg-white dark:bg-[#161618] border-slate-200/90 dark:border-[#212124]';
 
   const activeCls = active
-    ? 'ring-2 ring-[#2f4e56] dark:ring-indigo-400 border-[#2f4e56] dark:border-indigo-400 shadow-md'
-    : 'hover:border-[#9fbcbf] dark:hover:border-[#40444c] shadow-xs';
+    ? 'ring-2 ring-[#2f4e56] dark:ring-white border-[#2f4e56] dark:border-white shadow-md'
+    : 'hover:border-[#9fbcbf] dark:hover:border-[#333336] shadow-xs';
 
   return (
     <div className={`cc-tile ${active ? 'cc-tile-on' : ''} rounded-2xl border px-3.5 py-2.5 transition-all flex items-center justify-between gap-2.5 ${toneCls} ${activeCls}`}>

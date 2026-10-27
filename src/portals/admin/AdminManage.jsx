@@ -18,7 +18,7 @@ function Field({ label, hint, children }) {
 
 function Panel({ title, sub, right, children, className = '' }) {
   return (
-    <section className={`rounded-2xl bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#2a2e35] shadow-xs p-4 flex flex-col min-h-0 ${className}`}>
+    <section className={`rounded-none bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#212124] shadow-xs p-4 flex flex-col min-h-0 ${className}`}>
       <div className="flex items-start justify-between gap-3 mb-3 shrink-0">
         <div className="min-w-0">
           <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</h3>
@@ -108,7 +108,7 @@ export default function AdminManage({ techs = [], members = [] }) {
         <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#e3ebe9] dark:bg-white/5 mb-3.5">
           {[['dept', 'Department staff', ShieldCheck], ['member', 'Non-teaching staff', Users]].map(([k, l, I]) => (
             <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k}
-              className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${kind === k ? 'bg-[#2f4e56] text-white shadow-sm dark:bg-[#6366f1]' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'}`}>
+              className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${kind === k ? 'bg-[#2f4e56] text-white shadow-sm dark:bg-white dark:text-black' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'}`}>
               <I className="w-3.5 h-3.5" /> {l}
             </button>
           ))}
@@ -137,7 +137,7 @@ export default function AdminManage({ techs = [], members = [] }) {
           {kind === 'member' && (
             <Field label="Section / office"><input value={section} onChange={e => setSection(e.target.value)} placeholder="e.g. Library, Accounts…" className={inputCls} /></Field>
           )}
-          <button type="submit" disabled={busy} className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#2f4e56] hover:bg-[#243d43] dark:bg-[#6366f1] text-white text-sm font-bold rounded-xl disabled:opacity-60 transition cursor-pointer shadow-xs">
+          <button type="submit" disabled={busy} className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#2f4e56] hover:bg-[#243d43] dark:bg-white dark:text-black dark:hover:bg-slate-200 text-white text-sm font-bold rounded-xl disabled:opacity-60 transition cursor-pointer shadow-xs">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Create account
           </button>
         </form>

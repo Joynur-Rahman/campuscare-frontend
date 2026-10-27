@@ -336,7 +336,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
                   <p className="text-sm font-bold text-slate-900 truncate">{isCustomCat ? 'Not listed (custom)' : catInfo?.label}</p>
                   {catInfo?.handledBy && <p className="text-[11px] text-slate-500 truncate">Handled by {catInfo.handledBy}</p>}
                 </div>
-                <button type="button" onClick={() => pickCategory('')} className="text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] dark:bg-[#23262c] dark:text-slate-100 dark:border-[#3a3f48] dark:hover:bg-[#2c3038] dark:hover:border-[#818cf8] px-3 py-1.5 rounded-lg shrink-0 transition">
+                <button type="button" onClick={() => pickCategory('')} className="text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] dark:bg-[#161618] dark:text-white dark:border-[#212124] dark:hover:bg-[#212124] dark:hover:border-[#333336] px-3 py-1.5 rounded-lg shrink-0 transition">
                   Change
                 </button>
               </div>
@@ -442,7 +442,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
                 <button
                   type="button"
                   onClick={() => setShowLocation(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] dark:bg-[#23262c] dark:text-slate-100 dark:border-[#3a3f48] dark:hover:bg-[#2c3038] dark:hover:border-[#818cf8] transition"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#2f4e56] bg-white border border-[#c9d7d4] hover:bg-[#e3ebe9] dark:bg-[#161618] dark:text-white dark:border-[#212124] dark:hover:bg-[#212124] dark:hover:border-[#333336] transition"
                 >
                   <MapPin className="w-3.5 h-3.5" /> Add place or pick on map (optional)
                 </button>
@@ -522,14 +522,14 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
 
             {!confidential && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
-                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${!isPublic ? 'border-[#2f4e56] bg-[#2f4e56]/5 dark:border-indigo-500 dark:bg-indigo-950/30 ring-1 ring-[#2f4e56] dark:ring-indigo-500' : 'border-slate-200 dark:border-[#2a2e35] bg-white dark:bg-[#121417] hover:bg-slate-50 dark:hover:bg-[#181a1f]'}`}>
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${!isPublic ? 'border-[#2f4e56] bg-[#2f4e56]/5 dark:border-white dark:bg-white/10 ring-1 ring-[#2f4e56] dark:ring-white' : 'border-slate-200 dark:border-[#212124] bg-white dark:bg-[#161618] hover:bg-slate-50 dark:hover:bg-[#212124]'}`}>
                   <input
                     type="radio"
                     name="visibility"
                     checked={!isPublic}
                     disabled={sharedOnly}
                     onChange={() => setIsPublic(false)}
-                    className="mt-0.5 w-4 h-4 accent-[#2f4e56] dark:accent-indigo-500 shrink-0"
+                    className="mt-0.5 w-4 h-4 accent-[#2f4e56] dark:accent-white shrink-0"
                   />
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-900 dark:text-white">
@@ -541,7 +541,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
                   </span>
                 </label>
 
-                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 ring-1 ring-sky-500 dark:ring-sky-400' : 'border-slate-200 dark:border-[#2a2e35] bg-white dark:bg-[#121417] hover:bg-slate-50 dark:hover:bg-[#181a1f]'}`}>
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${isPublic ? 'border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 ring-1 ring-sky-500 dark:ring-sky-400' : 'border-slate-200 dark:border-[#212124] bg-white dark:bg-[#161618] hover:bg-slate-50 dark:hover:bg-[#212124]'}`}>
                   <input
                     type="radio"
                     name="visibility"

@@ -100,7 +100,7 @@ export default function AdminTechnicians({ tickets = [], techs = [], onOpen }) {
           const n = g.key === 'all' ? rows.length : rows.filter(r => r.info.group === g.key).length;
           return (
             <button key={g.key} type="button" onClick={() => setGroup(g.key)} aria-pressed={on}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-sm dark:bg-[#2a2e35] dark:border-[#6366f1]' : 'bg-white/90 border-[#d3dfdc] hover:bg-white dark:bg-[#15171a] dark:border-[#2a2e35] dark:hover:bg-[#1b1d21]'}`}>
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-sm dark:bg-[#212124] dark:border-white' : 'bg-white/90 border-[#d3dfdc] hover:bg-white dark:bg-[#161618] dark:border-[#212124] dark:hover:border-[#333336]'}`}>
               <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${on ? 'bg-white/15 text-white' : 'bg-[#e3ebe9] text-[#2f4e56] dark:bg-white/10 dark:text-slate-200'}`}><g.Icon className="w-3.5 h-3.5" /></span>
               <span className={`flex-1 min-w-0 text-xs font-bold truncate ${on ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`} title={g.label}>{g.short || g.label}</span>
               <span className={`text-base font-extrabold leading-none ${on ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{n}</span>
@@ -110,12 +110,12 @@ export default function AdminTechnicians({ tickets = [], techs = [], onOpen }) {
       </div>
 
       {/* Staff Directory Container */}
-      <div className="flex flex-col gap-3 rounded-2xl sm:rounded-3xl p-3 sm:p-4 bg-[#d3dfdc]/80 dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] lg:max-h-full lg:min-h-0">
+      <div className="flex flex-col gap-3 rounded-none p-3 sm:p-4 bg-[#d3dfdc]/80 dark:bg-[#161618] border border-[#c3d2ce] dark:border-[#212124] lg:max-h-full lg:min-h-0">
         <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
           <div className="relative flex-1 min-w-[14rem]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, department, role or email…"
-              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl border border-[#d6ded7] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-800 dark:text-slate-100 focus:outline-none" />
+              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-none border border-[#d6ded7] dark:border-[#212124] bg-white dark:bg-[#121417] text-slate-800 dark:text-slate-100 focus:outline-none" />
             {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><X className="w-4 h-4" /></button>}
           </div>
 
@@ -131,8 +131,8 @@ export default function AdminTechnicians({ tickets = [], techs = [], onOpen }) {
                 onClick={() => setDutyFilter(f.key)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
                   dutyFilter === f.key
-                    ? 'bg-[#2f4e56] text-white border-[#2f4e56] dark:bg-indigo-600 dark:border-indigo-500'
-                    : 'bg-white/80 dark:bg-[#121417] text-slate-700 dark:text-slate-300 border-[#c3d2ce] dark:border-[#2a2e35] hover:bg-white'
+                    ? 'bg-[#2f4e56] text-white border-[#2f4e56] dark:bg-white dark:text-black dark:border-white'
+                    : 'bg-white/80 dark:bg-[#161618] text-slate-700 dark:text-white border-[#c3d2ce] dark:border-[#212124] hover:bg-white'
                 }`}
               >
                 {f.label}
@@ -155,7 +155,7 @@ export default function AdminTechnicians({ tickets = [], techs = [], onOpen }) {
                 const on = r.status === 'On Duty';
                 const currentJob = r.activeJobs?.[0];
                 return (
-                  <div key={id} className="relative rounded-2xl bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#2a2e35] shadow-xs hover:shadow-md transition-shadow p-3.5 flex flex-col justify-between gap-2.5">
+                  <div key={id} className="relative rounded-none bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#212124] shadow-xs hover:shadow-md transition-shadow p-3.5 flex flex-col justify-between gap-2.5">
                     <div className="flex items-start gap-3">
                       <span className="w-10 h-10 rounded-xl bg-[#2f4e56] dark:bg-[#2a2e35] text-white font-extrabold text-xs flex items-center justify-center shrink-0">{initials(r.name)}</span>
                       <div className="min-w-0 flex-1">

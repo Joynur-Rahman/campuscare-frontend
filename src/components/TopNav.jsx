@@ -644,7 +644,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             >
               <MessageSquare className="w-5 h-5" />
               {unreadMsgsCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ff3b30] text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ff3b30] text-white font-black text-[9px] flex items-center justify-center ring-2 ring-[#243b41] dark:ring-[#000000]">
                   {unreadMsgsCount}
                 </span>
               )}
@@ -665,7 +665,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                   {unreadMsgsCount > 0 && (
                     <button
                       onClick={markAllMsgsRead}
-                      className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      className="text-[11px] font-semibold text-indigo-600 dark:text-slate-300 hover:underline flex items-center gap-1"
                     >
                       <CheckCheck className="w-3.5 h-3.5" /> Mark all read
                     </button>
@@ -701,10 +701,10 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
                     }`}
                   >
-                    <ShieldCheck className={`w-3.5 h-3.5 ${msgTab === 'admin' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                    <ShieldCheck className={`w-3.5 h-3.5 ${msgTab === 'admin' ? 'text-indigo-600 dark:text-white' : 'text-slate-400'}`} />
                     <span>Administrator</span>
                     {unreadAdminCount > 0 && (
-                      <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-600 text-white">
+                      <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-600 dark:bg-white dark:text-black text-white">
                         {unreadAdminCount}
                       </span>
                     )}
@@ -719,7 +719,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                         key={m.id}
                         onClick={() => handleAdminMsgClick(m)}
                         className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-3 group ${
-                          m.unread ? 'bg-indigo-50/50 dark:bg-indigo-950/25 border-l-2 border-indigo-600' : ''
+                          m.unread ? 'bg-indigo-50/50 dark:bg-white/5 border-l-2 border-indigo-600 dark:border-l-white' : ''
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-xl ${m.isTicketChat ? 'bg-gradient-to-tr from-emerald-500 to-teal-600 text-white font-extrabold text-xs' : 'bg-gradient-to-tr from-indigo-600 to-iiitg-800 text-white'} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
@@ -729,7 +729,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                           <div className="flex items-center justify-between gap-1 mb-0.5">
                             <div className="flex items-center gap-1.5 min-w-0">
                               {m.isTicketChat && (
-                                <span className="font-mono text-[10px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 ring-1 ring-indigo-500/20 shrink-0">
+                                <span className="font-mono text-[10px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-[#212124] dark:text-white ring-1 ring-indigo-500/20 dark:ring-[#333336] shrink-0">
                                   {m.tag}
                                 </span>
                               )}
@@ -741,7 +741,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                           </div>
 
                           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">{m.sender}</span>
+                            <span className="text-indigo-600 dark:text-white font-bold">{m.sender}</span>
                             {m.location && (
                               <span className="text-[10px] text-slate-400 truncate font-normal">
                                 · 📍 {m.location}
@@ -760,7 +760,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                               </span>
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-indigo-700 dark:text-white bg-indigo-100/80 dark:bg-white/10 px-2 py-0.5 rounded-full">
                                   🏛️ {m.tag}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-medium">Official Dispatch</span>
@@ -768,7 +768,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
                             )}
                           </div>
                         </div>
-                        {m.unread && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5 ring-2 ring-indigo-200 dark:ring-indigo-900" />}
+                        {m.unread && <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-white shrink-0 mt-1.5 ring-2 ring-indigo-200 dark:ring-white/20" />}
                       </div>
                     ))}
                     {formattedAdminMsgs.length === 0 && (
@@ -860,7 +860,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             >
               <Bell className="w-5 h-5" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ff3b30] text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ff3b30] text-white font-black text-[9px] flex items-center justify-center ring-2 ring-[#243b41] dark:ring-[#000000]">
                   {unreadNotifsCount}
                 </span>
               )}
@@ -936,20 +936,20 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
             )}
           </div>
 
-          {/* Emergency SOS Red Box Button */}
+          {/* Emergency SOS Button */}
           <button
             onClick={() => setEmergency(true)}
-            className="h-[38px] min-w-[38px] px-0 sm:px-3.5 flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs rounded-full shadow-md shadow-rose-950/40 border border-rose-500 hover:border-rose-400 transition-all cursor-pointer active:scale-95 group"
+            className="h-[38px] min-w-[38px] px-0 sm:px-3.5 flex items-center justify-center gap-1.5 bg-white/12 hover:bg-rose-500/20 active:bg-rose-500/30 text-white hover:text-rose-200 border border-white/22 hover:border-rose-400/50 dark:bg-[#161618] dark:hover:bg-[#212124] dark:border-[#212124] dark:hover:border-rose-500/50 dark:text-rose-400 font-bold text-xs rounded-full shadow-none transition-all cursor-pointer active:scale-95 group"
             aria-label="SOS emergency"
             title="Emergency — campus help numbers & immediate assistance"
           >
-            <Siren className="w-4 h-4 text-white group-hover:scale-110 transition-transform animate-pulse" />
-            <span className="hidden sm:inline tracking-wider uppercase font-black text-[12px]">SOS</span>
+            <Siren className="w-4 h-4 text-white dark:text-rose-400 group-hover:scale-105 transition-transform" />
+            <span className="hidden sm:inline tracking-wider uppercase font-bold text-[12px]">SOS</span>
           </button>
 
           {/* User Profile Avatar */}
           <div className="relative flex" ref={menuRef}>
-            <button onClick={() => setMenu(m => !m)} aria-label="Account menu" className="w-[38px] h-[38px] rounded-full bg-gradient-to-tr from-iiitg-gold to-amber-300 text-iiitg-900 font-extrabold text-xs flex items-center justify-center ring-2 ring-white/20">
+            <button onClick={() => setMenu(m => !m)} aria-label="Account menu" className="w-[38px] h-[38px] rounded-full bg-white/14 hover:bg-white/24 border border-white/24 hover:border-white/40 text-white dark:bg-[#161618] dark:border-[#212124] dark:hover:border-[#333336] dark:text-white font-extrabold text-xs flex items-center justify-center shadow-none ring-0 transition-colors">
               {initials}
             </button>
             {menu && (

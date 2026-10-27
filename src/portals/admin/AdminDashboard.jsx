@@ -58,7 +58,7 @@ export default function AdminDashboard({ tickets = [], techs = [], onOpen, onGo 
             icon={Clock}
             label="Open now"
             value={s.open}
-            color="text-blue-700 dark:text-blue-400"
+            color="text-blue-700 dark:text-white"
             sub={s.open > 0 ? 'Active queue' : 'All clear'}
             active={kpiFilter === 'all'}
           />
@@ -74,7 +74,7 @@ export default function AdminDashboard({ tickets = [], techs = [], onOpen, onGo 
             icon={UserCog}
             label="Not assigned"
             value={s.unassigned}
-            color="text-amber-700 dark:text-amber-400"
+            color="text-amber-700 dark:text-white"
             sub={s.unassigned > 0 ? 'Needs dispatch' : 'All assigned'}
             highlight={s.unassigned > 0 ? 'amber' : ''}
             active={kpiFilter === 'unassigned'}
@@ -91,7 +91,7 @@ export default function AdminDashboard({ tickets = [], techs = [], onOpen, onGo 
             icon={Flame}
             label="Urgent"
             value={s.urgent}
-            color="text-rose-600 dark:text-rose-400"
+            color="text-rose-600 dark:text-white"
             sub={s.urgent > 0 ? 'Priority attention' : 'No urgent risk'}
             highlight={s.urgent > 0 ? 'rose' : ''}
             active={kpiFilter === 'urgent'}
@@ -108,7 +108,7 @@ export default function AdminDashboard({ tickets = [], techs = [], onOpen, onGo 
             icon={CircleCheck}
             label="Resolved"
             value={s.fixed}
-            color="text-emerald-700 dark:text-emerald-400"
+            color="text-emerald-700 dark:text-white"
             sub={s.reported ? `${Math.round((s.fixed / s.reported) * 100)}% resolution rate` : 'Completed'}
             active={kpiFilter === 'resolved'}
           />
