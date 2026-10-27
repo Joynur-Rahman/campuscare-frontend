@@ -56,7 +56,7 @@ export default function AdminPortal() {
           </p>
         </div>
 
-        <div className="p-1 rounded-2xl bg-[#e3ebe9]/95 dark:bg-[#121417] border border-[#d6ded7] dark:border-[#2a2e35] inline-flex gap-1 overflow-x-auto no-scrollbar max-w-full shadow-2xs">
+        <div className="p-1 rounded-none bg-[#e3ebe9]/95 dark:bg-[#161618] border border-[#d6ded7] dark:border-[#212124] inline-flex gap-1 overflow-x-auto no-scrollbar max-w-full shadow-none">
           {TABS.map(t => {
             const isActive = tab === t.key;
             return (
@@ -66,8 +66,8 @@ export default function AdminPortal() {
                 onClick={() => { setTab(t.key); setTicketFilter('all'); }}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#2f4e56] text-white shadow-xs dark:bg-indigo-600'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-[#d6ded7]/60 dark:hover:bg-[#1d2024]'
+                    ? 'bg-[#2f4e56] text-white shadow-xs dark:bg-white dark:text-black'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-[#d6ded7]/60 dark:hover:bg-[#212124]'
                 }`}
               >
                 <t.Icon className="w-3.5 h-3.5" />

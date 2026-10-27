@@ -66,7 +66,7 @@ export default function EmergencyModal({ onClose }) {
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold w-full transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] ${
                   c.red 
                     ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20' 
-                    : 'bg-slate-800 hover:bg-slate-900 dark:bg-[#6366f1] dark:hover:bg-[#7c7ff7] text-white shadow-indigo-600/20'
+                    : 'bg-slate-800 hover:bg-slate-900 dark:bg-white dark:hover:bg-slate-200 dark:text-black text-white shadow-slate-900/20'
                 }`}
               >
                 <PhoneCall className="w-3.5 h-3.5" />

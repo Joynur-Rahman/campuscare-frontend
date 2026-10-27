@@ -180,7 +180,7 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
           const isOddLast = idx === activeFilters.length - 1 && activeFilters.length % 2 !== 0;
           return (
             <button key={x.key} type="button" onClick={() => setFilter(x.key)} aria-pressed={on}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${isOddLast ? 'col-span-2 sm:col-span-1' : ''} ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-sm dark:bg-[#2a2e35] dark:border-[#6366f1]' : 'bg-white/90 border-[#d3dfdc] hover:bg-white hover:border-[#9fbcbf] dark:bg-[#15171a] dark:border-[#2a2e35] dark:hover:bg-[#1b1d21]'}`}>
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${isOddLast ? 'col-span-2 sm:col-span-1' : ''} ${on ? 'bg-[#2f4e56] border-[#2f4e56] text-white shadow-sm dark:bg-[#212124] dark:border-white' : 'bg-white/90 border-[#d3dfdc] hover:bg-white hover:border-[#9fbcbf] dark:bg-[#161618] dark:border-[#212124] dark:hover:border-[#333336]'}`}>
               <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${on ? 'bg-white/15 text-white' : x.tone}`}><x.Icon className="w-3.5 h-3.5" /></span>
               <span className={`flex-1 min-w-0 text-xs font-bold truncate ${on ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{x.label}</span>
               <span className={`text-base font-extrabold leading-none ${on ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{n}</span>
@@ -190,12 +190,12 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
       </div>
 
       {/* List Panel */}
-      <div className="lg:flex-1 lg:min-h-0 flex flex-col gap-2.5 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-sm dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35]">
+      <div className="lg:flex-1 lg:min-h-0 flex flex-col gap-2.5 rounded-none p-2.5 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-sm dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#212124]">
         <div className="shrink-0 flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[12rem]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search ID, problem, place, student or technician…"
-              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl border border-[#d6ded7] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#2f4e56]/20" />
+              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-none border border-[#d6ded7] dark:border-[#212124] bg-white dark:bg-[#161618] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-white" />
             {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>}
           </div>
 
@@ -203,23 +203,23 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
           <div className="relative flex items-center">
             <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
             <select value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filter by category"
-              className="pl-8 pr-3 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-[#d6ded7] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+              className="pl-8 pr-3 py-2 text-xs sm:text-sm font-semibold rounded-none border border-[#d6ded7] dark:border-[#212124] bg-white dark:bg-[#161618] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
               {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
             </select>
           </div>
 
           <select value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort tickets"
-            className="text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl border border-[#d6ded7] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+            className="text-xs sm:text-sm font-semibold px-3 py-2 rounded-none border border-[#d6ded7] dark:border-[#212124] bg-white dark:bg-[#161618] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
             {SORTS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
           </select>
 
           {filter === 'everything' && (
-            <button type="button" onClick={() => setFilter('all')} className="inline-flex items-center gap-1 text-xs font-bold text-[#2f4e56] dark:text-slate-100 bg-[#2f4e56]/10 dark:bg-white/10 rounded-full pl-2.5 pr-1.5 py-1">
+            <button type="button" onClick={() => setFilter('all')} className="inline-flex items-center gap-1 text-xs font-bold text-[#2f4e56] dark:text-slate-100 bg-[#2f4e56]/10 dark:bg-white/10 rounded-none pl-2.5 pr-1.5 py-1">
               All tickets incl. fixed <X className="w-3 h-3" />
             </button>
           )}
-          <span className="text-xs font-bold text-slate-600 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-[#c3d2ce] dark:border-[#2a2e35] rounded-full px-3 py-1">
-            {list.length} shown
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap self-center px-1.5">
+            {list.length} {list.length === 1 ? 'ticket' : 'tickets'}
           </span>
         </div>
 

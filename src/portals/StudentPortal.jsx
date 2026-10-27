@@ -114,8 +114,8 @@ function Chip({ active, onClick, children, count }) {
       aria-pressed={active}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition whitespace-nowrap cursor-pointer ${
         active
-          ? 'bg-[#2f4e56] text-white border-[#2f4e56] shadow-2xs dark:bg-indigo-600 dark:border-indigo-500'
-          : 'bg-white text-slate-700 border-[#c3d2ce] hover:bg-slate-50 dark:bg-[#15171a] dark:text-slate-200 dark:border-[#2a2e35] dark:hover:bg-[#1b1d21]'
+          ? 'bg-[#2f4e56] text-white border-[#2f4e56] shadow-2xs dark:bg-white dark:text-black dark:border-white'
+          : 'bg-white text-slate-700 border-[#c3d2ce] hover:bg-slate-50 dark:bg-[#161618] dark:text-[#818181] dark:border-[#212124] dark:hover:bg-[#212124] dark:hover:text-white'
       }`}
     >
       {children}
@@ -123,7 +123,7 @@ function Chip({ active, onClick, children, count }) {
         <span
           className={`text-[10px] font-extrabold px-1.5 rounded-full ${
             active
-              ? 'bg-white/20 text-white'
+              ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black'
               : 'bg-[#e3ebe9] text-[#2f4e56] dark:bg-white/10 dark:text-slate-200'
           }`}
         >
@@ -375,7 +375,7 @@ export default function StudentPortal() {
 
         <div className="flex items-center gap-2 flex-wrap max-w-full">
           {/* Segmented Navigation Bar */}
-          <div className="p-1 rounded-2xl bg-[#e3ebe9]/95 dark:bg-[#121417] border border-[#d6ded7] dark:border-[#2a2e35] inline-flex gap-1 overflow-x-auto no-scrollbar max-w-full shadow-2xs">
+          <div className="p-1 rounded-none bg-[#e3ebe9]/95 dark:bg-[#161618] border border-[#d6ded7] dark:border-[#212124] inline-flex gap-1 overflow-x-auto no-scrollbar max-w-full shadow-none">
             {TABS.map((t) => {
               const Icon = t.Icon;
               const isActive = tab === t.key;
@@ -391,8 +391,8 @@ export default function StudentPortal() {
                   }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-[#2f4e56] text-white shadow-xs dark:bg-indigo-600'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#d6ded7]/60 dark:hover:bg-[#1d2024]'
+                      ? 'bg-[#2f4e56] text-white shadow-xs dark:bg-white dark:text-black'
+                      : 'text-slate-600 dark:text-[#818181] hover:bg-[#d6ded7]/60 dark:hover:bg-[#212124] dark:hover:text-white'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -401,8 +401,8 @@ export default function StudentPortal() {
                     <span
                       className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
                         isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                          ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black'
+                          : 'bg-white/80 text-slate-700 dark:bg-[#212124] dark:text-[#818181]'
                       }`}
                     >
                       {cnt}
@@ -439,7 +439,7 @@ export default function StudentPortal() {
           />
         </div>
       ) : (
-        <div key={tab} className="cc-page-in rounded-2xl p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] shadow-xs space-y-3 lg:space-y-0 lg:gap-3 flex-1 min-h-[380px] lg:min-h-0 flex flex-col">
+        <div key={tab} className="cc-page-in rounded-none p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#000000] border border-[#c3d2ce] dark:border-[#212124] shadow-xs space-y-3 lg:space-y-0 lg:gap-3 flex-1 min-h-[380px] lg:min-h-0 flex flex-col">
           {/* ── Compact Single-Surface Filter Bar ── */}
           {(() => {
             const customLabel =
@@ -469,7 +469,7 @@ export default function StudentPortal() {
                           ? 'Search lost or found items by name, place, or ID…'
                           : 'Search by ID, issue, room, or building…'
                       }
-                      className="w-full pl-8 pr-8 py-1.5 text-xs sm:text-sm bg-white dark:bg-[#121417] border border-[#d6ded7] dark:border-[#2a2e35] rounded-xl shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#2f4e56]/20 focus:border-[#2f4e56] text-[#1e2f33] dark:text-white placeholder-[#7f999f]"
+                      className="w-full pl-8 pr-8 py-1.5 text-xs sm:text-sm bg-white dark:bg-[#161618] border border-[#d6ded7] dark:border-[#212124] rounded-none shadow-2xs focus:outline-none focus:ring-1 focus:ring-white focus:border-[#2f4e56] text-[#1e2f33] dark:text-white placeholder-[#7f999f] dark:placeholder-[#818181]"
                     />
                     {q && (
                       <button
@@ -502,7 +502,7 @@ export default function StudentPortal() {
                       value={buildingFilter}
                       onChange={(e) => setBuildingFilter(e.target.value)}
                       aria-label="Filter by building"
-                      className="hidden md:block text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                      className="hidden md:block text-xs font-bold px-2.5 py-1.5 rounded-none border border-[#c3d2ce] dark:border-[#212124] bg-white dark:bg-[#161618] text-slate-700 dark:text-white focus:outline-none cursor-pointer"
                     >
                       <option value="all">All buildings</option>
                       {buildingOpts.map((b) => (
@@ -521,7 +521,7 @@ export default function StudentPortal() {
                       setShowCustomDate(false);
                     }}
                     aria-label="Filter by time"
-                    className="hidden md:block lg:hidden text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                    className="hidden md:block lg:hidden text-xs font-bold px-2.5 py-1.5 rounded-none border border-[#c3d2ce] dark:border-[#212124] bg-white dark:bg-[#161618] text-slate-700 dark:text-white focus:outline-none cursor-pointer"
                   >
                     {TIME_OPTS.map((o) => (
                       <option key={o.key} value={o.key}>
@@ -549,8 +549,8 @@ export default function StudentPortal() {
                         <Calendar className="w-3 h-3" /> {customLabel || 'Custom'}
                       </Chip>
                       {showCustomDate && (
-                        <div className="absolute right-0 top-full mt-2 z-30 w-72 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#15171a] shadow-xl p-3 space-y-2.5">
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="absolute right-0 top-full mt-2 z-30 w-72 rounded-none border border-[#c3d2ce] dark:border-[#212124] bg-white dark:bg-[#161618] shadow-xl p-3 space-y-2.5">
+                          <p className="text-[11px] text-slate-500 dark:text-[#818181]">
                             Select a date range to filter tickets.
                           </p>
                           <div className="grid grid-cols-2 gap-2">
@@ -561,7 +561,7 @@ export default function StudentPortal() {
                                 value={startDate}
                                 max={endDate || undefined}
                                 onChange={(e) => setCustom(e.target.value, endDate)}
-                                className="mt-1 w-full px-2 py-1.5 text-xs border border-slate-300 dark:border-[#2a2e35] rounded-lg bg-white dark:bg-[#101214] dark:text-white"
+                                className="mt-1 w-full px-2 py-1.5 text-xs border border-slate-300 dark:border-[#212124] rounded-lg bg-white dark:bg-[#000000] dark:text-white"
                               />
                             </label>
                             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
@@ -571,7 +571,7 @@ export default function StudentPortal() {
                                 value={endDate}
                                 min={startDate || undefined}
                                 onChange={(e) => setCustom(startDate, e.target.value)}
-                                className="mt-1 w-full px-2 py-1.5 text-xs border border-slate-300 dark:border-[#2a2e35] rounded-lg bg-white dark:bg-[#101214] dark:text-white"
+                                className="mt-1 w-full px-2 py-1.5 text-xs border border-slate-300 dark:border-[#212124] rounded-lg bg-white dark:bg-[#000000] dark:text-white"
                               />
                             </label>
                           </div>
@@ -579,14 +579,14 @@ export default function StudentPortal() {
                             <button
                               type="button"
                               onClick={() => setCustom('', '')}
-                              className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                              className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-[#818181] dark:hover:text-white"
                             >
                               Clear
                             </button>
                             <button
                               type="button"
                               onClick={() => setShowCustomDate(false)}
-                              className="text-xs font-bold px-3 py-1 rounded-lg bg-[#2f4e56] dark:bg-[#6366f1] text-white"
+                              className="text-xs font-bold px-3 py-1 rounded-lg bg-[#2f4e56] dark:bg-white dark:text-black text-white"
                             >
                               Done
                             </button>
@@ -601,7 +601,7 @@ export default function StudentPortal() {
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     aria-label="Sort tickets"
-                    className="hidden sm:block shrink-0 text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none"
+                    className="hidden sm:block shrink-0 text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#212124] bg-white dark:bg-[#161618] text-slate-700 dark:text-white focus:outline-none"
                   >
                     {SORT_OPTS.map((o) => (
                       <option key={o.key} value={o.key}>

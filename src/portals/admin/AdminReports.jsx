@@ -4,7 +4,7 @@ import { deptInfo } from '../../lib/departments.js';
 
 function Card({ title, sub, Icon, right, children, className = '' }) {
   return (
-    <section className={`rounded-2xl bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#2a2e35] shadow-xs p-4 flex flex-col min-h-0 ${className}`}>
+    <section className={`rounded-none bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#212124] shadow-xs p-4 flex flex-col min-h-0 ${className}`}>
       <div className="flex items-center justify-between gap-2.5 mb-3 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="w-8 h-8 rounded-lg bg-[#e3ebe9] dark:bg-white/10 text-[#2f4e56] dark:text-[#b9bec9] flex items-center justify-center shrink-0"><Icon className="w-4 h-4" /></span>
@@ -72,7 +72,7 @@ export default function AdminReports({ tickets = [], techs = [] }) {
       {/* Top KPI + Export Strip */}
       <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
         {tiles.map(t => (
-          <div key={t.label} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#15171a] border border-slate-200/90 dark:border-[#2a2e35] shadow-2xs">
+          <div key={t.label} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-none bg-white dark:bg-[#15171a] border border-slate-200/90 dark:border-[#212124] shadow-2xs">
             <span className="w-8 h-8 rounded-lg bg-[#e3ebe9] dark:bg-white/10 text-[#2f4e56] dark:text-[#b9bec9] flex items-center justify-center shrink-0"><t.Icon className="w-4 h-4" /></span>
             <span className="flex-1 min-w-0">
               <span className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{t.label}</span>
@@ -84,7 +84,7 @@ export default function AdminReports({ tickets = [], techs = [] }) {
       </div>
 
       {/* Balanced 2-Row Analytics Workspace (No empty right-column void) */}
-      <div className="lg:flex-1 lg:min-h-0 flex flex-col gap-3 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 bg-[#d3dfdc]/80 dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] overflow-y-auto custom-ticket-scrollbar">
+      <div className="lg:flex-1 lg:min-h-0 flex flex-col gap-3 rounded-none p-2.5 sm:p-4 bg-[#d3dfdc]/80 dark:bg-[#161618] border border-[#c3d2ce] dark:border-[#212124] overflow-y-auto custom-ticket-scrollbar">
         {/* Row 1: Side-by-Side Problem Types (6 cols) + Building Hotspots (6 cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 shrink-0">
           <Card title="By problem type" sub="Reported, fixed and urgent per category" Icon={Tag} className="lg:col-span-6">

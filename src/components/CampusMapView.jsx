@@ -662,8 +662,8 @@ export default function CampusMapView({
                 onClick={() => setCatFilter(tab.key)}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition shrink-0 cursor-pointer ${
                   active
-                    ? 'bg-[#2f4e56] text-white border-[#2f4e56] dark:bg-indigo-600 dark:border-indigo-500 shadow-2xs'
-                    : 'bg-white dark:bg-[#17191d] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-[#2b2f36] hover:bg-slate-100'
+                    ? 'bg-[#2f4e56] text-white border-[#2f4e56] dark:bg-white dark:text-black dark:border-white shadow-2xs'
+                    : 'bg-white dark:bg-[#161618] text-slate-700 dark:text-white border-slate-200 dark:border-[#212124] hover:bg-slate-100'
                 }`}
               >
                 {tab.dot && (
@@ -887,7 +887,7 @@ Satellite
                     onClick={() => setQueueFilter(tab.key)}
                     className={`flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                       active
-                        ? 'bg-[#2f4e56] text-white shadow-2xs dark:bg-indigo-600'
+                        ? 'bg-[#2f4e56] text-white shadow-2xs dark:bg-white dark:text-black'
                         : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                     }`}
                   >

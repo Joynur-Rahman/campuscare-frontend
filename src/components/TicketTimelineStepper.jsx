@@ -82,17 +82,17 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
         <div className="absolute top-2 left-[12.5%] right-[12.5%] h-[1.5px] -translate-y-1/2 flex z-0">
           <div
             className={`flex-1 transition-all ${
-              stages[1].done ? 'bg-emerald-500' : 'bg-[#c9d6d4] dark:bg-slate-700'
+              stages[1].done ? 'bg-emerald-500' : 'bg-[#c9d6d4] dark:bg-[#212124]'
             }`}
           />
           <div
             className={`flex-1 transition-all ${
-              stages[2].done ? 'bg-emerald-500' : 'bg-[#c9d6d4] dark:bg-slate-700'
+              stages[2].done ? 'bg-emerald-500' : 'bg-[#c9d6d4] dark:bg-[#212124]'
             }`}
           />
           <div
             className={`flex-1 transition-all ${
-              stages[3].done ? 'bg-emerald-500' : 'bg-[#c9d6d4] dark:bg-slate-700'
+              stages[3].done ? 'bg-emerald-500' : 'bg-[#c9d6d4] dark:bg-[#212124]'
             }`}
           />
         </div>
@@ -105,7 +105,7 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
 
                 {/* Thin, Sleek Circle Icon */}
                 {st.done ? (
-                  <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0 ring-2 ring-white/80 dark:ring-[#101214]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0 ring-2 ring-white/80 dark:ring-[#161618]">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
                 ) : st.current ? (
@@ -113,7 +113,7 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
                     <Wrench className="w-2 h-2" />
                   </div>
                 ) : (
-                  <div className="w-4 h-4 rounded-full bg-white dark:bg-slate-800 border-[1.5px] border-[#bccbc9] dark:border-slate-600 text-[#6f8a8f] dark:text-slate-500 flex items-center justify-center shrink-0 ring-2 ring-white/80 dark:ring-[#101214] text-[8px] font-bold">
+                  <div className="w-4 h-4 rounded-full bg-white dark:bg-[#161618] border-[1.5px] border-[#bccbc9] dark:border-[#212124] text-[#6f8a8f] dark:text-[#818181] flex items-center justify-center shrink-0 ring-2 ring-white/80 dark:ring-[#161618] text-[8px] font-bold">
                     ○
                   </div>
                 )}
@@ -122,10 +122,10 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
                 <span
                   className={`text-[9.5px] font-bold mt-1 leading-tight tracking-tight truncate max-w-full px-0.5 ${
                     st.done
-                      ? 'text-slate-800 dark:text-slate-100'
+                      ? 'text-slate-800 dark:text-[#ffffff]'
                       : st.current
                         ? 'text-amber-700 dark:text-amber-400 font-extrabold'
-                        : 'text-[#877c68] dark:text-slate-400'
+                        : 'text-[#877c68] dark:text-[#818181]'
                   }`}
                   title={st.label}
                 >
@@ -134,11 +134,11 @@ export default function TicketTimelineStepper({ ticket, t: tProp }) {
 
                 {/* Compact Date & Time */}
                 {st.time ? (
-                  <span className="text-[8px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 font-medium truncate max-w-full">
+                  <span className="text-[8px] text-slate-500 dark:text-[#818181] leading-tight mt-0.5 font-medium truncate max-w-full">
                     {st.time}
                   </span>
                 ) : (
-                  <span className="text-[8px] text-[#9c917b] dark:text-slate-500 mt-0.5 italic">
+                  <span className="text-[8px] text-[#9c917b] dark:text-[#818181] mt-0.5 italic">
                     Pending
                   </span>
                 )}

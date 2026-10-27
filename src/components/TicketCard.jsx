@@ -68,17 +68,11 @@ export default function TicketCard({
   const isLostItem = lf && /\[lost\]|\blost\b/i.test(`${t.subCategory || ''} ${t.title || ''} ${t.description || ''}`) && !/\[found\]|\bfound item\b/i.test(`${t.subCategory || ''} ${t.title || ''} ${t.description || ''}`);
 
   const tone = {
-    bar: lf
-      ? isLostItem
-        ? 'bg-rose-500'
-        : 'bg-emerald-500'
-      : 'bg-[#2f4e56] dark:bg-[#6366f1]',
-    foot: 'bg-[#fffaeb] dark:bg-[#101214]/80 border-amber-200/70 dark:border-[#2a2e35]',
+    foot: 'bg-[#fffaeb] dark:bg-[#161618] border-amber-200/70 dark:border-[#212124]',
   };
 
   return (
-    <div className="cc-ticket-card group relative overflow-hidden rounded-2xl flex flex-col justify-between h-full bg-[#fcfdfd] dark:bg-[#121417] border border-[#bfd0cc] dark:border-[#2a2e35] shadow-[0_1px_2px_rgba(30,47,51,0.06),0_3px_8px_rgba(30,47,51,0.07)] hover:shadow-[0_2px_4px_rgba(30,47,51,0.08),0_6px_14px_rgba(30,47,51,0.10)] hover:border-[#b3cacf] dark:hover:border-[#40444c] transition-all duration-200">
-      <span aria-hidden="true" className={`absolute left-0 top-0 bottom-0 w-1 ${tone.bar}`} />
+    <div className="cc-ticket-card group relative overflow-hidden rounded-none flex flex-col justify-between h-full bg-[#fcfdfd] dark:bg-[#161618] border border-[#bfd0cc] dark:border-[#212124] shadow-[0_1px_2px_rgba(30,47,51,0.06),0_3px_8px_rgba(30,47,51,0.07)] hover:shadow-[0_2px_4px_rgba(30,47,51,0.08),0_6px_14px_rgba(30,47,51,0.10)] hover:border-[#b3cacf] dark:hover:border-[#333336] transition-all duration-200">
 
       {/* ── Card Content Body ── */}
       <div className="p-3 sm:p-3.5 flex-1 flex flex-col">
@@ -93,52 +87,52 @@ export default function TicketCard({
                   navigator.clipboard.writeText(t.id);
                 }
               }}
-              className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#b9bec9] px-2 py-0.5 rounded-lg bg-[#eaf1ef] dark:bg-[#1d2024] border border-[#d3dfdc] dark:border-[#2a2e35] tracking-tight cursor-pointer hover:border-[#2f4e56] dark:hover:border-slate-500 transition-colors"
+              className="font-mono text-xs font-black text-[#2f4e56] dark:text-[#ffffff] px-2 py-0.5 rounded-none bg-[#eaf1ef] dark:bg-[#212124] border border-[#d3dfdc] dark:border-[#212124] tracking-tight cursor-pointer hover:border-[#2f4e56] dark:hover:border-[#333336] transition-colors"
             >
               {shortTicketId(t)}
             </span>
 
             {lf ? (
               isResolved ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold border bg-slate-100 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none text-xs font-bold border bg-slate-100 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Claimed / Returned</span>
                 </span>
               ) : isLostItem ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold border bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none text-xs font-bold border bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300">
                   <Search className="w-3.5 h-3.5" />
                   <span>Lost item</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold border bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none text-xs font-bold border bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300">
                   <Archive className="w-3.5 h-3.5" />
                   <span>Found item</span>
                 </span>
               )
             ) : !t.assignedToName && isResolved ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
                 <span>✓ Fixed</span>
               </span>
             ) : t.assignedToName ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#eaf1ef] dark:bg-[#1d2024] border border-[#d3dfdc] dark:border-[#2a2e35] text-[#2f4e56] dark:text-[#b9bec9] text-xs font-bold shadow-2xs">
-                <Wrench className="w-3.5 h-3.5 text-[#2f4e56] dark:text-[#b9bec9]" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none bg-[#eaf1ef] dark:bg-[#212124] border border-[#d3dfdc] dark:border-[#212124] text-[#2f4e56] dark:text-[#ffffff] text-xs font-bold shadow-2xs">
+                <Wrench className="w-3.5 h-3.5 text-[#2f4e56] dark:text-[#818181]" />
                 <span className="truncate max-w-[160px]">{t.assignedToName}</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs font-semibold">
                 <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>{unassignedLabel}</span>
               </span>
             )}
 
             {!lf && (t.priority === 'High' || t.urgent) && (
-              <span className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 uppercase tracking-wider">
+              <span className="px-2 py-0.5 text-[10px] font-black rounded-none bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 uppercase tracking-wider">
                 Urgent
               </span>
             )}
 
             {!lf && t.isPublic && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 shadow-2xs">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-none bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 shadow-2xs">
                 <Users className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
                 <span>Shared Issue</span>
               </span>
@@ -146,7 +140,7 @@ export default function TicketCard({
 
             {mediaCount > 0 && (
               <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-none bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 shadow-2xs"
                 title={`${mediaCount} attached photo${mediaCount > 1 ? 's' : ''}`}
               >
                 <Camera className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
@@ -170,17 +164,17 @@ export default function TicketCard({
         <div className="flex-1 flex flex-col justify-center py-1.5">
           <div className="flex items-start gap-2">
             <span
-              className={`p-1.5 rounded-xl border shrink-0 mt-0.5 shadow-2xs ${catTheme.bg} ${catTheme.color}`}
+              className={`p-1.5 rounded-none border shrink-0 mt-0.5 shadow-2xs ${catTheme.bg} ${catTheme.color}`}
               title={t.category || t.categoryDisplay || 'Category'}
             >
               <CatIcon className="w-3.5 h-3.5" />
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm sm:text-[15px] font-extrabold text-slate-900 dark:text-slate-100 leading-snug line-clamp-1 tracking-tight">
+              <h3 className="text-sm sm:text-[15px] font-extrabold text-slate-900 dark:text-[#ffffff] leading-snug line-clamp-1 tracking-tight">
                 {ticketLabel(t)}
               </h3>
               {desc ? (
-                <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5 leading-snug">
+                <p className="text-xs sm:text-[13px] text-slate-600 dark:text-[#818181] line-clamp-2 mt-0.5 leading-snug">
                   {desc}
                 </p>
               ) : null}
@@ -189,7 +183,7 @@ export default function TicketCard({
         </div>
 
         {/* Metadata Strip: Location + Date */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300 pt-2.5 mt-1 border-t border-[#e6eeeb] dark:border-slate-800/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 dark:text-[#818181] pt-2.5 mt-1 border-t border-[#e6eeeb] dark:border-[#212124]">
           {hasLocation && (
             <button
               type="button"
@@ -202,13 +196,13 @@ export default function TicketCard({
                   ? `GPS: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} — Click to view Map`
                   : 'Click to view on Map'
               }
-              className="cc-loc-row flex-1 min-w-0 inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-[#f2f7f5] hover:bg-[#e8f0ed] dark:bg-[#15171a] dark:hover:bg-[#1b1d21] border border-[#dbe5e2] hover:border-[#b3cacf] dark:border-[#2c3037] dark:hover:border-[#3c648f] transition-all cursor-pointer group text-left shadow-2xs active:scale-[0.99]"
+              className="cc-loc-row flex-1 min-w-0 inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-none bg-[#f2f7f5] hover:bg-[#e8f0ed] dark:bg-[#161618] dark:hover:bg-[#212124] border border-[#dbe5e2] hover:border-[#b3cacf] dark:border-[#212124] dark:hover:border-[#333336] transition-all cursor-pointer group text-left shadow-2xs active:scale-[0.99]"
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <span className="w-5 h-5 rounded-lg bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <span className="w-5 h-5 rounded-none bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <MapPin className="w-3.5 h-3.5" />
                 </span>
-                <span className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">
+                <span className="font-semibold text-xs text-slate-800 dark:text-[#ffffff] truncate">
                   {t.location || 'Campus Location'}
                 </span>
               </div>
@@ -220,8 +214,8 @@ export default function TicketCard({
             </button>
           )}
 
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f2f7f5] dark:bg-[#15171a] border border-[#dbe5e2] dark:border-[#2c3037] font-semibold text-xs text-slate-700 dark:text-slate-300 shrink-0 shadow-2xs self-start sm:self-auto">
-            <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#f2f7f5] dark:bg-[#161618] border border-[#dbe5e2] dark:border-[#212124] font-semibold text-xs text-slate-700 dark:text-[#818181] shrink-0 shadow-2xs self-start sm:self-auto">
+            <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-500 dark:text-[#818181]" />
             <span>{t.date || fmtDate(createdMs(t))}</span>
           </span>
         </div>
@@ -238,7 +232,7 @@ export default function TicketCard({
 
           {!canRate && Number(t.rating) > 0 && (
             <span
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 shrink-0"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-none border bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 shrink-0"
               title={`Rated ${t.rating}/5 by the reporter`}
             >
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> {t.rating}/5
