@@ -30,8 +30,8 @@ export default function MergeModal({ primaryTicket, duplicateTicket, onClose, on
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs" onClick={onClose}>
-      <div className="bg-white dark:bg-[#121417] rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 border border-slate-200 dark:border-[#2a2e35] shadow-2xl text-slate-900 dark:text-white" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 backdrop-blur-xs overflow-y-auto" onClick={onClose}>
+      <div className="bg-white dark:bg-[#121417] rounded-3xl max-w-lg w-full max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 space-y-4 border border-slate-200 dark:border-[#2a2e35] shadow-2xl text-slate-900 dark:text-white" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">

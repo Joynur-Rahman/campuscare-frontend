@@ -981,9 +981,9 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
         </div>
       </div>
 
-      {/* Mobile tabs */}
+      {/* Mobile & Tablet tabs */}
       {tabs.length > 0 && (
-      <nav className="md:hidden flex items-center gap-1 px-3 pb-2 overflow-x-auto no-scrollbar">
+      <nav className="lg:hidden flex items-center gap-1 px-3 pb-2 overflow-x-auto no-scrollbar">
         {tabs.map(t => (
           <button key={t.key} onClick={() => onTab(t.key)} className={`nav-link text-xs ${activeTab === t.key ? 'active' : ''}`}>
             {t.Icon && <t.Icon className="w-4 h-4" />}{t.label}

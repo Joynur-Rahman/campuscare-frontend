@@ -19,7 +19,7 @@ import { SignIn, useClerk } from '@clerk/react';
 export default function LoginView() {
 
   return (
-    <div className="min-h-screen lg:h-dvh lg:overflow-hidden flex flex-col justify-between campus-hero-bg">
+    <div className="min-h-screen min-h-[100dvh] lg:h-dvh lg:overflow-hidden flex flex-col justify-between campus-hero-bg pb-[env(safe-area-inset-bottom)]">
       <div className="h-1 w-full bg-gradient-to-r from-iiitg-900 via-iiitg-gold to-iiitg-900 shrink-0" />
 
       {/* Institute banner */}

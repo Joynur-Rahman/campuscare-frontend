@@ -201,7 +201,7 @@ export default function AdminManage({ techs = [], members = [] }) {
           {staffByGroup.map(g => (
             <div key={g.key}>
               <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">{g.label} · {g.people.length}</p>
-              <ul className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {g.people.map(t => {
                   const di = deptInfo(t.dept || t.department);
                   const on = t.status === 'On Duty';
@@ -244,7 +244,7 @@ export default function AdminManage({ techs = [], members = [] }) {
           {shownMembers.length > 0 && (
             <div>
               <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Non-teaching staff · {shownMembers.length}</p>
-              <ul className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {shownMembers.map(m => (
                   <li key={m.uid || m.clerk_id || m.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-[#f3f7f6] dark:bg-white/5 border border-[#e3ebe9] dark:border-[#2a2e35]">
                     <span className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center justify-center shrink-0">{initials(m.name || m.full_name)}</span>

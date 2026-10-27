@@ -1,0 +1,19 @@
+{
+  "name": "CampusCare | IIIT Guwahati",
+  "short_name": "CampusCare",
+  "description": "Campus issue reporting and maintenance system for IIIT Guwahati",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#101214",
+  "theme_color": "#101214",
+  "icons": [
+    {
+      "src": "/assets/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

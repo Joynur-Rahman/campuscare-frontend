@@ -361,7 +361,7 @@ export default function StudentPortal() {
   }
 
   return (
-    <div className="app-container px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:flex lg:flex-col lg:h-[calc(100dvh-66px)]">
+    <div className="app-container flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2 space-y-2.5 lg:space-y-0 lg:gap-2.5 lg:h-[calc(100dvh-66px)]">
       {/* ── Merged Single-Row Header: Title (Left) + Segmented Tabs (Center) + CTA (Right) ── */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5">
         <div className="min-w-0 flex items-baseline gap-2.5">
@@ -431,7 +431,7 @@ export default function StudentPortal() {
 
       {/* ── Main Content Area: Full-Viewport Campus Map OR Compact Filter + Ticket Grid ── */}
       {tab === 'Map' ? (
-        <div key="map" className="cc-page-in lg:flex-1 lg:min-h-0">
+        <div key="map" className="cc-page-in flex-1 min-h-[380px] lg:min-h-0">
           <CampusMapView
             tickets={mapTickets}
             onSelectTicket={setOpen}
@@ -439,7 +439,7 @@ export default function StudentPortal() {
           />
         </div>
       ) : (
-        <div key={tab} className="cc-page-in rounded-2xl p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] shadow-xs space-y-3 lg:space-y-0 lg:gap-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+        <div key={tab} className="cc-page-in rounded-2xl p-3 sm:p-4 bg-[#d3dfdc]/80 backdrop-blur-xs dark:bg-[#101214]/90 border border-[#c3d2ce] dark:border-[#2a2e35] shadow-xs space-y-3 lg:space-y-0 lg:gap-3 flex-1 min-h-[380px] lg:min-h-0 flex flex-col">
           {/* ── Compact Single-Surface Filter Bar ── */}
           {(() => {
             const customLabel =
@@ -502,7 +502,7 @@ export default function StudentPortal() {
                       value={buildingFilter}
                       onChange={(e) => setBuildingFilter(e.target.value)}
                       aria-label="Filter by building"
-                      className="hidden md:block text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none"
+                      className="hidden md:block text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
                     >
                       <option value="all">All buildings</option>
                       {buildingOpts.map((b) => (
@@ -512,6 +512,23 @@ export default function StudentPortal() {
                       ))}
                     </select>
                   )}
+
+                  {/* Tablet Date filter dropdown (visible on tablet, chips shown on desktop) */}
+                  <select
+                    value={timeFilter}
+                    onChange={(e) => {
+                      handlePresetTime(e.target.value);
+                      setShowCustomDate(false);
+                    }}
+                    aria-label="Filter by time"
+                    className="hidden md:block lg:hidden text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#c3d2ce] dark:border-[#2a2e35] bg-white dark:bg-[#121417] text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                  >
+                    {TIME_OPTS.map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
 
                   {/* Date filter dropdown / custom trigger */}
                   <div className="hidden lg:flex items-center gap-1">
@@ -709,9 +726,11 @@ export default function StudentPortal() {
 
           {/* ── Ticket Cards Grid ── */}
           {loading ? (
-            <p className="text-center text-sm text-slate-400 py-14">Loading…</p>
+            <div className="flex-1 flex items-center justify-center py-14">
+              <p className="text-center text-sm text-slate-400">Loading…</p>
+            </div>
           ) : list.length === 0 ? (
-            <div className="text-center py-12 px-6 bg-white/85 dark:bg-[#15171a] rounded-2xl border border-[#c3d2ce] dark:border-[#2a2e35] border-dashed my-auto">
+            <div className="text-center py-12 px-6 bg-white/85 dark:bg-[#15171a] rounded-2xl border border-[#c3d2ce] dark:border-[#2a2e35] border-dashed my-auto flex-1 flex flex-col items-center justify-center">
               <div className="w-12 h-12 mx-auto rounded-2xl bg-[#eef3f1] dark:bg-white/10 flex items-center justify-center mb-3">
                 <Inbox className="w-6 h-6 text-[#7f999f] dark:text-slate-300" />
               </div>
