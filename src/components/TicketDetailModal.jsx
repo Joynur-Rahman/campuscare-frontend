@@ -85,9 +85,9 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const endRef = useRef(null);
 
-  // Fetch ticket media / attachments directly so Admin and Staff always see uploaded photos
+  // Fetch ticket media / attachments directly so Admin and Staff always see uploaded photos (skip if already provided)
   useEffect(() => {
-    if (!ticket?.id || !api?.getTicketMedia) return;
+    if (!ticket?.id || !api?.getTicketMedia || ticket?.attachments?.length) return;
     let active = true;
     api.getTicketMedia(ticket.id)
       .then(media => {
@@ -170,7 +170,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     };
   };
 
-  // Poll for thread updates with 2000ms frequency and memory cache sync (only if user has chat access)
+  // Poll for thread updates with 4000ms frequency and memory cache sync (only if user has chat access)
   useEffect(() => {
     if (!canViewChat) {
       setLoadingThread(false);
@@ -178,7 +178,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
     }
     let active = true;
     const fetchThread = async () => {
-      if (!local?.id) return;
+      if (!local?.id || (typeof document !== 'undefined' && document.hidden)) return;
       try {
         const list = await api.getTicketMessages(local.id);
         if (active && Array.isArray(list)) {
@@ -197,7 +197,7 @@ export default function TicketDetailModal({ ticket, onClose, action }) {
       }
     };
     fetchThread();
-    const interval = setInterval(fetchThread, 2000);
+    const interval = setInterval(fetchThread, 4000);
     return () => { active = false; clearInterval(interval); };
   }, [local?.id, currentUserId, canViewChat]);
 

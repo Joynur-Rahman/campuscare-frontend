@@ -62,7 +62,7 @@ const TABS = [
 ];
 
 export default function TechnicianPortal() {
-  const { api, user, showToast, ticketModal, closeTicket } = useApp();
+  const { api, user, showToast, ticketModal, closeTicket, tickets: sharedTickets = [], loadingTickets } = useApp();
   const [tab, setTab] = useState('New');
   const [open, setOpen] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -102,24 +102,16 @@ export default function TechnicianPortal() {
     }
   });
 
-  const subscribe = useCallback(
-    (cb, onErr, onSync) =>
-      api.subscribeToTickets(
-        { role: 'staff', uid, email },
-        (list) => {
-          if (Array.isArray(list)) {
-            try {
-              localStorage.setItem(cacheKey, JSON.stringify(list));
-            } catch {}
-          }
-          cb(list);
-        },
-        onErr,
-        onSync
-      ),
-    [api, uid, email, cacheKey]
-  );
-  const { data: all, loading } = useSubscription(subscribe, [email, uid], initialTickets);
+  const all = sharedTickets.length ? sharedTickets : initialTickets;
+  const loading = loadingTickets && !initialTickets.length;
+
+  useEffect(() => {
+    if (sharedTickets.length) {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(sharedTickets));
+      } catch {}
+    }
+  }, [sharedTickets, cacheKey]);
 
   // Listen to global open ticket triggers from TopNav messages / notifications
   useEffect(() => {
