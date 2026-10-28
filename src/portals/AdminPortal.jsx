@@ -19,18 +19,19 @@ const TABS = [
 ];
 
 export default function AdminPortal() {
-  const { api, ticketModal, closeTicket } = useApp();
+  const { api, ticketModal, closeTicket, tickets = [], loadingTickets: loading } = useApp();
   const [tab, setTab] = useState('dashboard');
   const [open, setOpen] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('all');
   const go = (t, f) => { if (f) setTicketFilter(f); setTab(t); };
 
-  const ticketsSub = useCallback((cb, e, s) => api.subscribeToTickets({ role: 'admin' }, cb, e, s), [api]);
   const techsSub = useCallback((cb, e, s) => api.subscribeToTechnicians(null, cb, e, s), [api]);
-  const membersSub = useCallback((cb, e, s) => api.subscribeToCampusMembers(cb, e, s), [api]);
-  const { data: tickets, loading } = useSubscription(ticketsSub, []);
+  const membersSub = useCallback((cb, e, s) => {
+    if (tab !== 'manage') return () => {};
+    return api.subscribeToCampusMembers(cb, e, s);
+  }, [api, tab]);
   const { data: techs } = useSubscription(techsSub, []);
-  const { data: members } = useSubscription(membersSub, []);
+  const { data: members } = useSubscription(membersSub, [tab]);
 
   // Listen to global open ticket triggers from TopNav messages / notifications
   useEffect(() => {

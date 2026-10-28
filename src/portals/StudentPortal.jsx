@@ -135,7 +135,7 @@ function Chip({ active, onClick, children, count }) {
 }
 
 export default function StudentPortal() {
-  const { api, user, showToast, ticketModal, closeTicket } = useApp();
+  const { api, user, showToast, ticketModal, closeTicket, tickets: all = [], loadingTickets: loading } = useApp();
   const [tab, setTab] = useState('Mine');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
@@ -152,22 +152,7 @@ export default function StudentPortal() {
   const [sortBy, setSortBy] = useState('newest');
   const [showCustomDate, setShowCustomDate] = useState(false);
 
-  const subscribe = useCallback(
-    (cb, onErr, onSync) =>
-      api.subscribeToTickets(
-        { role: 'student', uid: user?.clerk_id || user?.id || user?.uid, email: user?.email },
-        cb,
-        onErr,
-        onSync
-      ),
-    [api, user?.clerk_id, user?.id, user?.uid, user?.email]
-  );
-  const { data: all, loading } = useSubscription(subscribe, [
-    user?.clerk_id,
-    user?.id,
-    user?.uid,
-    user?.email,
-  ]);
+
 
   // Listen to global open ticket triggers from TopNav messages / notifications
   useEffect(() => {

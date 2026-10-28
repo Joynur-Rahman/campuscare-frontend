@@ -24,7 +24,7 @@ function formatTimeAgo(timestamp) {
 }
 
 export default function TopNav({ portal, tabs, activeTab, onTab }) {
-  const { user, logout, theme, cycleTheme, openTicket } = useApp();
+  const { user, logout, theme, cycleTheme, openTicket, tickets = [] } = useApp();
   const { openUserProfile } = useClerk();
   const [emergency, setEmergency] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -42,7 +42,6 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
   const uKey = uid || 'guest';
 
   // Live ticket-driven notifications
-  const [tickets, setTickets] = useState([]);
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
       const stored = localStorage.getItem(`cc_read_notifs_${uKey}`) || localStorage.getItem('cc_read_notifs');
@@ -52,24 +51,7 @@ export default function TopNav({ portal, tabs, activeTab, onTab }) {
     }
   });
 
-  useEffect(() => {
-    if (!user) {
-      setTickets([]);
-      return;
-    }
-    const unsub = api.subscribeToTickets(
-      { role: user.role, uid: user.clerk_id || user.id, email: user.email },
-      (list) => {
-        if (Array.isArray(list)) {
-          setTickets(list);
-        }
-      },
-      (err) => console.debug('[TopNav] tickets fetch error:', err)
-    );
-    return () => {
-      if (typeof unsub === 'function') unsub();
-    };
-  }, [user?.role, user?.clerk_id, user?.id, user?.email]);
+
 
   // Derive notifications from real tickets (scoped to relevant user)
   const notifs = useMemo(() => {

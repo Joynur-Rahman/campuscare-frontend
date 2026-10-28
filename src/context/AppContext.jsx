@@ -219,6 +219,45 @@ export function AppProvider({ children }) {
     setTicketModal(null);
   }, []);
 
+  // ── shared tickets subscription (single unified stream for TopNav & Portals) ──
+  const [tickets, setTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setTickets([]);
+      setLoadingTickets(false);
+      return;
+    }
+    const roleStr = (user.role || 'student').toLowerCase();
+    const isAdmin = roleStr === 'admin' || roleStr === 'administrator';
+    const scope = isAdmin
+      ? { role: 'admin' }
+      : {
+          role: roleStr,
+          uid: user.clerk_id || user.id || user.uid,
+          email: user.email,
+        };
+
+    const unsub = api.subscribeToTickets(
+      scope,
+      (list) => {
+        if (Array.isArray(list)) {
+          setTickets(list);
+        }
+        setLoadingTickets(false);
+      },
+      (err) => {
+        console.debug('[AppContext] tickets subscribe error:', err);
+        setLoadingTickets(false);
+      },
+      () => setLoadingTickets(false)
+    );
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [user?.role, user?.clerk_id, user?.id, user?.uid, user?.email, api]);
+
   const value = {
     user,
     setUser,
@@ -235,6 +274,9 @@ export function AppProvider({ children }) {
     openTicket,
     closeTicket,
     markTicketMessagesRead,
+    tickets,
+    setTickets,
+    loadingTickets,
   };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

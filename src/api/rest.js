@@ -8,6 +8,7 @@ function poll(fetchFn, cb, onError, onSync) {
   let stopped = false;
   let first = true;
   const tick = async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const token = await getToken();
       if (!token) return; // Wait until token is available before calling protected backend routes
@@ -21,7 +22,21 @@ function poll(fetchFn, cb, onError, onSync) {
   };
   tick();
   const id = setInterval(tick, POLL_INTERVAL);
-  return () => { stopped = true; clearInterval(id); };
+  const onVisibilityChange = () => {
+    if (typeof document !== 'undefined' && !document.hidden && !stopped) {
+      tick();
+    }
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  return () => {
+    stopped = true;
+    clearInterval(id);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
+  };
 }
 
 function flatten(obj) {
