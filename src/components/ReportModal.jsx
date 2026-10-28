@@ -37,7 +37,7 @@ function Step({ n, title, hint }) {
 
 export default function ReportModal({ onClose, onCreated, initialLocation = '', initialCoords = null, sharedOnly = false, userTickets = [] }) {
   useBodyScrollLock();
-  const { api, showToast, openTicket } = useApp();
+  const { api, showToast, openTicket, user } = useApp();
 
   const [group, setGroup] = useState(GROUPS[0]);
   const [query, setQuery] = useState('');
@@ -55,17 +55,22 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   const [files, setFiles] = useState([]); // [{ file, url, kind }]
   const [busy, setBusy] = useState(false);
 
+  const currentUid = user?.clerk_id || user?.id || user?.uid;
+  const currentEmail = (user?.email || '').toLowerCase();
+
   // Student's own tickets to prevent raising duplicate active tickets
-  const [myTickets, setMyTickets] = useState(userTickets || []);
+  const [myTickets, setMyTickets] = useState(() => (userTickets || []).filter(t =>
+    (currentUid && (t.userId === currentUid || t.owner_id === currentUid || t.clerk_id === currentUid)) ||
+    (currentEmail && (t.userEmail || '').toLowerCase() === currentEmail)
+  ));
   useEffect(() => {
     if (userTickets && userTickets.length > 0) {
-      setMyTickets(userTickets);
-    } else if (api?.getTickets) {
-      api.getTickets().then(list => {
-        if (Array.isArray(list)) setMyTickets(list);
-      }).catch(() => {});
+      setMyTickets(userTickets.filter(t =>
+        (currentUid && (t.userId === currentUid || t.owner_id === currentUid || t.clerk_id === currentUid)) ||
+        (currentEmail && (t.userEmail || '').toLowerCase() === currentEmail)
+      ));
     }
-  }, [userTickets, api]);
+  }, [userTickets, currentUid, currentEmail]);
 
   const isCustomCat = cat === CUSTOM;
   const catInfo = isCustomCat ? null : getCategory(cat);

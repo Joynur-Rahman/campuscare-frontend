@@ -827,7 +827,7 @@ export default function StudentPortal() {
 
       {report && (
         <ReportModal
-          userTickets={all}
+          userTickets={(all || []).filter(t => mineIds.has(t.id))}
           initial={typeof report === 'object' ? report : null}
           sharedOnly={tab === 'Community'}
           onClose={() => setReport(false)}
