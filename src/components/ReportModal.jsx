@@ -103,9 +103,10 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
     return findUserActiveDuplicate(myTickets, {
       category: catName,
       problem,
+      location: (onSite || optionalLoc) ? location : "",
       title: `${catName} — ${problem}`,
     });
-  }, [myTickets, catName, problem, cat]);
+  }, [myTickets, catName, problem, cat, location, onSite, optionalLoc]);
 
   // Search across every category and sub-problem
   const results = useMemo(() => {

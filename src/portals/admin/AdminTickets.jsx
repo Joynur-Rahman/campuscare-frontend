@@ -41,7 +41,7 @@ const SORTS = [
 ];
 
 export default function AdminTickets({ tickets, techs, onOpen, initialFilter = 'all' }) {
-  const { api, showToast } = useApp();
+  const { api, showToast, setTickets } = useApp();
   const [filter, setFilter] = useState(initialFilter);
   const [catFilter, setCatFilter] = useState('all');
   const [q, setQ] = useState('');
@@ -100,7 +100,8 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
           e.stopPropagation();
           if (bestDup) {
             const isTOlder = createdMs(t) <= createdMs(bestDup);
-            setMergePair(isTOlder ? { primary: t, duplicate: bestDup } : { primary: bestDup, duplicate: t });
+            const reason = dups[0]?.reason;
+            setMergePair(isTOlder ? { primary: t, duplicate: bestDup, reason } : { primary: bestDup, duplicate: t, reason });
           }
         }}
         title={`Potential duplicate detected (${dups.length} candidate${dups.length > 1 ? 's' : ''}): ${dups[0]?.reason}. Click to review and merge.`}
@@ -156,7 +157,8 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
             e.stopPropagation();
             if (bestDup) {
               const isTOlder = createdMs(t) <= createdMs(bestDup);
-              setMergePair(isTOlder ? { primary: t, duplicate: bestDup } : { primary: bestDup, duplicate: t });
+              const reason = dups[0]?.reason;
+              setMergePair(isTOlder ? { primary: t, duplicate: bestDup, reason } : { primary: bestDup, duplicate: t, reason });
             }
           }}
           title={dups[0]?.reason}
@@ -257,8 +259,18 @@ export default function AdminTickets({ tickets, techs, onOpen, initialFilter = '
         <MergeModal
           primaryTicket={mergePair.primary}
           duplicateTicket={mergePair.duplicate}
+          reason={mergePair.reason}
           onClose={() => setMergePair(null)}
-          onMerged={() => setMergePair(null)}
+          onMerged={(targetId, sourceId) => {
+            setMergePair(null);
+            if (typeof setTickets === 'function') {
+              setTickets(prev => (prev || []).map(t => {
+                if (t.id === sourceId) return { ...t, status: 'resolved' };
+                if (t.id === targetId) return { ...t, upvotes: (t.upvotes || 1) + 1 };
+                return t;
+              }));
+            }
+          }}
           api={api}
           showToast={showToast}
         />
