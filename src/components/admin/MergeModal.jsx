@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, GitMerge, ArrowRight, CheckCheck, Loader2, Users, AlertTriangle } from 'lucide-react';
 import { shortTicketId, ticketLabel } from '../../lib/ticketUtils.js';
 
-export default function MergeModal({ primaryTicket, duplicateTicket, onClose, onMerged, api, showToast }) {
+export default function MergeModal({ primaryTicket, duplicateTicket, reason, onClose, onMerged, api, showToast }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [selectedPrimary, setSelectedPrimary] = useState(primaryTicket?.id);
@@ -45,6 +45,14 @@ export default function MergeModal({ primaryTicket, duplicateTicket, onClose, on
           </div>
           <button type="button" onClick={onClose} className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="w-5 h-5" /></button>
         </div>
+
+        {/* Match reason badge */}
+        {reason && (
+          <div className="px-3 py-2 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-900/40 text-xs text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
+            <span className="font-black uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded bg-indigo-200/70 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">Duplicate Criteria</span>
+            <span className="font-bold truncate">{reason}</span>
+          </div>
+        )}
 
         {/* Swap / Selection instruction */}
         <div className="p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
