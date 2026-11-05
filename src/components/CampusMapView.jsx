@@ -124,7 +124,8 @@ export default function CampusMapView({
   techs = [],
   onSelectTicket,
   fill = false,
-  height = 480,
+  compact = false,
+  height = 420,
 }) {
   const isAdminView = Boolean(techs && techs.length > 0);
   const containerRef = useRef(null);
@@ -279,7 +280,7 @@ export default function CampusMapView({
         const map = L.map(containerRef.current, {
           scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: !L.Browser.mobile,
           center: [IIITG_CENTER.lat, IIITG_CENTER.lng],
-          zoom: 17,
+          zoom: 16.6,
           zoomControl: false,
           attributionControl: false,
         });
@@ -577,10 +578,10 @@ export default function CampusMapView({
     if (!map) return;
     try {
       if (engine !== 'mappls' && L && typeof map.setView === 'function') {
-        map.setView([IIITG_CENTER.lat, IIITG_CENTER.lng], 17, { animate: true });
+        map.setView([IIITG_CENTER.lat, IIITG_CENTER.lng], 16.6, { animate: true });
       } else if (typeof map.setCenter === 'function') {
         map.setCenter({ lat: IIITG_CENTER.lat, lng: IIITG_CENTER.lng });
-        map.setZoom?.(17);
+        map.setZoom?.(16.5);
       }
       setGpsToast('Centered on Campus');
       setTimeout(() => setGpsToast(''), 2000);
@@ -670,7 +671,7 @@ export default function CampusMapView({
   return (
     <div
       className={`rounded-2xl bg-white dark:bg-[#121417] border border-[#d6ded7] dark:border-[#2a2e35] shadow-xs overflow-hidden flex flex-col ${
-        fill ? 'h-[620px] lg:h-full lg:min-h-0' : 'h-[560px]'
+        compact ? 'h-[400px] sm:h-[420px]' : fill ? 'h-[400px] sm:h-[420px]' : 'h-[420px]'
       }`}
     >
       {/* ── Top Category Filter Strip ── */}
@@ -783,8 +784,8 @@ export default function CampusMapView({
       >
         {/* LEFT: Strictly isolated map stacking context (`isolate relative z-0`) so map controls NEVER overlap navbar dropdowns */}
         <div
-          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden h-[340px] sm:h-[400px] lg:h-full min-h-0"
-          style={fill ? { isolation: 'isolate' } : { height, isolation: 'isolate' }}
+          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden h-[300px] sm:h-[340px] lg:h-full min-h-0"
+          style={{ isolation: 'isolate' }}
         >
           <div ref={containerRef} className="w-full h-full relative z-0" />
           {mapError && (
@@ -913,7 +914,7 @@ Satellite
         </div>
 
         {/* RIGHT: Live Triage Queue */}
-        <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-200/80 dark:border-[#212429] flex flex-col bg-slate-50/40 dark:bg-[#101114] h-[380px] lg:h-full min-h-0 overflow-hidden">
+        <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-200/80 dark:border-[#212429] flex flex-col bg-slate-50/40 dark:bg-[#101114] h-[320px] sm:h-[350px] lg:h-full min-h-0 overflow-hidden">
           {/* Queue filter tabs + search */}
           <div className="p-3 border-b border-slate-200/70 dark:border-[#212429] space-y-2 shrink-0 bg-white dark:bg-[#121417]">
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f1012] p-1 rounded-xl">
@@ -958,7 +959,7 @@ Satellite
           </div>
 
           {/* Scrollable ticket cards */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2">
+          <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5">
             {visibleTickets.map((t) => {
               const active = t.id === selectedId;
               const urgent = isUrgent(t);
@@ -968,7 +969,7 @@ Satellite
                 <div
                   key={t.id}
                   onClick={() => focusTicketOnMap(t)}
-                  className={`p-3 rounded-xl border transition cursor-pointer bg-white dark:bg-[#15171a] ${
+                  className={`p-2.5 rounded-xl border transition cursor-pointer bg-white dark:bg-[#15171a] ${
                     active
                       ? 'border-[#2f4e56] ring-2 ring-[#2f4e56]/15 dark:border-indigo-400'
                       : 'border-slate-200/90 dark:border-[#272b31] hover:border-slate-300'
