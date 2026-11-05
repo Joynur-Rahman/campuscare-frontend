@@ -47,6 +47,32 @@ export function extractRoomNumber(text = '') {
 }
 
 /**
+ * Extracts a normalized floor string from a location string or description.
+ * Examples:
+ *   "Boys Hostel · 2nd Floor · Room 214" -> "2nd Floor"
+ *   "Ground Floor" -> "Ground Floor"
+ *   "3rd floor" -> "3rd Floor"
+ *   "Basement" -> "Basement"
+ * Returns null if no floor is specified.
+ */
+export function extractFloor(text = '') {
+  if (!text) return null;
+  const str = String(text);
+  const locM = str.match(/Location:\s*([^\n]+)/i);
+  const targetStr = locM ? locM[1] : str;
+
+  if (/\b(?:ground|gf)\b/i.test(targetStr)) return 'Ground Floor';
+  const m = targetStr.match(/\b([0-9])(?:st|nd|rd|th)?\s*floor\b/i);
+  if (m) {
+    const n = m[1];
+    const suffix = n === '1' ? 'st' : n === '2' ? 'nd' : n === '3' ? 'rd' : 'th';
+    return `${n}${suffix} Floor`;
+  }
+  if (/\bbasement\b/i.test(targetStr)) return 'Basement';
+  return null;
+}
+
+/**
  * Extracts building/hostel slug to ensure rooms with same number in different hostels aren't confused.
  */
 export function extractBuilding(text = '') {
@@ -117,6 +143,13 @@ export function findDuplicateClusters(tickets = []) {
         continue;
       }
 
+      // Condition 1b: If floor is specified in both, floors must not conflict
+      const floorA = extractFloor(aLoc);
+      const floorB = extractFloor(bLoc);
+      if (floorA && floorB && floorA !== floorB) {
+        continue;
+      }
+
       // If building is specified in both, buildings must not conflict (e.g. Boys Hostel vs Girls Hostel)
       const bldA = extractBuilding(aLoc);
       const bldB = extractBuilding(bLoc);
@@ -150,7 +183,8 @@ export function findDuplicateClusters(tickets = []) {
         continue;
       }
 
-      const reason = `Same Room (${roomA}) · ${catA || 'Category'} — ${subA || 'Subcategory'}`;
+      const floorInfo = (floorA && floorA === floorB) ? ` · ${floorA}` : '';
+      const reason = `Same Room (${roomA}${floorInfo}) · ${catA || 'Category'} — ${subA || 'Subcategory'}`;
       const score = 95;
 
       const aId = String(a.id);
@@ -178,7 +212,8 @@ export function findUserActiveDuplicate(userTickets = [], candidate = {}) {
   if (!active.length) return null;
 
   const candLoc = candidate.location || '';
-  const candRoom = extractRoomNumber(candLoc);
+  const candRoom = candidate.room || extractRoomNumber(candLoc);
+  const candFloor = candidate.floor || extractFloor(candLoc);
   const candBld = extractBuilding(candLoc);
 
   const candCat = cleanText(candidate.category || '');
@@ -187,11 +222,15 @@ export function findUserActiveDuplicate(userTickets = [], candidate = {}) {
   for (const t of active) {
     const tLoc = `${t.location || ''} ${t.description || ''}`;
     const tRoom = extractRoomNumber(tLoc);
+    const tFloor = extractFloor(tLoc);
     const tBld = extractBuilding(tLoc);
 
     // If candidate has a room number and ticket has a room number, they MUST match!
     if (candRoom && tRoom) {
       if (candRoom !== tRoom) {
+        continue;
+      }
+      if (candFloor && tFloor && candFloor !== tFloor) {
         continue;
       }
       if (candBld && tBld && candBld !== tBld) {

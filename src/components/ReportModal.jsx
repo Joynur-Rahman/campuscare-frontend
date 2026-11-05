@@ -48,6 +48,8 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
 
   const [location, setLocation] = useState(initialLocation);
   const [coords, setCoords] = useState(initialCoords);
+  const [floor, setFloor] = useState('');
+  const [roomNumber, setRoomNumber] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [isPublic, setIsPublic] = useState(Boolean(sharedOnly));
@@ -100,13 +102,24 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
   // Immediate detection: does THIS student already have an active ticket for this exact issue?
   const myDuplicateTicket = useMemo(() => {
     if (!problem && !cat) return null;
+    const locParts = [];
+    if (location.trim()) locParts.push(location.trim());
+    if (floor.trim()) locParts.push(floor.trim());
+    if (roomNumber.trim()) {
+      const r = roomNumber.trim();
+      locParts.push(/^(room|lab|flat|cabin|office)/i.test(r) ? r : `Room ${r}`);
+    }
+    const fullLoc = (onSite || optionalLoc) ? locParts.join(' · ') : "";
+
     return findUserActiveDuplicate(myTickets, {
       category: catName,
       problem,
-      location: (onSite || optionalLoc) ? location : "",
+      location: fullLoc,
+      room: roomNumber.trim() || undefined,
+      floor: floor.trim() || undefined,
       title: `${catName} — ${problem}`,
     });
-  }, [myTickets, catName, problem, cat, location, onSite, optionalLoc]);
+  }, [myTickets, catName, problem, cat, location, floor, roomNumber, onSite, optionalLoc]);
 
   // Search across every category and sub-problem
   const results = useMemo(() => {
@@ -200,7 +213,7 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
 
       let lat = coords?.lat;
       let lng = coords?.lng;
-      let finalLocation = location.trim();
+      let baseLoc = location.trim();
       const matchedLandmark = findMatchingLandmark(location);
       if (matchedLandmark) {
         if (!lat || !lng) {
@@ -208,6 +221,15 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
           lng = matchedLandmark.lng;
         }
       }
+
+      const locParts = [];
+      if (baseLoc) locParts.push(baseLoc);
+      if (floor.trim()) locParts.push(floor.trim());
+      if (roomNumber.trim()) {
+        const r = roomNumber.trim();
+        locParts.push(/^(room|lab|flat|cabin|office)/i.test(r) ? r : `Room ${r}`);
+      }
+      const finalLocation = locParts.join(' · ');
 
       const pub = (sharedOnly || isPublic) && !confidential;
       const t = await api.createTicket({
@@ -435,15 +457,53 @@ export default function ReportModal({ onClose, onCreated, initialLocation = '', 
                   : 'Optional — add the place if it helps the team find it'}
               />
               {(onSite || showLocation) ? (
-                <LocationPicker
-                  value={location}
-                  onChange={setLocation}
-                  coords={coords}
-                  onCoordsChange={setCoords}
-                  geofence={!emergency}
-                  label={onSite ? 'Building / room *' : 'Place (optional)'}
-                  placeholder="e.g. Hostel Room 214, Hostel Mess, Library 2nd floor…"
-                />
+                <div className="space-y-2.5">
+                  <LocationPicker
+                    value={location}
+                    onChange={setLocation}
+                    coords={coords}
+                    onCoordsChange={setCoords}
+                    geofence={!emergency}
+                    label={onSite ? 'Building / Area *' : 'Place (optional)'}
+                    placeholder="e.g. Boys Hostel, Girls Hostel, Academic Block, Library…"
+                  />
+
+                  {/* Dedicated slots for Floor and Room / Lab */}
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Floor <span className="font-normal text-slate-400">(optional)</span>
+                      </label>
+                      <select
+                        value={floor}
+                        onChange={e => setFloor(e.target.value)}
+                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-[#161618] text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#2f4e56]"
+                      >
+                        <option value="">Select floor</option>
+                        <option value="Ground Floor">Ground Floor</option>
+                        <option value="1st Floor">1st Floor</option>
+                        <option value="2nd Floor">2nd Floor</option>
+                        <option value="3rd Floor">3rd Floor</option>
+                        <option value="4th Floor">4th Floor</option>
+                        <option value="5th Floor">5th Floor</option>
+                        <option value="Basement">Basement</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Room / Lab No. <span className="font-normal text-slate-400">(e.g. 214)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={roomNumber}
+                        onChange={e => setRoomNumber(e.target.value)}
+                        placeholder="e.g. 214, Lab-02"
+                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-[#161618] text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#2f4e56]"
+                      />
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <button
                   type="button"
