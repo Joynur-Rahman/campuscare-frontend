@@ -164,7 +164,7 @@ export default function AdminDashboard({ tickets = [], techs = [], onOpen, onGo 
       )}
 
       {/* ── Live Campus Map + Actionable Triage Queue ── */}
-      <div className="lg:flex-1 lg:min-h-0">
+      <div className="lg:flex-1 lg:min-h-0 flex flex-col h-full">
         <CampusMapView
           tickets={filteredByKpi}
           techs={techs}

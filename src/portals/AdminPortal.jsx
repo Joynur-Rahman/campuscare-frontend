@@ -85,11 +85,11 @@ export default function AdminPortal() {
         </div>
       ) : (
         <>
-          {tab === 'dashboard' && <div className="cc-page-in flex-1 min-h-0"><AdminDashboard tickets={tickets} techs={techs} onOpen={setOpen} onGo={go} /></div>}
-          {tab === 'tickets' && <div className="cc-page-in flex-1 min-h-0"><AdminTickets key={ticketFilter} tickets={tickets} techs={techs} onOpen={setOpen} initialFilter={ticketFilter} /></div>}
-          {tab === 'technicians' && <div className="cc-page-in flex-1 min-h-0"><AdminTechnicians tickets={tickets} techs={techs} onOpen={setOpen} /></div>}
-          {tab === 'reports' && <div className="cc-page-in flex-1 min-h-0"><AdminReports tickets={tickets} techs={techs} /></div>}
-          {tab === 'manage' && <div className="cc-page-in flex-1 min-h-0"><AdminManage techs={techs} members={members} /></div>}
+          {tab === 'dashboard' && <div className="cc-page-in flex-1 min-h-0 flex flex-col h-full"><AdminDashboard tickets={tickets} techs={techs} onOpen={setOpen} onGo={go} /></div>}
+          {tab === 'tickets' && <div className="cc-page-in flex-1 min-h-0 flex flex-col h-full"><AdminTickets key={ticketFilter} tickets={tickets} techs={techs} onOpen={setOpen} initialFilter={ticketFilter} /></div>}
+          {tab === 'technicians' && <div className="cc-page-in flex-1 min-h-0 flex flex-col h-full"><AdminTechnicians tickets={tickets} techs={techs} onOpen={setOpen} /></div>}
+          {tab === 'reports' && <div className="cc-page-in flex-1 min-h-0 flex flex-col h-full"><AdminReports tickets={tickets} techs={techs} /></div>}
+          {tab === 'manage' && <div className="cc-page-in flex-1 min-h-0 flex flex-col h-full"><AdminManage techs={techs} members={members} /></div>}
         </>
       )}
 
