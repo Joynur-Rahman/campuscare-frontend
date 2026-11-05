@@ -350,7 +350,19 @@ export default function CampusMapView({
     setMapError('');
     initMappls();
 
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined' && el) {
+      resizeObserver = new ResizeObserver(() => {
+        try {
+          if (mapRef.current?.resize) mapRef.current.resize();
+          if (mapRef.current?.invalidateSize) mapRef.current.invalidateSize();
+        } catch {}
+      });
+      resizeObserver.observe(el);
+    }
+
     return () => {
+      if (resizeObserver) resizeObserver.disconnect();
       cancelled = true;
       if (cleanupOverlay) cleanupOverlay();
       markersRef.current.forEach(removeMarker);
@@ -559,6 +571,24 @@ export default function CampusMapView({
     }
   };
 
+  const handleRecenterCampus = () => {
+    const map = mapRef.current;
+    const L = leafletRef.current;
+    if (!map) return;
+    try {
+      if (engine !== 'mappls' && L && typeof map.setView === 'function') {
+        map.setView([IIITG_CENTER.lat, IIITG_CENTER.lng], 17, { animate: true });
+      } else if (typeof map.setCenter === 'function') {
+        map.setCenter({ lat: IIITG_CENTER.lat, lng: IIITG_CENTER.lng });
+        map.setZoom?.(17);
+      }
+      setGpsToast('Centered on Campus');
+      setTimeout(() => setGpsToast(''), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
   const handleMyGps = async () => {
     if (gpsBusy) return;
     setGpsBusy(true);
@@ -640,7 +670,7 @@ export default function CampusMapView({
   return (
     <div
       className={`rounded-2xl bg-white dark:bg-[#121417] border border-[#d6ded7] dark:border-[#2a2e35] shadow-xs overflow-hidden flex flex-col ${
-        fill ? 'lg:h-full lg:min-h-0' : ''
+        fill ? 'h-[620px] lg:h-full lg:min-h-0' : 'h-[560px]'
       }`}
     >
       {/* ── Top Category Filter Strip ── */}
@@ -747,13 +777,13 @@ export default function CampusMapView({
 
       {/* ── Main Split Body: Map (Left) + Actionable Triage Queue (Right) ── */}
       <div
-        className={`grid grid-cols-1 lg:grid-cols-12 ${
+        className={`grid grid-cols-1 lg:grid-cols-12 flex-1 min-h-0 overflow-hidden ${
           fill ? 'lg:flex-1 lg:min-h-0' : ''
         }`}
       >
         {/* LEFT: Strictly isolated map stacking context (`isolate relative z-0`) so map controls NEVER overlap navbar dropdowns */}
         <div
-          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden h-[360px] sm:h-[440px] lg:h-auto min-h-[340px] lg:min-h-0"
+          className="lg:col-span-7 relative isolate z-0 bg-slate-900 overflow-hidden h-[340px] sm:h-[400px] lg:h-full min-h-0"
           style={fill ? { isolation: 'isolate' } : { height, isolation: 'isolate' }}
         >
           <div ref={containerRef} className="w-full h-full relative z-0" />
@@ -784,6 +814,15 @@ Satellite
                   {gpsToast}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={handleRecenterCampus}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-md border border-slate-200/80 dark:border-slate-700 transition cursor-pointer active:scale-95"
+                title="Recenter view on IIIT Guwahati campus"
+              >
+                <Compass className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Recenter</span>
+              </button>
               <button
                 type="button"
                 onClick={handleMyGps}
@@ -874,7 +913,7 @@ Satellite
         </div>
 
         {/* RIGHT: Live Triage Queue */}
-        <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-200/80 dark:border-[#212429] flex flex-col bg-slate-50/40 dark:bg-[#101114] min-h-[320px] lg:min-h-0">
+        <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-200/80 dark:border-[#212429] flex flex-col bg-slate-50/40 dark:bg-[#101114] h-[380px] lg:h-full min-h-0 overflow-hidden">
           {/* Queue filter tabs + search */}
           <div className="p-3 border-b border-slate-200/70 dark:border-[#212429] space-y-2 shrink-0 bg-white dark:bg-[#121417]">
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f1012] p-1 rounded-xl">
@@ -919,7 +958,7 @@ Satellite
           </div>
 
           {/* Scrollable ticket cards */}
-          <div className="flex-1 overflow-y-auto p-2.5 space-y-2 max-h-[420px] lg:max-h-none">
+          <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2">
             {visibleTickets.map((t) => {
               const active = t.id === selectedId;
               const urgent = isUrgent(t);
