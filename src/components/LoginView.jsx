@@ -20,8 +20,6 @@ export default function LoginView() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] lg:h-dvh lg:overflow-hidden flex flex-col justify-between campus-hero-bg pb-[env(safe-area-inset-bottom)]">
-      <div className="h-1 w-full bg-gradient-to-r from-iiitg-900 via-iiitg-gold to-iiitg-900 shrink-0" />
-
       {/* Institute banner */}
       <header className="institute-banner shadow-md shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
